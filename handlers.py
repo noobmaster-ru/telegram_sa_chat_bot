@@ -9,7 +9,7 @@ router = Router()
 # Настраиваем логирование
 logging.basicConfig(
     level=logging.INFO,
-    # format="%(asctime)s [%(levelname)s] %(message)s",
+    format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler("data/bot.log", encoding="utf-8"),  # сохраняем в файл
         logging.StreamHandler(),  # выводим в консоль
@@ -58,10 +58,12 @@ async def cmd_stats(message: Message):
     await message.answer(f"📊 Всего пользователей написало: *{count}*", parse_mode="MarkdownV2")
 
 
-@router.message()
+# здесь надо было business_message указать!!!!!
+@router.business_message()
 async def handle_message(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username or "без username"
+    full_name = message.from_user.full_name or "без full_name"
     text_preview = message.text[:30] if message.text else "(без текста)"
 
     # если пользователь пишет впервые
@@ -70,7 +72,7 @@ async def handle_message(message: Message):
 
         # логируем сообщение
         logging.info(
-            f"Первое сообщение от (@{username}), id={user_id}: {text_preview} ..."
+            f"Первое сообщение от (@{username}, full_name), id={user_id}: {text_preview} ..."
         )
         await message.answer(WELCOME_TEXT, parse_mode="MarkdownV2")
     # else:
