@@ -15,31 +15,24 @@ def init_db():
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )''')
     conn.close()
-    # cur = conn.cursor()
-    # cur.execute("""
-    #     CREATE TABLE IF NOT EXISTS users (
-    #         id INTEGER PRIMARY KEY
-    #     )
-    # """)
-    # conn.commit()
-    # conn.close()
-
 
 def user_exists(user_id: int) -> bool:
-    """Проверяет, есть ли пользователь в базе"""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT 1 FROM users WHERE id = ?", (user_id,))
+    cur.execute("SELECT 1 FROM users WHERE telegram_id = ?", (user_id,))
     exists = cur.fetchone() is not None
     conn.close()
     return exists
 
 
-def add_user(user_id: int):
-    """Добавляет пользователя в базу"""
+
+def add_user(user_id: int, username: str = None):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("INSERT OR IGNORE INTO users (id) VALUES (?)", (user_id,))
+    cur.execute(
+        "INSERT OR IGNORE INTO users (telegram_id, username) VALUES (?, ?)",
+        (user_id, username)
+    )
     conn.commit()
     conn.close()
 

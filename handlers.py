@@ -62,12 +62,11 @@ async def cmd_stats(message: Message):
 async def handle_message(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username or "без username"
-    # full_name = message.from_user.full_name
     text_preview = message.text[:30] if message.text else "(без текста)"
 
     # если пользователь пишет впервые
     if not user_exists(user_id):
-        add_user(user_id)
+        add_user(user_id, username)
 
         # логируем сообщение
         logging.info(
