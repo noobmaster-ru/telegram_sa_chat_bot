@@ -1,11 +1,11 @@
-version: '3.8'
-
 services:
   telegram-bot:
     build: .
-    container_name: telegram-bot
-    restart: always
-    env_file: .env
-    volumes:
-      - ./users_data:/app   # сохраняем базу между перезапусками
+    container_name: telegram-chat-bot
     command: python run.py
+    env_file: 
+      - .env
+    volumes:
+      - .:/app
+      - ./data:/app/data   # users.db
+    restart: always
