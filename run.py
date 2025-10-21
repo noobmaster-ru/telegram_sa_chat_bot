@@ -1,10 +1,8 @@
 from aiogram import Bot, Dispatcher
 import asyncio
 import os 
-import shutil
 from dotenv import load_dotenv
 
-# from handlers.message_handlers import router
 from handlers import message_router, callback_router
 from db.database import init_db
 from google_sheets.google_sheets_class import GoogleSheetClass
