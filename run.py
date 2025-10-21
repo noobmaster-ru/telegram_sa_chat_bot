@@ -32,7 +32,10 @@ async def main():
     dp.workflow_data.update(
         {
             "instruction_str": instruction_str,
-            "LOWER_LIMIT_OF_MESSAGE_LENGTH": LOWER_LIMIT_OF_MESSAGE_LENGTH
+            "LOWER_LIMIT_OF_MESSAGE_LENGTH": LOWER_LIMIT_OF_MESSAGE_LENGTH,
+            "spreadsheet": spreadsheet,
+            "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
+            "nm_id": nm_id
         }
     )
     dp.include_router(router)

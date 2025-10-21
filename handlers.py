@@ -7,6 +7,7 @@ from database import user_exists, add_user
 import logging
 
 from generators import create_response
+from google_sheets_class import GoogleSheetClass
 
 router = Router()
 
@@ -36,18 +37,26 @@ async def handle_message(
     message: Message, 
     state: FSMContext, 
     instruction_str: str,
-    LOWER_LIMIT_OF_MESSAGE_LENGTH: int
+    LOWER_LIMIT_OF_MESSAGE_LENGTH: int,
+    spreadsheet: GoogleSheetClass,
+    BUYERS_SHEET_NAME: str,
+    nm_id: str
 ):
     user_id = message.from_user.id
     username = message.from_user.username or "без username"
     full_name = message.from_user.full_name or "без full_name"
     text = message.text if message.text else "(без текста)"
 
-
     # тест - отвечать могут только я и тема
     if user_id in ADMIN_ID_LIST and not user_exists(user_id):
         add_user(user_id, username)
-
+        
+        # Сохраняем данные пользователя при первом сообщении
+        spreadsheet.add_new_buyer(
+            sheet_name=BUYERS_SHEET_NAME,
+            username=username,
+            nm_id=nm_id
+        )
         # логируем сообщение
         logging.info(
             f"Первое сообщение от (@{username}, {full_name}), id={user_id}: {text} ..."
@@ -56,7 +65,14 @@ async def handle_message(
     
     # тестируем пока только я и тема
     elif user_id in ADMIN_ID_LIST:
-        # убираем пробелы и делаем нижний регистр
+        
+        # обновляем время последнего сообщения
+        spreadsheet.update_buyer_last_time_message(
+            sheet_name=BUYERS_SHEET_NAME,
+            username=username
+        )
+
+        # убираем пробелы и делаем нижний регистр у сообщения
         text = message.text.strip().lower()   
         if "?" in text: 
             # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
