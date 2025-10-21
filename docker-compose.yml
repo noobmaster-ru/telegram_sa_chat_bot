@@ -1,7 +1,7 @@
 services:
   telegram-bot:
     build: .
-    container_name: telegram-chat-bot
+    container_name: telegram-ai-agent
     command: python run.py
     env_file: 
       - .env

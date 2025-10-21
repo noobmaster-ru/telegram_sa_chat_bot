@@ -35,12 +35,3 @@ def add_user(user_id: int, username: str = None):
     )
     conn.commit()
     conn.close()
-
-def get_user_count() -> int:
-    """Возвращает количество пользователей"""
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM users")
-    count = cur.fetchone()[0]
-    conn.close()
-    return count
