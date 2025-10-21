@@ -25,7 +25,9 @@ class GoogleSheetClass():
         sheet_name: str,
         username: str,
         nm_id: str,
-        status: str = "None", # потом можно обновлять статус отдельной функцией (заказал, получил, оставил отзыв)
+        status_order: str = "None",
+        status_feedback: str = "None",
+        status_shk: str = "None", 
         requisites: str = "None",
         paid: str = "None"
     ):
@@ -40,7 +42,7 @@ class GoogleSheetClass():
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
         
         # добавляем новую строку с данными пользователя 
-        new_row = [user_link, now, now, nm_id, status, requisites, paid]
+        new_row = [user_link, now, now, nm_id, status_order, status_feedback, status_shk, requisites, paid]
         sheet.append_row(new_row)
 
     def update_buyer_last_time_message(
@@ -64,3 +66,81 @@ class GoogleSheetClass():
                 # обновляем только дату последнего сообщения
                 sheet.update_cell(i, 3, now)
                 return
+    
+    # def update_buyer_status(
+    #     self,
+    #     sheet_name: str,
+    #     username: str,
+    #     status_field: str, 
+    #     value: str
+    # ) -> None:
+    #     """
+    #     Обновляет статус покупателя:
+    #     status_field — колонка с названием поля, например "Статус" или "Выплата произведена"
+    #     value — новое значение
+    #     """
+    #     sheet = self.spreadsheet.worksheet(sheet_name)
+    #     records = sheet.get_all_records()
+    #     user_link = f"https://t.me/{username}" if username != "без username" else "—"
+        
+    #     # ищем строку с username
+    #     for i, record in enumerate(records, start=2):  # начинаем с 2, т.к. заголовок в первой строке
+    #         if record.get("Ссылка на ник") == user_link:
+    #             col_index = sheet.find(status_field).col
+    #             sheet.update_cell(i, col_index, value)
+
+    #             # также обновим дату последнего сообщения
+    #             moscow_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S")
+    #             last_msg_col = sheet.find("Дата последнего сообщения").col
+    #             sheet.update_cell(i, last_msg_col, moscow_time)
+    #             break
+    
+    def update_buyer_button_status(
+        self, 
+        sheet_name: str, 
+        username: str, 
+        button_name: str, 
+        value: str
+    ):
+        """
+        button_name: 'feedback', 'order', 'shk'
+        value: 'Да' или 'Нет'
+        """
+        sheet = self.spreadsheet.worksheet(sheet_name)
+        records = sheet.get_all_records()
+        user_link = f"https://t.me/{username}" if username != "без username" else "—"
+
+        # находим строку пользователя
+        for i, record in enumerate(records, start=2):
+            if record.get("Ссылка на ник") == user_link:
+                col_map = {
+                    "feedback": "Отзыв оставлен",
+                    "order": "Заказ сделан",
+                    "shk": "ШК разрезаны"
+                }
+                col_name = col_map[button_name]
+                col_index = sheet.find(col_name).col
+                sheet.update_cell(i, col_index, value)
+                
+                # также обновим дату последнего сообщения
+                moscow_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S")
+                last_msg_col = sheet.find("Дата последнего сообщения").col
+                sheet.update_cell(i, last_msg_col, moscow_time)
+                break
+    
+    def get_remaining_buttons(self, sheet_name: str, username: str) -> list:
+        sheet = self.spreadsheet.worksheet(sheet_name)
+        records = sheet.get_all_records()
+        user_link = f"https://t.me/{username}" if username != "без username" else "—"
+        
+        for i, record in enumerate(records, start=2):
+            if record.get("Ссылка на ник") == user_link:
+                remaining = []
+                if record.get("Отзыв оставлен") in ["None", ""]:
+                    remaining.append("feedback")
+                if record.get("Заказ сделан") in ["None", ""]:
+                    remaining.append("order")
+                if record.get("ШК разрезаны") in ["None", ""]:
+                    remaining.append("shk")
+                return remaining
+        return []

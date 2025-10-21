@@ -3,7 +3,7 @@ import asyncio
 import os 
 from dotenv import load_dotenv
 
-from handlers import router
+from handlers.handlers import router
 from database import init_db
 
 from google_sheets_class import GoogleSheetClass
