@@ -3,12 +3,12 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
-from database import user_exists, add_user
+from db.database import user_exists, add_user
 import logging
 import re
 
-from generators import create_response
-from google_sheets_class import GoogleSheetClass
+from ai_module.generators import create_response
+from google_sheets.google_sheets_class import GoogleSheetClass
 from handlers.keyboards import get_three_buttons_keyboard, get_different_number_of_buttons_keyboard
 
 router = Router()

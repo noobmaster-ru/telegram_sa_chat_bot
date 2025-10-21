@@ -1,12 +1,13 @@
 from aiogram import Bot, Dispatcher
 import asyncio
 import os 
+import shutil
 from dotenv import load_dotenv
 
-from handlers.handlers import router
-from database import init_db
-
-from google_sheets_class import GoogleSheetClass
+# from handlers.message_handlers import router
+from handlers import message_router, callback_router
+from db.database import init_db
+from google_sheets.google_sheets_class import GoogleSheetClass
 
 async def main():
     load_dotenv()
@@ -38,7 +39,8 @@ async def main():
             "nm_id": nm_id
         }
     )
-    dp.include_router(router)
+    dp.include_router(message_router)
+    dp.include_router(callback_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
