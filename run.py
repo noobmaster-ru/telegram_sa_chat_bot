@@ -3,8 +3,8 @@ import asyncio
 import os 
 from dotenv import load_dotenv
 
-from handlers import message_router, callback_router
-from db.database import init_db
+from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router
+# from db.database import init_db
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 async def main():
@@ -20,7 +20,7 @@ async def main():
 
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
 
-    init_db()  # создаём таблицу при старте
+    # init_db()  # создаём таблицу при старте
     spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
     
     nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
@@ -41,7 +41,11 @@ async def main():
         }
     )
     dp.include_router(message_router)
-    dp.include_router(callback_router)
+    # dp.include_router(callback_router)
+    dp.include_router(question_router)
+    dp.include_router(agreement_router)
+    dp.include_router(subscribtion_router)
+    dp.include_router(photo_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

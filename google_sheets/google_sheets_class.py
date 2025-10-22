@@ -28,6 +28,7 @@ class GoogleSheetClass():
         status_agree: str = "None",
         status_subscribe_to_channel: str = "None",
         status_order: str = "None",
+        status_order_received: str = "None",
         status_feedback: str = "None",
         status_shk: str = "None", 
         requisites: str = "None",
@@ -44,7 +45,7 @@ class GoogleSheetClass():
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
         
         # добавляем новую строку с данными пользователя 
-        new_row = [user_link, now, now, nm_id, status_agree, status_subscribe_to_channel, status_order, status_feedback, status_shk, requisites, paid]
+        new_row = [user_link, now, now, nm_id, status_agree, status_subscribe_to_channel, status_order, status_order_received, status_feedback, status_shk, requisites, paid]
         sheet.append_row(new_row)
 
     def update_buyer_last_time_message(
@@ -90,6 +91,7 @@ class GoogleSheetClass():
                 col_map = {
                     "agree": "Согласен на условия",
                     "subscribe": "Подписка на канал",
+                    "receive": "Заказ получен",
                     "order": "Заказ сделан",
                     "feedback": "Отзыв оставлен",
                     "shk": "ШК разрезаны",
@@ -103,24 +105,3 @@ class GoogleSheetClass():
                 last_msg_col = sheet.find("Дата последнего сообщения").col
                 sheet.update_cell(i, last_msg_col, moscow_time)
                 break
-    
-    def get_remaining_buttons(self, sheet_name: str, username: str) -> list:
-        sheet = self.spreadsheet.worksheet(sheet_name)
-        records = sheet.get_all_records()
-        user_link = f"https://t.me/{username}" if username != "без username" else "—"
-        
-        for i, record in enumerate(records, start=2):
-            if record.get("Ссылка на ник") == user_link:
-                remaining = []
-                if record.get("Отзыв оставлен") in ["None", ""]:
-                    remaining.append("feedback")
-                if record.get("Заказ сделан") in ["None", ""]:
-                    remaining.append("order")
-                if record.get("ШК разрезаны") in ["None", ""]:
-                    remaining.append("shk")
-                if record.get("Согласен на условия") in ["None", ""]:
-                    remaining.append("agree")
-                if record.get("Подписка на канал") in ["None", ""]:
-                    remaining.append("subscribe")
-                return remaining
-        return []
