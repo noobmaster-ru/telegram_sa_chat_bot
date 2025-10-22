@@ -11,7 +11,7 @@ from handlers.keyboards import (
 
 router = Router()
 
-CHANNEL_USERNAME = "@viktoriya_cash"  # username канала
+# CHANNEL_USERNAME = "@viktoriya_cash"  # username канала
 
 async def process_button_click(
     callback: CallbackQuery,
@@ -44,20 +44,12 @@ async def process_button_click(
     await callback.answer()
 
 
-# @router.callback_query(F.data.startswith("agree_"))
-# async def handle_feedback(
-#     callback: CallbackQuery, 
-#     spreadsheet: GoogleSheetClass, 
-#     BUYERS_SHEET_NAME: str
-# ):
-#     value = "Да" if callback.data == "agree_yes" else "Нет"
-#     await process_button_click(callback, spreadsheet, BUYERS_SHEET_NAME, "agree", value)
-
 @router.callback_query(F.data.startswith("agree_"))
 async def handle_agreement(
     callback: CallbackQuery,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str
+    BUYERS_SHEET_NAME: str,
+    CHANNEL_USERNAME: str
 ):
     username = callback.from_user.username or "без username"
     value = "Да" if callback.data == "agree_yes" else "Нет"
@@ -122,7 +114,8 @@ async def handle_agreement(
 async def handle_subscribed_check(
     callback: CallbackQuery,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str
+    BUYERS_SHEET_NAME: str,
+    CHANNEL_USERNAME: str
 ):
     username = callback.from_user.username or "без username"
 
@@ -133,6 +126,13 @@ async def handle_subscribed_check(
         )
         if member.status in ("member", "administrator", "creator"):
             await callback.message.answer("✅ Подписка подтверждена! Продолжаем.")
+            # обновляем статус в таблице
+            spreadsheet.update_buyer_button_status(
+                sheet_name=BUYERS_SHEET_NAME, 
+                username=username, 
+                button_name="subscribe", 
+                value="Да"
+            )
             remaining_buttons = spreadsheet.get_remaining_buttons(
                 sheet_name=BUYERS_SHEET_NAME,
                 username=username

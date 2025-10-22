@@ -67,12 +67,7 @@ async def handle_message(
         logging.info(
             f"Первое сообщение от (@{username}, {full_name}), id={user_id}: {text} ..."
         )
-        # # Отправляем инструкцию + кнопки
-        # await message.answer(
-        #     instruction_str,
-        #     parse_mode="MarkdownV2",
-        #     reply_markup=get_three_buttons_keyboard()
-        # )
+
         
         # Отправляем инструкцию
         await message.answer(

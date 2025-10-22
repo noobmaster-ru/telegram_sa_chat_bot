@@ -18,6 +18,8 @@ async def main():
     INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
     BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
 
+    CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
+
     init_db()  # создаём таблицу при старте
     spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
     
@@ -34,7 +36,8 @@ async def main():
             "LOWER_LIMIT_OF_MESSAGE_LENGTH": LOWER_LIMIT_OF_MESSAGE_LENGTH,
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
-            "nm_id": nm_id
+            "nm_id": nm_id,
+            "CHANNEL_USERNAME": CHANNEL_USERNAME
         }
     )
     dp.include_router(message_router)
