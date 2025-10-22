@@ -9,7 +9,11 @@ import re
 
 from ai_module.generators import create_response
 from google_sheets.google_sheets_class import GoogleSheetClass
-from handlers.keyboards import get_three_buttons_keyboard, get_different_number_of_buttons_keyboard
+from handlers.keyboards import (
+    get_three_buttons_keyboard, 
+    get_different_number_of_buttons_keyboard, 
+    get_agreement_keyboard
+)
 
 router = Router()
 
@@ -63,11 +67,22 @@ async def handle_message(
         logging.info(
             f"Первое сообщение от (@{username}, {full_name}), id={user_id}: {text} ..."
         )
-        # Отправляем инструкцию + кнопки
+        # # Отправляем инструкцию + кнопки
+        # await message.answer(
+        #     instruction_str,
+        #     parse_mode="MarkdownV2",
+        #     reply_markup=get_three_buttons_keyboard()
+        # )
+        
+        # Отправляем инструкцию
         await message.answer(
             instruction_str,
             parse_mode="MarkdownV2",
-            reply_markup=get_three_buttons_keyboard()
+        )
+        # После инструкции — отправляем кнопки "Согласны на условия?"
+        await message.answer(
+            "Согласны на условия?",
+            reply_markup=get_agreement_keyboard()
         )
     
     # тестируем пока только я и тема
@@ -134,102 +149,3 @@ async def handle_message(
                 )
             else:
                 await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")
-
-
-# ==== Обработка нажатий на кнопки ====
-@router.callback_query(F.data.startswith("feedback_"))
-async def handle_feedback(
-    callback: CallbackQuery,
-    spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str
-):
-    username = callback.from_user.username or "без username"
-    value = "Да" if callback.data == "feedback_yes" else "Нет"
-    
-    # обновляем статус "Отзыв оставлен"
-    spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME, 
-        username=username, 
-        button_name="feedback", 
-        value=value
-    )
-    
-    # генерируем новые кнопки только для оставшихся
-    remaining_buttons = spreadsheet.get_remaining_buttons(
-        sheet_name=BUYERS_SHEET_NAME, 
-        username=username
-    )
-    if remaining_buttons:
-        await callback.message.answer(
-            f"✅ Ваш ответ '{value}' зафиксирован.",
-            reply_markup=get_different_number_of_buttons_keyboard(remaining_buttons)
-        )
-    else:
-        await callback.message.answer("✅ Все статусы заполнены, спасибо!")
-
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("order_"))
-async def handle_order(
-    callback: CallbackQuery,
-    spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str
-):
-    username = callback.from_user.username or "без username"
-    value = "Да" if callback.data == "order_yes" else "Нет"
-    
-    # обновляем статус "Заказ сделан"
-    spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME, 
-        username=username, 
-        button_name="order", 
-        value=value
-    )
-    
-    # генерируем новые кнопки только для оставшихся
-    remaining_buttons = spreadsheet.get_remaining_buttons(
-        sheet_name=BUYERS_SHEET_NAME, 
-        username=username
-    )
-    if remaining_buttons:
-        await callback.message.answer(
-            f"✅ Ваш ответ '{value}' зафиксирован.",
-            reply_markup=get_different_number_of_buttons_keyboard(remaining_buttons)
-        )
-    else:
-        await callback.message.answer("✅ Все статусы заполнены, спасибо!")
-
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("shk_"))
-async def handle_shk(
-    callback: CallbackQuery,
-    spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str
-):
-    username = callback.from_user.username or "без username"
-    value = "Да" if callback.data == "shk_yes" else "Нет"
-    
-    # обновляем статус "ШК разрезан"
-    spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME, 
-        username=username, 
-        button_name="shk", 
-        value=value
-    )
-    
-    # генерируем новые кнопки только для оставшихся
-    remaining_buttons = spreadsheet.get_remaining_buttons(
-        sheet_name=BUYERS_SHEET_NAME, 
-        username=username
-    )
-    if remaining_buttons:
-        await callback.message.answer(
-            f"✅ Ваш ответ '{value}' зафиксирован.",
-            reply_markup=get_different_number_of_buttons_keyboard(remaining_buttons)
-        )
-    else:
-        await callback.message.answer("✅ Все статусы заполнены, спасибо!")
-    await callback.answer()

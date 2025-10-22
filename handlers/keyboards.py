@@ -21,13 +21,13 @@ def get_different_number_of_buttons_keyboard(list_of_need_buttons: list) -> Inli
     """Создаёт клавиатуру с двумя вопросами и кнопками Да/Нет"""
     list_for_inline_keyboard = []
     for elem in list_of_need_buttons:
-        if elem == "feedback":
-            list_for_inline_keyboard.append([
-                InlineKeyboardButton(text="✅ Отзыв оставлен", callback_data="feedback_yes"),
-            ])
-        elif elem == "order":
+        if elem == "order":
             list_for_inline_keyboard.append([
                 InlineKeyboardButton(text="✅ Заказ сделан", callback_data="order_yes"),
+            ])
+        elif elem == "feedback":
+            list_for_inline_keyboard.append([
+                InlineKeyboardButton(text="✅ Отзыв оставлен", callback_data="feedback_yes"),
             ])
         elif elem == "shk":
             list_for_inline_keyboard.append([
@@ -35,4 +35,24 @@ def get_different_number_of_buttons_keyboard(list_of_need_buttons: list) -> Inli
             ])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=list_for_inline_keyboard)
+    return keyboard
+
+
+def get_agreement_keyboard() -> InlineKeyboardMarkup:
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Да", callback_data="agree_yes"),
+            InlineKeyboardButton(text="❌ Нет", callback_data="agree_no"),
+        ]
+    ])
+    return keyboard
+
+
+def get_subscription_check_keyboard() -> InlineKeyboardMarkup:
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Подписался", callback_data="subscribed_yes"),
+            InlineKeyboardButton(text="❌ Не подписался", callback_data="subscribed_no")
+        ]
+    ])
     return keyboard

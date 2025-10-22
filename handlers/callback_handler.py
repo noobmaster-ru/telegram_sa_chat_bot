@@ -1,9 +1,15 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
+from aiogram.exceptions import TelegramBadRequest
 from google_sheets.google_sheets_class import GoogleSheetClass
-from handlers.keyboards import get_different_number_of_buttons_keyboard
+from handlers.keyboards import (
+    get_different_number_of_buttons_keyboard,
+    get_subscription_check_keyboard
+)
 
 router = Router()
+
+CHANNEL_USERNAME = "@viktoriya_cash"  # 👈 сюда вставь username своего канала
 
 async def process_button_click(
     callback: CallbackQuery,
@@ -35,17 +41,52 @@ async def process_button_click(
         await callback.message.answer("✅ Все статусы заполнены, спасибо!")
     await callback.answer()
 
+
+# @router.callback_query(F.data.startswith("agree_"))
+# async def handle_feedback(
+#     callback: CallbackQuery, 
+#     spreadsheet: GoogleSheetClass, 
+#     BUYERS_SHEET_NAME: str
+# ):
+#     value = "Да" if callback.data == "agree_yes" else "Нет"
+#     await process_button_click(callback, spreadsheet, BUYERS_SHEET_NAME, "agree", value)
+
+
+
+
+
 @router.callback_query(F.data.startswith("feedback_"))
-async def handle_feedback(callback: CallbackQuery, spreadsheet: GoogleSheetClass, BUYERS_SHEET_NAME: str):
+async def handle_feedback(
+    callback: CallbackQuery, 
+    spreadsheet: GoogleSheetClass, 
+    BUYERS_SHEET_NAME: str
+):
     value = "Да" if callback.data == "feedback_yes" else "Нет"
     await process_button_click(callback, spreadsheet, BUYERS_SHEET_NAME, "feedback", value)
 
+
+
+
+
 @router.callback_query(F.data.startswith("order_"))
-async def handle_order(callback: CallbackQuery, spreadsheet: GoogleSheetClass, BUYERS_SHEET_NAME: str):
+async def handle_order(
+    callback: CallbackQuery, 
+    spreadsheet: GoogleSheetClass, 
+    BUYERS_SHEET_NAME: str
+):
     value = "Да" if callback.data == "order_yes" else "Нет"
     await process_button_click(callback, spreadsheet, BUYERS_SHEET_NAME, "order", value)
 
+
+
+
+
+
 @router.callback_query(F.data.startswith("shk_"))
-async def handle_shk(callback: CallbackQuery, spreadsheet: GoogleSheetClass, BUYERS_SHEET_NAME: str):
+async def handle_shk(
+    callback: CallbackQuery, 
+    spreadsheet: GoogleSheetClass, 
+    BUYERS_SHEET_NAME: str
+):
     value = "Да" if callback.data == "shk_yes" else "Нет"
     await process_button_click(callback, spreadsheet, BUYERS_SHEET_NAME, "shk", value)
