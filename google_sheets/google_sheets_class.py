@@ -26,6 +26,7 @@ class GoogleSheetClass():
         username: str,
         nm_id: str,
         status_agree: str = "None",
+        status_subscribe_to_channel: str = "None",
         status_order: str = "None",
         status_feedback: str = "None",
         status_shk: str = "None", 
@@ -35,7 +36,7 @@ class GoogleSheetClass():
         """
         Добавляет нового пользователя в таблицу.
         Формат таблицы:
-        Ссылка на ник | Дата первого | Дата последнего | Артикул | Статус | Реквизиты | Выплата произведена
+        Ссылка на ник | Дата первого | Дата последнего | Артикул | Согласен на условия | Подписка на канал | Заказ сделан | Отзыв оставлен | ШК разрезаны |  Реквизиты | Выплата произведена
         """
         sheet = self.spreadsheet.worksheet(sheet_name)
         # all_rows = sheet.get_all_values()  # все строки листа
@@ -43,7 +44,7 @@ class GoogleSheetClass():
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
         
         # добавляем новую строку с данными пользователя 
-        new_row = [user_link, now, now, nm_id, status_agree, status_order, status_feedback, status_shk, requisites, paid]
+        new_row = [user_link, now, now, nm_id, status_agree, status_subscribe_to_channel, status_order, status_feedback, status_shk, requisites, paid]
         sheet.append_row(new_row)
 
     def update_buyer_last_time_message(
@@ -54,7 +55,7 @@ class GoogleSheetClass():
         """
         Обновляет дату последнего сообщения.
         Формат таблицы:
-        Ссылка на ник | Дата первого | Дата последнего | Артикул | Статус | Реквизиты | Выплата произведена
+        Ссылка на ник | Дата первого | Дата последнего | Артикул | Согласен на условия | Подписка на канал | Заказ сделан | Отзыв оставлен | ШК разрезаны |  Реквизиты | Выплата произведена
         """
         sheet = self.spreadsheet.worksheet(sheet_name)
         all_rows = sheet.get_all_values()  # все строки листа
@@ -76,7 +77,7 @@ class GoogleSheetClass():
         value: str
     ):
         """
-        button_name: 'feedback', 'order', 'shk'
+        button_name: 'feedback', 'order', 'shk',  'agree', 'subscribe'
         value: 'Да' или 'Нет'
         """
         sheet = self.spreadsheet.worksheet(sheet_name)
@@ -87,10 +88,11 @@ class GoogleSheetClass():
         for i, record in enumerate(records, start=2):
             if record.get("Ссылка на ник") == user_link:
                 col_map = {
-                    "feedback": "Отзыв оставлен",
+                    "agree": "Согласен на условия",
+                    "subscribe": "Подписка на канал",
                     "order": "Заказ сделан",
+                    "feedback": "Отзыв оставлен",
                     "shk": "ШК разрезаны",
-                    "agree": "Согласен на условия"
                 }
                 col_name = col_map[button_name]
                 col_index = sheet.find(col_name).col
@@ -116,7 +118,9 @@ class GoogleSheetClass():
                     remaining.append("order")
                 if record.get("ШК разрезаны") in ["None", ""]:
                     remaining.append("shk")
-                if record.get("ШК разрезаны") in ["None", ""]:
+                if record.get("Согласен на условия") in ["None", ""]:
                     remaining.append("agree")
+                if record.get("Подписка на канал") in ["None", ""]:
+                    remaining.append("subscribe")
                 return remaining
         return []
