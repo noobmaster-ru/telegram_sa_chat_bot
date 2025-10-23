@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router
-# from db.database import init_db
+from db.database import init_history_db  
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 async def main():
@@ -20,15 +20,17 @@ async def main():
 
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
 
-    # init_db()  # создаём таблицу при старте
-    spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
+    # инициализация базы перед запуском
+    init_history_db()
     
+    spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
     nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
     instruction_str = spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
 
     bot = Bot(token=TG_BOT_TOKEN)
     dp = Dispatcher()
     
+    ADMIN_ID_LIST = [694144143, 547299317]
     # добавляем артикул в глобальные данные - чтобы все хэндлеры его видели
     dp.workflow_data.update(
         {
@@ -37,7 +39,8 @@ async def main():
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
             "nm_id": nm_id,
-            "CHANNEL_USERNAME": CHANNEL_USERNAME
+            "CHANNEL_USERNAME": CHANNEL_USERNAME,
+            "ADMIN_ID_LIST": ADMIN_ID_LIST
         }
     )
     dp.include_router(message_router)
