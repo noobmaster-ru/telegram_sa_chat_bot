@@ -61,6 +61,7 @@ async def handle_business_message(
         spreadsheet.add_new_buyer(
             sheet_name=BUYERS_SHEET_NAME,
             username=username,
+            telegram_id=telegram_id,
             nm_id=nm_id
         )
         # логируем сообщение

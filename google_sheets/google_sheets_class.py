@@ -24,6 +24,7 @@ class GoogleSheetClass():
         self,
         sheet_name: str,
         username: str,
+        telegram_id: int,
         nm_id: str,
         status_agree: str = "None",
         status_subscribe_to_channel: str = "None",
@@ -32,6 +33,7 @@ class GoogleSheetClass():
         status_feedback: str = "None",
         status_shk: str = "None", 
         requisites: str = "None",
+        amount: str = "None",
         paid: str = "None"
     ):
         """
@@ -45,7 +47,7 @@ class GoogleSheetClass():
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
         
         # добавляем новую строку с данными пользователя 
-        new_row = [user_link, now, now, nm_id, status_agree, status_subscribe_to_channel, status_order, status_order_received, status_feedback, status_shk, requisites, paid]
+        new_row = [user_link, telegram_id, now, now, nm_id, status_agree, status_subscribe_to_channel, status_order, status_order_received, status_feedback, status_shk, requisites, amount, paid]
         sheet.append_row(new_row)
 
     def update_buyer_last_time_message(
@@ -95,6 +97,8 @@ class GoogleSheetClass():
                     "order": "Заказ сделан",
                     "feedback": "Отзыв оставлен",
                     "shk": "ШК разрезаны",
+                    "requisites": "Реквизиты",
+                    "amount": "Сумма,₽"
                 }
                 col_name = col_map[button_name]
                 col_index = sheet.find(col_name).col
