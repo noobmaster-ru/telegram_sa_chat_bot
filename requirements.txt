@@ -11,7 +11,6 @@ certifi==2025.10.5
 charset-normalizer==3.4.4
 distro==1.9.0
 frozenlist==1.8.0
-gigachat==0.1.42.post2
 google-auth==2.41.1
 google-auth-oauthlib==1.2.2
 gspread==6.2.1
@@ -25,6 +24,7 @@ multidict==6.7.0
 oauthlib==3.3.1
 openai==2.6.0
 propcache==0.4.1
+psycopg2-binary==2.9.11
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
 pydantic==2.11.10
@@ -39,4 +39,3 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.5.0
 yarl==1.22.0
-psycopg2-binary

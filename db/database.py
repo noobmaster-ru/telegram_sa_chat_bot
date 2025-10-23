@@ -1,43 +1,55 @@
-# здесь будет бд
-import sqlite3
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from typing import List, Dict
 
-DB_PATH = "db/chat_history.db"
+
+def get_connection():
+    return psycopg2.connect(
+        host=os.getenv("POSTGRES_HOST"),
+        port=os.getenv("POSTGRES_PORT"),
+        dbname=os.getenv("POSTGRES_DB"),
+        user=os.getenv("POSTGRES_USER"),
+        password=os.getenv("POSTGRES_PASSWORD")
+    )
 
 
 def init_history_db():
     """Создаёт таблицу, если её нет."""
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS chat_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id INTEGER NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """)
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """)
         conn.commit()
 
 
 def add_message(telegram_id: int, role: str, content: str):
-    """Сохраняет сообщение (user или assistant)."""
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "INSERT INTO chat_history (telegram_id, role, content) VALUES (?, ?, ?)",
-            (telegram_id, role, content)
-        )
+    """Сохраняет сообщение."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO chat_history (telegram_id, role, content) VALUES (%s, %s, %s);",
+                (telegram_id, role, content)
+            )
         conn.commit()
 
 
 def get_chat_history(telegram_id: int, limit: int = 10) -> List[Dict[str, str]]:
-    """Возвращает последние N сообщений в формате [{'role': 'user', 'content': '...'}, ...]"""
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.execute(
-            "SELECT role, content FROM chat_history WHERE telegram_id = ? ORDER BY id DESC LIMIT ?",
-            (telegram_id, limit)
-        )
-        rows = cursor.fetchall()
+    """Возвращает последние N сообщений."""
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT role, content FROM chat_history WHERE telegram_id = %s ORDER BY id DESC LIMIT %s;",
+                (telegram_id, limit)
+            )
+            rows = cur.fetchall()
 
-    # Возвращаем в правильном порядке (от старых к новым)
-    return [{"role": r, "content": c} for r, c in reversed(rows)]
+    # Возвращаем в порядке от старых к новым
+    return list(reversed(rows))

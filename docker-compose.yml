@@ -1,11 +1,37 @@
 services:
-  telegram-bot:
-    build: .
-    container_name: telegram-ai-agent
-    command: python run.py
-    env_file: 
-      - .env
-    volumes:
-      - .:/app
-      - ./data:/app/data   # users.db
+  postgres:
+    image: postgres:15
+    container_name: postgres_chatbot
     restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: chat_bot
+    ports:
+      - "5433:5432"  # этот порт нужен ТОЛЬКО для твоего локального pgAdmin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_chatbot
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+
+  bot:
+    build: .
+    container_name: telegram-gpt-bot
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

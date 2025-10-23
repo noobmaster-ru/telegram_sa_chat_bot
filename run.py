@@ -4,8 +4,10 @@ import os
 from dotenv import load_dotenv
 
 from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router
-from db.database import init_history_db  
+ 
 from google_sheets.google_sheets_class import GoogleSheetClass
+
+from db.database import init_history_db  
 
 async def main():
     load_dotenv()
