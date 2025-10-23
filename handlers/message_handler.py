@@ -13,7 +13,6 @@ from google_sheets.google_sheets_class import GoogleSheetClass
 
 from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
 
-from db.database import add_message, get_chat_history
 router = Router()
 
 # Настраиваем логирование
@@ -53,8 +52,7 @@ async def handle_business_message(
     full_name = message.from_user.full_name or "без full_name"
     text = message.text if message.text else "(без текста)"
 
-    # сохраняем сообщение пользователя
-    add_message(telegram_id, "user", text)
+
     # тест - отвечать могут только я и тема
     if telegram_id in ADMIN_ID_LIST and not telegram_id in first_message: #and not user_exists(user_id)
         # add_user(user_id, username)

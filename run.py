@@ -3,8 +3,7 @@ import asyncio
 import os 
 from dotenv import load_dotenv
 
-from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router
-from db.database import init_history_db  
+from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router 
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 async def main():
@@ -20,8 +19,6 @@ async def main():
 
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
 
-    # инициализация базы перед запуском
-    init_history_db()
     
     spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
     nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
@@ -31,7 +28,7 @@ async def main():
     dp = Dispatcher()
     
     ADMIN_ID_LIST = [694144143, 547299317]
-    # добавляем артикул в глобальные данные - чтобы все хэндлеры его видели
+    # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
             "instruction_str": instruction_str,
@@ -44,7 +41,6 @@ async def main():
         }
     )
     dp.include_router(message_router)
-    # dp.include_router(callback_router)
     dp.include_router(question_router)
     dp.include_router(agreement_router)
     dp.include_router(subscribtion_router)
