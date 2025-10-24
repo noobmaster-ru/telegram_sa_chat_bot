@@ -18,6 +18,7 @@ from handlers import (
     shk_router
 )
 from google_sheets.google_sheets_class import GoogleSheetClass
+from ai_module.open_ai_requests_class import OpenAiRequestClass
 
 async def main():
     load_dotenv()
@@ -31,8 +32,9 @@ async def main():
     BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
 
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
-
+    GPT_MODEL_NAME = os.getenv("GPT_MODEL_NAME_STR")
     
+    client_gpt_5 = OpenAiRequestClass(GPT_MODEL_NAME)
     spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
     nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
     instruction_str = spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
@@ -50,7 +52,8 @@ async def main():
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
             "nm_id": nm_id,
             "CHANNEL_USERNAME": CHANNEL_USERNAME,
-            "ADMIN_ID_LIST": ADMIN_ID_LIST
+            "ADMIN_ID_LIST": ADMIN_ID_LIST,
+            "client_gpt_5": client_gpt_5
         }
     )
     # первые роутеры - с вопросами да/нет

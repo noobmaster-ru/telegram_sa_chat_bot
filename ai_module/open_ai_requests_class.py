@@ -1,0 +1,168 @@
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
+
+
+class OpenAiRequestClass():
+    def __init__(self, model_name: str):
+        # Подгружаем переменные окружения
+        load_dotenv()
+        self.client = OpenAI(api_key=os.getenv("OPENAI_TOKEN_STR"))
+        self.model_name = model_name
+    
+    def create_gpt_5_response(
+        self,
+        new_prompt: str,
+        instruction_str: str
+    ) -> str:
+
+        preprompt = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на вопрос пользователя {new_prompt}, исходя из инструкции: {instruction_str}"
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": preprompt}
+            ]
+        )
+        return response.choices[0].message.content
+
+    # промпт до согласия на условия - второе сообщение пользователя
+    def get_gpt_5_response_before_agreement_point(
+        self,
+        new_prompt: str,
+        instruction_str: str
+    ) -> str:
+
+        prompt_berofe_agreement = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}. Попроси пользователя также согласиться на эти правила из нашей инструкции."
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_berofe_agreement}
+            ]
+        )
+        return response.choices[0].message.content
+    
+    # промпт после согласия и до подписки на канал
+    def get_gpt_5_response_after_agreement_and_before_subscription_point(
+        self,
+        new_prompt: str,
+        instruction_str: str,
+        CHANNEL_NAME: str
+    ) -> str:
+
+        prompt_subscription = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}, пользователь принял правила нашей инструкции, попроси его также подписаться на наш канал: {CHANNEL_NAME}"
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_subscription}
+            ]
+        )
+        return response.choices[0].message.content
+
+    # промпт после согласия, подписки на канал , но до проверки наличия заказа товара
+    def get_gpt_5_response_after_subscription_and_before_order_point(
+        self,
+        new_prompt: str,
+        instruction_str: str,
+        CHANNEL_NAME: str
+    ) -> str:
+
+        prompt_order = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}, пользователь принял правила нашей инструкции, подписался на наш канал: {CHANNEL_NAME}, теперь нужно чтобы проверить пользователя на то, заказал ли он наш товар из инструкции."
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_order}
+            ]
+        )
+        return response.choices[0].message.content
+
+    # промпт после согласия, подписки на канал , но до проверки наличия заказа товара
+    def get_gpt_5_response_after_order_and_before_receive_product_point(
+        self,
+        new_prompt: str,
+        instruction_str: str,
+        CHANNEL_NAME: str
+    ) -> str:
+
+        prompt_order = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}, пользователь принял правила нашей инструкции, подписался на наш канал: {CHANNEL_NAME}, заказал товар из инструкции , теперь нужно проверить пользователя на то, получил ли он наш товар из инструкции."
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_order}
+            ]
+        )
+        return response.choices[0].message.content
+    
+    # промпт после согласия, подписки на канал , проверки наличия заказа товара, но до проверки наличия отзыва 
+    def get_gpt_5_response_after_receive_product_and_before_feedback_check_point(
+        self,
+        new_prompt: str,
+        instruction_str: str,
+        CHANNEL_NAME: str
+    ) -> str:
+
+        prompt_feedback = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}, пользователь принял правила нашей инструкции, подписался на наш канал: {CHANNEL_NAME}, заказал товар из инструкции , получил  наш товар, теперь нужно проверить , оставил ли пользователь отзыв , согласно правилам в инструкции."
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_feedback}
+            ]
+        )
+        return response.choices[0].message.content
+    
+    # промпт после согласия, подписки на канал , проверки наличия заказа товара, проверки наличия отзыва , но до ШК
+    def get_gpt_5_response_after_feedback_and_before_shk_check_point(
+        self,
+        new_prompt: str,
+        instruction_str: str,
+        CHANNEL_NAME: str
+    ) -> str:
+
+        prompt_feedback = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}, пользователь принял правила нашей инструкции, подписался на наш канал: {CHANNEL_NAME}, заказал товар из инструкции , получил  наш товар, оставил отзыв , теперь нужно проверить разрезал ли он этикетки."
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_feedback}
+            ]
+        )
+        return response.choices[0].message.content
+
+    # промпт после согласия, подписки на канал , проверки наличия заказа товара, проверки наличия отзыва , ШК , но до реквизитов
+    def get_gpt_5_response_requisites(
+        self,
+        new_prompt: str,
+        instruction_str: str,
+        CHANNEL_NAME: str
+    ) -> str:
+
+        prompt_feedback = ( 
+            f"Ты мой помощник. Ты отвечаешь на сообщения людей в Telegram. Ответь кратко, четко, без лишней информации, своих размышлений на сообщение пользователя '{new_prompt}', исходя из инструкции: {instruction_str}, пользователь принял правила нашей инструкции, подписался на наш канал: {CHANNEL_NAME}, заказал товар из инструкции , получил  наш товар, оставил отзыв , разрезал этикетки, теперь нужно получить от пользователя реквизиты для оплаты, если он выслал реквизиты: номер карты/телефона и/или сумму оплаты, то в ответе напиши эти реквизиты."
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt_feedback}
+            ]
+        )
+        return response.choices[0].message.content

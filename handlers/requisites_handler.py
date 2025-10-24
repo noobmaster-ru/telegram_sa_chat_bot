@@ -2,7 +2,11 @@ from aiogram import Router, F
 from aiogram.types import Message
 import re
 from google_sheets.google_sheets_class import GoogleSheetClass
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
 
+from handlers.states.user_flow import UserFlow
+from ai_module.open_ai_requests_class import OpenAiRequestClass
 router = Router()
 
 
@@ -17,14 +21,16 @@ amount_pattern = r"(\d+\s?(?:р|руб|рублей|₽|Р|Рублей))"
 phone_pattern = r"(\+7\d{8,10}|8\d{8,10}|\d{9,11})"
 
 # --- Новый хэндлер для реквизитов:  хотя бы 2 цифры или + или Руб/₽ ---
-@router.business_message(
-    F.text.regexp(r"(?:(?:.*\d){2,}.*|\+.*|.*(?:руб|₽).*?)", flags=re.IGNORECASE)
-)
+@router.business_message(StateFilter(UserFlow.waiting_for_requisites))# F.text.regexp(r"(?:(?:.*\d){2,}.*|\+.*|.*(?:руб|₽|рублей).*?)", flags=re.IGNORECASE))
 async def handle_requisites_message(
     message: Message,
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
-    ADMIN_ID_LIST: list
+    ADMIN_ID_LIST: list,
+    state: FSMContext,
+    client_gpt_5: OpenAiRequestClass,
+    instruction_str: str,
+    CHANNEL_USERNAME: str
 ):
     """
     Ловит сообщения с реквизитами:
@@ -43,6 +49,12 @@ async def handle_requisites_message(
             sheet_name=BUYERS_SHEET_NAME,
             telegram_id=telegram_id
         )
+        gpt_5_response = client_gpt_5.get_gpt_5_response_requisites(
+            new_prompt=text,
+            instruction_str=instruction_str,
+            CHANNEL_NAME=CHANNEL_USERNAME
+        )
+        await message.answer(gpt_5_response)
         
         card_match = re.search(card_pattern, text)
         amount_match = re.search(amount_pattern, text)
@@ -56,7 +68,8 @@ async def handle_requisites_message(
         # text_only_with_numbers = clean_text.split(" ")
 
         # list_only_numbers = [elem for elem in text_only_with_numbers if re.search(r'\d', elem)]
-        await message.answer(f"📩 Получены реквизиты:\nНомер телефона: `{phone_number}`\nНомер карты: `{card_number}`\nСумма: `{amount}`", parse_mode="Markdown")
+        
+        await message.answer(f"📩 Получены реквизиты(бот):\nНомер телефона: `{phone_number}`\nНомер карты: `{card_number}`\nСумма: `{amount}`", parse_mode="Markdown")
 
         if card_number:
             # сохраняем ответ - реквизиты
@@ -82,3 +95,5 @@ async def handle_requisites_message(
                 button_name="requisites",
                 value=phone_number
             )
+        # очищаем состояние, чтобы после этого хэндлера отвечала модель на текстовые сообщения
+        await state.clear() 

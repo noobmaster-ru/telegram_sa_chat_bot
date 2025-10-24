@@ -7,3 +7,4 @@ class UserFlow(StatesGroup):
     waiting_for_order_receive = State()
     waiting_for_feedback = State()
     waiting_for_shk = State()
+    waiting_for_requisites = State()

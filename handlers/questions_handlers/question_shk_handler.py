@@ -60,6 +60,7 @@ async def handle_question_answer(
 
     # если ответ "Да" → переходим к следующему вопросу
     await callback.message.answer("✅ Все ответы получены, спасибо!")
-    await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/номер телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
-    await state.clear() # очищаем состояние
+    await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
+    await state.set_state(UserFlow.waiting_for_requisites)
+    await callback.answer()
     return

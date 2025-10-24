@@ -7,12 +7,12 @@ from aiogram.fsm.context import FSMContext
 import logging
 import re
 
-from ai_module.generators import create_gpt_5_response
+# from ai_module.generators import create_gpt_5_respons
+from ai_module.open_ai_requests_class import OpenAiRequestClass
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 
 from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
-
 from handlers.states.user_flow import UserFlow
 
 router = Router()
@@ -47,7 +47,8 @@ async def handle_business_message(
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
     nm_id: str,
-    ADMIN_ID_LIST: list
+    ADMIN_ID_LIST: list,
+    client_gpt_5: OpenAiRequestClass
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "без username"
@@ -100,10 +101,9 @@ async def handle_business_message(
             # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
             await state.set_state('generating')
             try: 
-                gpt5_response_text = create_gpt_5_response(
-                    telegram_id,
-                    text, 
-                    instruction_str
+                gpt5_response_text = client_gpt_5.create_gpt_5_response(
+                    new_prompt=text, 
+                    instruction_str=instruction_str
                 )
             except Exception as e:
                 await message.answer(f"Произошла ошибка: {e}")
@@ -114,10 +114,9 @@ async def handle_business_message(
             if len(text) > LOWER_LIMIT_OF_MESSAGE_LENGTH:
                 await state.set_state('generating')
                 try: 
-                    gpt5_response_text = create_gpt_5_response(
-                        telegram_id,
-                        text, 
-                        instruction_str
+                    gpt5_response_text = client_gpt_5.create_gpt_5_response(
+                        new_prompt=text, 
+                        instruction_str=instruction_str
                     )
                 except Exception as e:
                     await message.answer(f"Произошла ошибка: {e}")            
@@ -130,10 +129,10 @@ async def handle_business_message(
             #     # текст полностью совпадает с шаблоном #выплата_DD_MONTH
             #     await message.answer("ВЫПЛАТА_ПРИНИМАЕТСЯ")
             #     # здесь можно обработать дату и записать в Google Sheet
-            elif "#" in text:
-                await message.answer(
-                    "❌ Вы неправильно указали дату выплаты. "
-                    "Исправьте по шаблону, без лишних слов: #выплата_DD_MONTH"
-                )
+            # elif "#" in text:
+            #     await message.answer(
+            #         "❌ Вы неправильно указали дату выплаты. "
+            #         "Исправьте по шаблону, без лишних слов: #выплата_DD_MONTH"
+            #     )
             else:
                 await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")
