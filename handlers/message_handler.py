@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-
+# from aiogram.fsm.state import StatesGroup, State
 
 import logging
 import re
@@ -12,6 +12,8 @@ from google_sheets.google_sheets_class import GoogleSheetClass
 
 
 from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
+
+from handlers.states.user_flow import UserFlow
 
 router = Router()
 
@@ -25,13 +27,13 @@ logging.basicConfig(
     ],
 )
 
-# ADMIN_ID_LIST = [694144143, 547299317]
 first_message = []
+
 # список "добрых" слов
 OK_WORDS = {"ок", "ok", "хорошо", "ладно", "окей", "да", "ок.", "ок!", "окей!", "хорошо,сейчас", "понял"}
 
 
-@router.message(StateFilter("generating"))
+@router.business_message(StateFilter("generating"))
 async def wait_response(message: Message):
     await message.answer("Ожидайте ответа, пожалуйста ...")
 
@@ -80,6 +82,8 @@ async def handle_business_message(
             "Согласны на условия?",
             reply_markup=get_agreement_keyboard()
         )
+        # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
+        await state.set_state(UserFlow.waiting_for_agreement)
     # тестируем пока только я и тема
     elif telegram_id in ADMIN_ID_LIST:
         

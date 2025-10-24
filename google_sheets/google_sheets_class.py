@@ -33,13 +33,13 @@ class GoogleSheetClass():
         }
 
         today = datetime.now()
-        date = f"{today.day}_{months[today.month]}"
+        today_date = f"{today.day}_{months[today.month]}"
         # Экранируем "лишние" фигурные скобки
         instruction_str = instruction_str.replace("{", "{{").replace("}", "}}")
-        instruction_str = instruction_str.replace("{{nm_id}}", "{nm_id}").replace("{{date}}", "{date}")
+        instruction_str = instruction_str.replace("{{nm_id}}", "{nm_id}").replace("{{today_date}}", "{today_date}")
 
         # форматируем красиво и чтобы телеграм не ругался
-        filled_instruction = instruction_str.format(nm_id=nm_id, date=date)
+        filled_instruction = instruction_str.format(nm_id=nm_id, today_date=today_date)
         return re.sub(r'([_\[\]()~#+\-=|{}.!])', r'\\\1', filled_instruction)
     
     def add_new_buyer(

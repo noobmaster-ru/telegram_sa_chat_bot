@@ -2,18 +2,20 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.exceptions import TelegramBadRequest
 from google_sheets.google_sheets_class import GoogleSheetClass
-
+from aiogram.fsm.context import FSMContext
 
 from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
 from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
 
-from handlers.question_flow import start_buyer_flow
+from handlers.questions_handlers.question_flow_handler import start_buyer_flow
 
+from handlers.states.user_flow import UserFlow
 router = Router()
 
 @router.callback_query(F.data.startswith("agree_"))
 async def handle_agreement(
     callback: CallbackQuery,
+    state: FSMContext,
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
     CHANNEL_USERNAME: str,
@@ -50,7 +52,7 @@ async def handle_agreement(
                     value="Да"
                 )
                 # 👉 Начинаем пошаговый диалог
-                await start_buyer_flow(callback.message, spreadsheet, BUYERS_SHEET_NAME)
+                await start_buyer_flow(callback.message, spreadsheet, BUYERS_SHEET_NAME, state)
             else:
                 # Не подписан
                 await callback.message.answer(
@@ -67,5 +69,6 @@ async def handle_agreement(
             "❌ Без согласия участие невозможно. Вы согласны на условия?",
             reply_markup=get_agreement_keyboard()
         )
+        await state.set_state(UserFlow.waiting_for_agreement)
 
     await callback.answer()

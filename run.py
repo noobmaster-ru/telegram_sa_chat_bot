@@ -3,7 +3,20 @@ import asyncio
 import os 
 from dotenv import load_dotenv
 
-from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router , requisites_router
+from handlers import (
+    message_router, 
+    agreement_router, 
+    # question_router, 
+    subscribtion_router, 
+    photo_router , 
+    requisites_router, 
+    unexpected_text_router,
+    
+    order_router,
+    receive_order_router,
+    feedback_router,
+    shk_router
+)
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 async def main():
@@ -40,12 +53,18 @@ async def main():
             "ADMIN_ID_LIST": ADMIN_ID_LIST
         }
     )
+    # первые роутеры - с вопросами да/нет
+    dp.include_router(unexpected_text_router)
+    dp.include_router(order_router)
+    dp.include_router(receive_order_router)
+    dp.include_router(feedback_router)
+    dp.include_router(shk_router)
     # сначала поставим роутер, который ловит текстовые сообщения-реквизиты
     dp.include_router(requisites_router)
     # и затем только роутер, который ловит все текстовые сообщения
     dp.include_router(message_router)
     
-    dp.include_router(question_router)
+    # dp.include_router(question_router)
     dp.include_router(agreement_router)
     dp.include_router(subscribtion_router)
     dp.include_router(photo_router)
