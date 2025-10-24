@@ -49,6 +49,7 @@ async def ask_next_question(message, spreadsheet: GoogleSheetClass, BUYERS_SHEET
 async def handle_question_answer(callback: CallbackQuery, spreadsheet: GoogleSheetClass, BUYERS_SHEET_NAME: str):
     """Обработка нажатия кнопок Да/Нет"""
     username = callback.from_user.username or "без username"
+    telegram_id = callback.from_user.id
     data = callback.data
 
     key = data.split("_")[0]
@@ -57,7 +58,7 @@ async def handle_question_answer(callback: CallbackQuery, spreadsheet: GoogleShe
     # сохраняем ответ
     spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
-        username=username,
+        telegram_id=telegram_id,
         button_name=key,
         value=value
     )

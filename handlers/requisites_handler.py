@@ -41,7 +41,7 @@ async def handle_requisites_message(
         # обновляем время последнего сообщения
         spreadsheet.update_buyer_last_time_message(
             sheet_name=BUYERS_SHEET_NAME,
-            username=username
+            telegram_id=telegram_id
         )
         
         card_match = re.search(card_pattern, text)
@@ -62,7 +62,7 @@ async def handle_requisites_message(
             # сохраняем ответ - реквизиты
             spreadsheet.update_buyer_button_status(
                 sheet_name=BUYERS_SHEET_NAME,
-                username=username,
+                telegram_id=telegram_id,
                 button_name="requisites",
                 value=card_number
             )
@@ -70,7 +70,7 @@ async def handle_requisites_message(
             # сохраняем ответ - сумма выплаты
             spreadsheet.update_buyer_button_status(
                 sheet_name=BUYERS_SHEET_NAME,
-                username=username,
+                telegram_id=telegram_id,
                 button_name="amount",
                 value=amount
             )
@@ -78,7 +78,7 @@ async def handle_requisites_message(
             # сохраняем ответ - реквизиты
             spreadsheet.update_buyer_button_status(
                 sheet_name=BUYERS_SHEET_NAME,
-                username=username,
+                telegram_id=telegram_id,
                 button_name="requisites",
                 value=phone_number
             )

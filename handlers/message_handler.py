@@ -86,7 +86,7 @@ async def handle_business_message(
         # обновляем время последнего сообщения
         spreadsheet.update_buyer_last_time_message(
             sheet_name=BUYERS_SHEET_NAME,
-            username=username
+            telegram_id=telegram_id
         )
 
         # # убираем пробелы и делаем нижний регистр у сообщения
