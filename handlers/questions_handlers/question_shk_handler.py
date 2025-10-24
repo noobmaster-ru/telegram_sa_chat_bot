@@ -1,7 +1,6 @@
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery
 from aiogram import Router, F
 
 from google_sheets.google_sheets_class import GoogleSheetClass
@@ -10,17 +9,12 @@ from google_sheets.google_sheets_class import GoogleSheetClass
 from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 
 from handlers.states.user_flow import UserFlow
-router = Router()
 
-# questions = [
-#     ("shk", "✂️ ШК разрезали?")
-# ]
+router = Router()
 
 
 async def ask_is_shk_cut_question(
     message: Message, 
-    spreadsheet: GoogleSheetClass, 
-    BUYERS_SHEET_NAME: str, 
     state: FSMContext
 ):
     await message.answer(
@@ -66,5 +60,6 @@ async def handle_question_answer(
 
     # если ответ "Да" → переходим к следующему вопросу
     await callback.message.answer("✅ Все ответы получены, спасибо!")
+    await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/номер телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
     await state.clear() # очищаем состояние
     return

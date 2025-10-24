@@ -48,9 +48,9 @@ async def handle_requisites_message(
         amount_match = re.search(amount_pattern, text)
         phone_match = re.search(phone_pattern, text)
         
-        card_number = card_match.group(1) if card_match else None
-        amount = amount_match.group(1) if amount_match else None
-        phone_number = phone_match.group(1) if phone_match else None
+        card_number = card_match.group(1) if card_match else ""
+        amount = amount_match.group(1) if amount_match else ""
+        phone_number = phone_match.group(1) if phone_match else ""
         # # Убираем лишние пробелы и приводим к удобному виду
         # clean_text = re.sub(r"\s+", " ", text)
         # text_only_with_numbers = clean_text.split(" ")

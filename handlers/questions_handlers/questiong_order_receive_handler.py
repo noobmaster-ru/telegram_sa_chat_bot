@@ -1,7 +1,6 @@
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery
 from aiogram import Router, F
 
 from google_sheets.google_sheets_class import GoogleSheetClass
@@ -13,17 +12,10 @@ from handlers.questions_handlers.question_feedback_done_handler import ask_is_fe
 from handlers.states.user_flow import UserFlow
 router = Router()
 
-# questions = [
-#     ("receive", "📬 Вы получили товар?"),
-#     ("feedback", "💬 Вы оставили отзыв?"),
-#     ("shk", "✂️ ШК разрезали?")
-# ]
 
 
 async def ask_is_product_receive_question(
     message: Message, 
-    spreadsheet: GoogleSheetClass, 
-    BUYERS_SHEET_NAME: str, 
     state: FSMContext
 ):
     await message.answer(
@@ -68,5 +60,5 @@ async def handle_question_answer(
         return
 
     # если ответ "Да" → переходим к следующему вопросу
-    await ask_is_feedback_done_question(callback.message, spreadsheet, BUYERS_SHEET_NAME, state)
+    await ask_is_feedback_done_question(callback.message, state)
     await callback.answer()

@@ -6,10 +6,9 @@ from aiogram.fsm.context import FSMContext
 
 from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
 from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
-
 from handlers.questions_handlers.question_flow_handler import start_buyer_flow
-
 from handlers.states.user_flow import UserFlow
+
 router = Router()
 
 @router.callback_query(F.data.startswith("agree_"))
@@ -60,6 +59,7 @@ async def handle_agreement(
                     f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                     reply_markup=get_subscription_check_keyboard()
                 )
+                await state.set_state(UserFlow.waiting_for_subcription_to_channel)
         except TelegramBadRequest:
             await callback.message.answer(
                 "⚠️ Не удалось проверить подписку. Проверьте, что бот — администратор канала."
