@@ -2,12 +2,14 @@ from handlers.states.user_flow import UserFlow
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from aiogram import Router, types
+from aiogram.enums import ChatAction
+import asyncio
 
 from handlers.states.user_flow import UserFlow
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
+# from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
 
 from ai_module.open_ai_requests_class import OpenAiRequestClass
 
@@ -38,12 +40,8 @@ async def handle_unexpected_text_waiting_for_agreement(
     )
     await message.answer(
         gpt_5_response, 
-        reply_markup=get_yes_no_keyboard("agree")
+        reply_markup=get_yes_no_keyboard("agree","согласен(на)")
     )
-    # await message.answer(
-    #     "Пожалуйста, используйте кнопки для ответа. Вы согласны на условия?",
-    #     reply_markup=get_agreement_keyboard()
-    # )
 
 # --- 2. Ожидание подписки на канал ---
 @router.business_message(StateFilter(UserFlow.waiting_for_subcription_to_channel))
@@ -69,7 +67,7 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     )
     await message.answer(
         f'{gpt_5_response}\nПока вы не подпишетесь на канал — раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:',
-        reply_markup=get_subscription_check_keyboard()
+        reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
     )
 
 
@@ -97,7 +95,7 @@ async def handle_unexpected_text_waiting_for_order(
     )
     await message.answer(
         gpt_5_response,
-        reply_markup=get_yes_no_keyboard("order")
+        reply_markup=get_yes_no_keyboard("order", "заказал(а)")
     )
 
 # --- 4. Ожидание подтверждения получения заказа ---
@@ -124,7 +122,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
     )
     await message.answer(
         gpt_5_response,
-        reply_markup=get_yes_no_keyboard("receive")
+        reply_markup=get_yes_no_keyboard("receive", "получил(а)")
     )
 
 
@@ -152,7 +150,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     )
     await message.answer(
         gpt_5_response,
-        reply_markup=get_yes_no_keyboard("feedback")
+        reply_markup=get_yes_no_keyboard("feedback", "оставил(а) отзыв")
     )
 
 
@@ -182,5 +180,5 @@ async def handle_unexpected_text_waiting_for_shk(
     )
     await message.answer(
         gpt_5_response,
-        reply_markup=get_yes_no_keyboard("shk")
+        reply_markup=get_yes_no_keyboard("shk", "разрезал(а) ШК")
     )

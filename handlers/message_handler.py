@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.enums import ChatAction
 
 import logging
 import re
@@ -80,7 +81,7 @@ async def handle_business_message(
         # После инструкции — отправляем кнопки "Согласны на условия?"
         await message.answer(
             "Согласны на условия?",
-            reply_markup=get_yes_no_keyboard("agree")
+            reply_markup=get_yes_no_keyboard("agree","согласен(на)")
         )
         # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
         await state.set_state(UserFlow.waiting_for_agreement)
@@ -99,7 +100,7 @@ async def handle_business_message(
         if "?" in text: 
             # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
             await state.set_state('generating')
-            try: 
+            try:
                 gpt5_response_text = client_gpt_5.create_gpt_5_response(
                     new_prompt=text, 
                     instruction_str=instruction_str

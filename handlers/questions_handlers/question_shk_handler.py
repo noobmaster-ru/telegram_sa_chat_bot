@@ -19,7 +19,7 @@ async def ask_is_shk_cut_question(
 ):
     await message.answer(
         "✂️ ШК разрезали?", 
-        reply_markup=get_yes_no_keyboard("shk")
+        reply_markup=get_yes_no_keyboard("shk","разрезал(а)")
     )
     # переключаемся в состояние ожидания ответа на кнопку после "📦 Вы заказали товар?"
     await state.set_state(UserFlow.waiting_for_shk)
@@ -52,7 +52,7 @@ async def handle_question_answer(
     if value == "Нет":
         await callback.message.answer(
             "✂️ ШК разрезали?", 
-            reply_markup=get_yes_no_keyboard("shk")
+            reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
         )
         await state.set_state(UserFlow.waiting_for_shk)
         await callback.answer()

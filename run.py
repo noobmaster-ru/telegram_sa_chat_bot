@@ -23,7 +23,7 @@ import logging
 
 logging.basicConfig(
     level=logging.INFO,
-    filename="/app/logs/bot.log",
+    filename="data/bot.log",
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 

@@ -5,7 +5,8 @@ from aiogram.fsm.context import FSMContext
 from google_sheets.google_sheets_class import GoogleSheetClass
 from handlers.states.user_flow import UserFlow
 
-from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
+# from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
+from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from handlers.questions_handlers.question_flow_handler import start_buyer_flow
 
 router = Router()
@@ -56,7 +57,7 @@ async def handle_subscription(
                 await callback.message.answer(
                     "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
                     f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
-                    reply_markup=get_subscription_check_keyboard()
+                    reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                 )
         except TelegramBadRequest:
             await callback.message.answer(
@@ -67,7 +68,7 @@ async def handle_subscription(
         await callback.message.answer(
             "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
             f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
-            reply_markup=get_subscription_check_keyboard()
+            reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
         )
         await state.set_state(UserFlow.waiting_for_subcription_to_channel)
 

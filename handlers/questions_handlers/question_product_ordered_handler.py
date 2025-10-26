@@ -21,7 +21,7 @@ async def ask_is_product_ordered_question(
 ):
     await message.answer(
         "📦 Вы заказали товар?", 
-        reply_markup=get_yes_no_keyboard("order")
+        reply_markup=get_yes_no_keyboard("order", "заказал(а)")
     )
     # переключаемся в состояние ожидания ответа на кнопку после "📦 Вы заказали товар?"
     await state.set_state(UserFlow.waiting_for_order)
@@ -54,7 +54,7 @@ async def handle_question_answer(
     if value == "Нет":
         await callback.message.answer(
             "📦 Вы заказали товар?",
-            reply_markup=get_yes_no_keyboard("order")
+            reply_markup=get_yes_no_keyboard("order","заказал(а)")
         )
         await state.set_state(UserFlow.waiting_for_order)
         await callback.answer()

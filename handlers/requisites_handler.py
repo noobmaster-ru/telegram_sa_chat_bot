@@ -49,16 +49,19 @@ async def handle_requisites_message(
             sheet_name=BUYERS_SHEET_NAME,
             telegram_id=telegram_id
         )
-        gpt_5_response = client_gpt_5.get_gpt_5_response_requisites(
+
+        # !! загоняем в ии текст с реквизитами, чтобы он выделил четко карту/телефон/сумму!!
+        gpt_5_response = await client_gpt_5.get_gpt_5_response_requisites(
             new_prompt=text,
             instruction_str=instruction_str,
             CHANNEL_NAME=CHANNEL_USERNAME
         )
-        await message.answer(gpt_5_response)
+        # await message.answer(gpt_5_response)
         
-        card_match = re.search(card_pattern, text)
-        amount_match = re.search(amount_pattern, text)
-        phone_match = re.search(phone_pattern, text)
+        
+        card_match = re.search(card_pattern, gpt_5_response)
+        amount_match = re.search(amount_pattern, gpt_5_response)
+        phone_match = re.search(phone_pattern, gpt_5_response)
         
         card_number = card_match.group(1) if card_match else ""
         amount = amount_match.group(1) if amount_match else ""
@@ -68,8 +71,7 @@ async def handle_requisites_message(
         # text_only_with_numbers = clean_text.split(" ")
 
         # list_only_numbers = [elem for elem in text_only_with_numbers if re.search(r'\d', elem)]
-        
-        await message.answer(f"📩 Получены реквизиты(бот):\nНомер телефона: `{phone_number}`\nНомер карты: `{card_number}`\nСумма: `{amount}`", parse_mode="Markdown")
+        await message.answer(f"📩 Получены реквизиты:\nНомер телефона: `{phone_number}`\nНомер карты: `{card_number}`\nСумма: `{amount}`", parse_mode="Markdown")
 
         if card_number:
             # сохраняем ответ - реквизиты

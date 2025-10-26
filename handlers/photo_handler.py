@@ -37,13 +37,18 @@ async def handle_photo(
             # спрашиваем подтверждение, что это фото заказа
             await message.answer(
                 "📸 Это скрин заказа?",
-                reply_markup=get_yes_no_keyboard(callback_prefix="photo_order_")
+                reply_markup=get_yes_no_keyboard(
+                    callback_prefix="photo_order_", 
+                    statement="скрин заказа"
+                )
             )
         elif photo_type == "shk":
             # спрашиваем подтверждение, что это фото разрезанного ШК
             await message.answer(
                 "📸 Это скрин разрезанного ШК?",
-                reply_markup=get_yes_no_keyboard(callback_prefix="photo_shk_")
+                reply_markup=get_yes_no_keyboard(
+                    callback_prefix="photo_shk_",
+                    statement="скрин разрезанного ШК")
             )
         else:
             await message.answer("⚠️ Неизвестный тип фото. Пожалуйста, следуйте инструкциям.")

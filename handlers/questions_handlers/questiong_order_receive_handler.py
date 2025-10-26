@@ -20,7 +20,7 @@ async def ask_is_product_receive_question(
 ):
     await message.answer(
         "📬 Вы получили товар?", 
-        reply_markup=get_yes_no_keyboard("receive")
+        reply_markup=get_yes_no_keyboard("receive", "получил(а)")
     )
     # переключаемся в состояние ожидания ответа на кнопку после "📦 Вы заказали товар?"
     await state.set_state(UserFlow.waiting_for_order_receive)
@@ -53,7 +53,7 @@ async def handle_question_answer(
     if value == "Нет":
         await callback.message.answer(
             "📬 Вы получили товар?", 
-            reply_markup=get_yes_no_keyboard("receive")
+            reply_markup=get_yes_no_keyboard("receive", "получил(а)")
         )
         await state.set_state(UserFlow.waiting_for_order_receive)
         await callback.answer()

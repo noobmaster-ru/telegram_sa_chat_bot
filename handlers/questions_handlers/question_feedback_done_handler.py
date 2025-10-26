@@ -15,7 +15,7 @@ async def ask_is_feedback_done_question(
 ):
     await message.answer(
         "💬 Вы оставили отзыв?", 
-        reply_markup=get_yes_no_keyboard("feedback")
+        reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
     )
     # переключаемся в состояние ожидания ответа на кнопку после "📦 Вы заказали товар?"
     await state.set_state(UserFlow.waiting_for_feedback)
@@ -48,7 +48,7 @@ async def handle_question_answer(
     if value == "Нет":
         await callback.message.answer(
             "💬 Вы оставили отзыв?", 
-            reply_markup=get_yes_no_keyboard("feedback")
+            reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
         )
         await state.set_state(UserFlow.waiting_for_feedback)
         await callback.answer()
