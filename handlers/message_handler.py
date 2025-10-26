@@ -21,7 +21,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("data/bot.log", encoding="utf-8"),  # сохраняем в файл
+        logging.FileHandler("logs/bot.log", encoding="utf-8"),  # сохраняем в файл
         logging.StreamHandler(),  # выводим в консоль
     ],
 )
