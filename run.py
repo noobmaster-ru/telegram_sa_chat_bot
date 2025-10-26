@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from handlers import (
     message_router, 
     agreement_router, 
-    # question_router, 
     subscribtion_router, 
     photo_router , 
     requisites_router, 
@@ -17,6 +16,7 @@ from handlers import (
     feedback_router,
     shk_router
 )
+
 from google_sheets.google_sheets_class import GoogleSheetClass
 from ai_module.open_ai_requests_class import OpenAiRequestClass
 

@@ -7,5 +7,6 @@ services:
       - .env
     volumes:
       - .:/app
+      - /Users/kirillkozlov/Desktop/telegram_chat_bot/placa-tables-7b37297f8489.json:/app/creds/placa-tables-7b37297f8489.json
       # - ./data:/app/data   # users.db
     restart: always

@@ -5,7 +5,7 @@ from google_sheets.google_sheets_class import GoogleSheetClass
 from aiogram.fsm.context import FSMContext
 
 from handlers.keyboards.get_subscription_check_keyboard import get_subscription_check_keyboard
-from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
+from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from handlers.questions_handlers.question_flow_handler import start_buyer_flow
 from handlers.states.user_flow import UserFlow
 
@@ -67,7 +67,7 @@ async def handle_agreement(
     else:
         await callback.message.answer(
             "❌ Без согласия участие невозможно. Вы согласны на условия?",
-            reply_markup=get_agreement_keyboard()
+            reply_markup=get_yes_no_keyboard("agree")
         )
         await state.set_state(UserFlow.waiting_for_agreement)
 

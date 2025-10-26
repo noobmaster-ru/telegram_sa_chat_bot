@@ -2,17 +2,15 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-# from aiogram.fsm.state import StatesGroup, State
 
 import logging
 import re
 
-# from ai_module.generators import create_gpt_5_respons
 from ai_module.open_ai_requests_class import OpenAiRequestClass
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 
-from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
+from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from handlers.states.user_flow import UserFlow
 
 router = Router()
@@ -81,7 +79,7 @@ async def handle_business_message(
         # После инструкции — отправляем кнопки "Согласны на условия?"
         await message.answer(
             "Согласны на условия?",
-            reply_markup=get_agreement_keyboard()
+            reply_markup=get_yes_no_keyboard("agree")
         )
         # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
         await state.set_state(UserFlow.waiting_for_agreement)
