@@ -3,17 +3,16 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
-
 import logging
 import re
 
-from ai_module.generators import create_gpt_5_response
+from ai_module.open_ai_requests_class import OpenAiRequestClass
 from google_sheets.google_sheets_class import GoogleSheetClass
 
 
-from handlers.keyboards.get_agreement_keyboard import get_agreement_keyboard
+from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from handlers.states.user_flow import UserFlow
 
-from db.database import add_message, get_chat_history
 router = Router()
 
 # Настраиваем логирование
@@ -26,13 +25,13 @@ logging.basicConfig(
     ],
 )
 
-# ADMIN_ID_LIST = [694144143, 547299317]
 first_message = []
+
 # список "добрых" слов
 OK_WORDS = {"ок", "ok", "хорошо", "ладно", "окей", "да", "ок.", "ок!", "окей!", "хорошо,сейчас", "понял"}
 
 
-@router.message(StateFilter("generating"))
+@router.business_message(StateFilter("generating"))
 async def wait_response(message: Message):
     await message.answer("Ожидайте ответа, пожалуйста ...")
 
@@ -46,7 +45,8 @@ async def handle_business_message(
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
     nm_id: str,
-    ADMIN_ID_LIST: list
+    ADMIN_ID_LIST: list,
+    client_gpt_5: OpenAiRequestClass
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "без username"
@@ -63,6 +63,7 @@ async def handle_business_message(
         spreadsheet.add_new_buyer(
             sheet_name=BUYERS_SHEET_NAME,
             username=username,
+            telegram_id=telegram_id,
             nm_id=nm_id
         )
         # логируем сообщение
@@ -79,15 +80,17 @@ async def handle_business_message(
         # После инструкции — отправляем кнопки "Согласны на условия?"
         await message.answer(
             "Согласны на условия?",
-            reply_markup=get_agreement_keyboard()
+            reply_markup=get_yes_no_keyboard("agree")
         )
+        # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
+        await state.set_state(UserFlow.waiting_for_agreement)
     # тестируем пока только я и тема
     elif telegram_id in ADMIN_ID_LIST:
         
         # обновляем время последнего сообщения
         spreadsheet.update_buyer_last_time_message(
             sheet_name=BUYERS_SHEET_NAME,
-            username=username
+            telegram_id=telegram_id
         )
 
         # # убираем пробелы и делаем нижний регистр у сообщения
@@ -97,10 +100,9 @@ async def handle_business_message(
             # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
             await state.set_state('generating')
             try: 
-                gpt5_response_text = create_gpt_5_response(
-                    telegram_id,
-                    text, 
-                    instruction_str
+                gpt5_response_text = client_gpt_5.create_gpt_5_response(
+                    new_prompt=text, 
+                    instruction_str=instruction_str
                 )
             except Exception as e:
                 await message.answer(f"Произошла ошибка: {e}")
@@ -111,10 +113,9 @@ async def handle_business_message(
             if len(text) > LOWER_LIMIT_OF_MESSAGE_LENGTH:
                 await state.set_state('generating')
                 try: 
-                    gpt5_response_text = create_gpt_5_response(
-                        telegram_id,
-                        text, 
-                        instruction_str
+                    gpt5_response_text = client_gpt_5.create_gpt_5_response(
+                        new_prompt=text, 
+                        instruction_str=instruction_str
                     )
                 except Exception as e:
                     await message.answer(f"Произошла ошибка: {e}")            
@@ -127,10 +128,10 @@ async def handle_business_message(
             #     # текст полностью совпадает с шаблоном #выплата_DD_MONTH
             #     await message.answer("ВЫПЛАТА_ПРИНИМАЕТСЯ")
             #     # здесь можно обработать дату и записать в Google Sheet
-            elif "#" in text:
-                await message.answer(
-                    "❌ Вы неправильно указали дату выплаты. "
-                    "Исправьте по шаблону, без лишних слов: #выплата_DD_MONTH"
-                )
+            # elif "#" in text:
+            #     await message.answer(
+            #         "❌ Вы неправильно указали дату выплаты. "
+            #         "Исправьте по шаблону, без лишних слов: #выплата_DD_MONTH"
+            #     )
             else:
                 await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")

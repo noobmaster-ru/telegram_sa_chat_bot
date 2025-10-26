@@ -3,9 +3,22 @@ import asyncio
 import os 
 from dotenv import load_dotenv
 
-from handlers import message_router, agreement_router, question_router, subscribtion_router, photo_router
- 
+from handlers import (
+    message_router, 
+    agreement_router, 
+    subscribtion_router, 
+    photo_router , 
+    requisites_router, 
+    unexpected_text_router,
+    
+    order_router,
+    receive_order_router,
+    feedback_router,
+    shk_router
+)
+
 from google_sheets.google_sheets_class import GoogleSheetClass
+from ai_module.open_ai_requests_class import OpenAiRequestClass
 
 from db.database import init_history_db  
 
@@ -21,10 +34,9 @@ async def main():
     BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
 
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
-
-    # инициализация базы перед запуском
-    init_history_db()
+    GPT_MODEL_NAME = os.getenv("GPT_MODEL_NAME_STR")
     
+    client_gpt_5 = OpenAiRequestClass(GPT_MODEL_NAME)
     spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
     nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
     instruction_str = spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
@@ -33,7 +45,7 @@ async def main():
     dp = Dispatcher()
     
     ADMIN_ID_LIST = [694144143, 547299317]
-    # добавляем артикул в глобальные данные - чтобы все хэндлеры его видели
+    # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
             "instruction_str": instruction_str,
@@ -42,12 +54,22 @@ async def main():
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
             "nm_id": nm_id,
             "CHANNEL_USERNAME": CHANNEL_USERNAME,
-            "ADMIN_ID_LIST": ADMIN_ID_LIST
+            "ADMIN_ID_LIST": ADMIN_ID_LIST,
+            "client_gpt_5": client_gpt_5
         }
     )
+    # первые роутеры - с вопросами да/нет
+    dp.include_router(unexpected_text_router)
+    dp.include_router(order_router)
+    dp.include_router(receive_order_router)
+    dp.include_router(feedback_router)
+    dp.include_router(shk_router)
+    # сначала поставим роутер, который ловит текстовые сообщения-реквизиты
+    dp.include_router(requisites_router)
+    # и затем только роутер, который ловит все текстовые сообщения
     dp.include_router(message_router)
-    # dp.include_router(callback_router)
-    dp.include_router(question_router)
+    
+    # dp.include_router(question_router)
     dp.include_router(agreement_router)
     dp.include_router(subscribtion_router)
     dp.include_router(photo_router)

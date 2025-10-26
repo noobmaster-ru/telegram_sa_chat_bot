@@ -31,7 +31,7 @@ async def handle_photo(
         # обновляем время последнего сообщения
         spreadsheet.update_buyer_last_time_message(
             sheet_name=BUYERS_SHEET_NAME,
-            username=username
+            telegram_id=telegram_id
         )
         if photo_type == "order":
             # спрашиваем подтверждение, что это фото заказа
