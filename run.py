@@ -19,8 +19,13 @@ from handlers import (
 
 from google_sheets.google_sheets_class import GoogleSheetClass
 from ai_module.open_ai_requests_class import OpenAiRequestClass
+import logging
 
-from db.database import init_history_db  
+logging.basicConfig(
+    level=logging.INFO,
+    filename="/app/logs/bot.log",
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 async def main():
     load_dotenv()

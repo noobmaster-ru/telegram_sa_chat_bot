@@ -1,16 +1,12 @@
 services:
-  postgres:
-    image: postgres:15
-    container_name: postgres_chatbot
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_password
-      POSTGRES_DB: chat_bot
-    ports:
-      - "5433:5432"  # этот порт нужен ТОЛЬКО для твоего локального pgAdmin
+  telegram-bot:
+    build: .
+    container_name: telegram-ai-agent
+    command: python run.py
+    env_file: 
+      - .env
     volumes:
       - .:/app
+      - ./logs:/app/logs
       - /Users/kirillkozlov/Desktop/telegram_chat_bot/placa-tables-7b37297f8489.json:/app/creds/placa-tables-7b37297f8489.json
-      # - ./data:/app/data   # users.db
     restart: always
