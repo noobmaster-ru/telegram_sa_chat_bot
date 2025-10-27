@@ -31,7 +31,6 @@ async def handle_question_answer(
     state: FSMContext
 ):
     """Обработка нажатия кнопок Да/Нет"""
-    username = callback.from_user.username or "без username"
     telegram_id = callback.from_user.id
     data = callback.data
 
@@ -40,7 +39,7 @@ async def handle_question_answer(
 
 
     # сохраняем ответ в гугл-таблицу
-    spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name=key,

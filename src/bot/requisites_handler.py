@@ -57,11 +57,8 @@ async def handle_requisites_message(
     text = message.text.strip() if message.text else "(без текста)"
 
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
 
-    # !!! загоняем в ии текст с реквизитами, чтобы он выделил четко карту/телефон/сумму!!!
-    # gpt_5_response = await client_gpt_5.get_gpt_5_response_requisites(new_prompt=text)        
-    
 
     # --- Поиск данных ---
     cards = re.findall(card_pattern, text)
@@ -85,7 +82,7 @@ async def handle_requisites_message(
     if amount:
         data["amount"] = amount
     if phone_number:
-        data["phone_number"] = re.sub(r"^\+?8", "7", phone_number)  # нормализуем формат
+        data["phone_number"] = re.sub(r"^\+?8", "8", phone_number)  # нормализуем формат
     if bank:
         data["bank"] = bank
     await state.update_data(**data)
@@ -96,13 +93,65 @@ async def handle_requisites_message(
     phone = data.get("phone_number")
     amt = data.get("amount")
     bank_name = data.get("bank")
+    logging.info(f"card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
     
+    # если только банк
+    if bank_name and not card_number and not phone_number and not amt:
+        await message.answer(
+            f"📩 Получены реквизиты:\n"
+            f"Банк: `{bank}`\n\n"
+            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
+            parse_mode="Markdown"
+        )
+        await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        return
+    
+    # если только номер карты или телефона
+    if (phone or card_number) and not bank_name and not amt:
+        if phone:
+            await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{phone}`\n\n"
+                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                parse_mode="Markdown"
+            )
+        if card_number:
+            await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер карты: `{card_number or ''}`\n\n"
+                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                parse_mode="Markdown"
+            )  
+        await state.set_state(UserFlow.waiting_for_amount)
+        return
+    
+    # если нет суммы платежа
+    if bank_name and (phone or card_number) and not amt:
+        if phone:
+            await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{phone}`\n"
+                f"Банк: `{bank}`\n\n"
+                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                parse_mode="Markdown"
+            )
+        if card_number:
+            await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер карты: `{card_number or ''}`\n"
+                f"Банк: `{bank}`\n\n"
+                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                parse_mode="Markdown"
+            )  
+        await state.set_state(UserFlow.waiting_for_amount)
+        return
+    
+    # если нет банка 
     if not bank_name and (phone or card_number) and amt:
         if phone:
             await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone or ''}`\n"
-                f"Банк: \n"
                 f"Сумма: `{amt or ''}`\n\n"
                 f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
                 parse_mode="Markdown"
@@ -111,7 +160,6 @@ async def handle_requisites_message(
             await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number or ''}`\n"
-                f"Банк: \n"
                 f"Сумма: `{amt or ''}`\n\n"
                 f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
                 parse_mode="Markdown"
@@ -147,11 +195,120 @@ async def handle_requisites_message(
         await state.set_state(UserFlow.confirming_requisites)
         return 
 
+@router.business_message(StateFilter(UserFlow.waiting_for_amount))
+async def handle_amount(message: Message, state: FSMContext):
+    text = message.text.strip()
+    amounts = re.findall(amount_pattern, text, flags=re.IGNORECASE)
+    amount = amounts[0] if amounts else None
+    await state.update_data(amount=amount)
 
+    data = await state.get_data()
+    if data.get('bank'):
+        if data.get('card_number'):
+            await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер карты: `{data.get('card_number', '')}`\n"
+                f"Банк: {data.get('bank', '')}\n"
+                f"Сумма: `{data.get('amount', '')}`\n\n"
+                f"Реквизиты заполнены верно?",
+                parse_mode="Markdown",
+                reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
+            )
+        if data.get('phone_number'):
+            await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{data.get('phone_number', '')}`\n"
+                f"Банк: {data.get('bank', '')}\n"
+                f"Сумма: `{data.get('amount', '')}`\n\n"
+                f"Реквизиты заполнены верно?",
+                parse_mode="Markdown",
+                reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
+            )
+        await state.set_state(UserFlow.confirming_requisites)
+    else:
+        await message.answer(
+            f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+            parse_mode="Markdown"
+        )  
+        await state.set_state(UserFlow.waiting_for_bank)
+
+
+@router.business_message(StateFilter(UserFlow.waiting_for_card_or_phone_number))
+async def handle_amount(message: Message, state: FSMContext):
+    text = message.text.strip()
+    # --- Поиск данных ---
+    cards = re.findall(card_pattern, text)
+    phones = re.findall(phone_pattern, text)
+    
+    # Запись в переменные (берём первое найденное или None)
+    card_number = cards[0] if cards else None
+    phone_number = phones[0] if phones else None
+
+    # --- Сохраняем найденное в FSM ---
+    data = await state.get_data()
+    # logging.info(data) - {} выводит
+    if card_number:
+        data["card_number"] = re.sub(r"[ -]", "", card_number)
+    if phone_number:
+        data["phone_number"] = re.sub(r"^\+?8", "7", phone_number)  # нормализуем формат
+    await state.update_data(**data)
+    
+
+    data = await state.get_data()
+    if data.get('bank'):
+        if data.get('card_number'):
+            if data.get('amount'):
+                await message.answer(
+                    f"📩 Получены реквизиты:\n"
+                    f"Номер карты: `{data.get('card_number', '')}`\n"
+                    f"Банк: {data.get('bank', '')}\n"
+                    f"Сумма: `{data.get('amount', '')}`\n\n"
+                    f"Реквизиты заполнены верно?",
+                    parse_mode="Markdown",
+                    reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
+                )
+                return 
+            else:
+                await message.answer(
+                    f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                    parse_mode="Markdown"
+                )  
+                await state.set_state(UserFlow.waiting_for_amount)
+                return 
+        if data.get('phone_number'):
+            if data.get('amount'):
+                await message.answer(
+                    f"📩 Получены реквизиты:\n"
+                    f"Номер телефона: `{data.get('phone_number', '')}`\n"
+                    f"Банк: {data.get('bank', '')}\n"
+                    f"Сумма: `{data.get('amount', '')}`\n\n"
+                    f"Реквизиты заполнены верно?",
+                    parse_mode="Markdown",
+                    reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
+                )
+                return 
+            else:
+                await message.answer(
+                    f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                    parse_mode="Markdown"
+                )  
+                await state.set_state(UserFlow.waiting_for_amount)
+                return 
+        await state.set_state(UserFlow.confirming_requisites)
+        return
+    else:
+        await message.answer(
+            f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+            parse_mode="Markdown"
+        )  
+        await state.set_state(UserFlow.waiting_for_bank)
+        return
 
 @router.business_message(StateFilter(UserFlow.waiting_for_bank))
 async def handle_bank_name(message: Message, state: FSMContext):
-    bank = message.text.strip().title()
+    text = message.text.strip().title()
+    bank_match = re.search(bank_pattern, text, flags=re.IGNORECASE)
+    bank = bank_match.group(0).capitalize() if bank_match else None
     await state.update_data(bank=bank)
 
     data = await state.get_data()
@@ -188,7 +345,6 @@ async def confirm_requisites_no(callback: CallbackQuery, state: FSMContext):
     """
     await state.clear()
     await state.set_state(UserFlow.waiting_for_requisites)
-
     await callback.message.edit_text(
         "❌ Хорошо, давайте попробуем ещё раз.\n"
         "Отправьте номер телефона, сумму и (если есть) номер карты одним сообщением."
@@ -209,7 +365,7 @@ async def confirm_requisites_yes(
     telegram_id = callback.from_user.id
 
     # сохраняем  реквизиты карты в гугл-таблицу 
-    spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="requisites",
@@ -217,7 +373,7 @@ async def confirm_requisites_yes(
     )
 
     # сохраняем сумму выплаты в гугл-таблицу
-    spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="amount",
@@ -225,7 +381,7 @@ async def confirm_requisites_yes(
     )
 
     # сохраняем номер телефона в гугл-таблицу
-    spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="phone_number",
@@ -233,7 +389,7 @@ async def confirm_requisites_yes(
     )
 
     # сохраняем банк в гугл-таблицу
-    spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="bank",

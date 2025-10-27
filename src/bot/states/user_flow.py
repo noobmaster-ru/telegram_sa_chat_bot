@@ -10,4 +10,5 @@ class UserFlow(StatesGroup):
     waiting_for_requisites = State()
     waiting_for_bank = State()
     waiting_for_amount = State()
+    waiting_for_card_or_phone_number = State()
     confirming_requisites = State()

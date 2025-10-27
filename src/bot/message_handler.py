@@ -60,7 +60,7 @@ async def handle_business_message(
         # add_user(user_id, username)
         first_message.append(telegram_id)
         # Сохраняем данные пользователя при первом сообщении
-        spreadsheet.add_new_buyer(
+        await spreadsheet.add_new_buyer(
             sheet_name=BUYERS_SHEET_NAME,
             username=username,
             telegram_id=telegram_id,
@@ -88,7 +88,7 @@ async def handle_business_message(
     elif telegram_id in ADMIN_ID_LIST:
         
         # обновляем время последнего сообщения
-        spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+        await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
 
         if "?" in text: 
             # переключаем в состояние ожидания(пока ответ от гпт не сформировался)

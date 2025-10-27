@@ -21,11 +21,10 @@ async def handle_agreement(
     BUYERS_SHEET_NAME: str,
     CHANNEL_USERNAME: str,
 ):
-    username = callback.from_user.username or "без username"
     telegram_id = callback.from_user.id
     value = "Да" if callback.data == "agree_yes" else "Нет"
 
-    spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="agree",
@@ -46,7 +45,7 @@ async def handle_agreement(
                 )
 
                 # обновляем статус в таблице
-                spreadsheet.update_buyer_button_status(
+                await spreadsheet.update_buyer_button_status(
                     sheet_name=BUYERS_SHEET_NAME, 
                     telegram_id=telegram_id, 
                     button_name="subscribe", 

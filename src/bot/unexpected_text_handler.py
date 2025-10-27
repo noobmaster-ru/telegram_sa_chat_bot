@@ -22,7 +22,7 @@ async def handle_unexpected_text_waiting_for_agreement(
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(new_prompt=text)
     await message.answer(
         gpt_5_response, 
@@ -40,7 +40,7 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_agreement_and_before_subscription_point(
         new_prompt=text,
         CHANNEL_NAME=CHANNEL_USERNAME
@@ -62,7 +62,7 @@ async def handle_unexpected_text_waiting_for_order(
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_agreement_and_before_subscription_point(
         new_prompt=text,
         CHANNEL_NAME=CHANNEL_USERNAME
@@ -82,7 +82,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(new_prompt=text)
     await message.answer(
         gpt_5_response,
@@ -100,7 +100,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_receive_product_and_before_feedback_check_point(new_prompt=text)
     await message.answer(
         gpt_5_response,
@@ -119,7 +119,7 @@ async def handle_unexpected_text_waiting_for_shk(
     text = message.text
 
     # обновляем время последнего сообщения
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_feedback_and_before_shk_check_point(new_prompt=text)
     await message.answer(
         gpt_5_response,

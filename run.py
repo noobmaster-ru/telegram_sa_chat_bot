@@ -33,20 +33,20 @@ async def main():
     TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN_STR")
     SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON_STR")
     GOOGLE_SHEETS_URL = os.getenv("GOOGLE_SHEETS_URL_STR")
-    
-
-    ARTICLES_SHEET = os.getenv("ARTICLES_SHEET_STR")
-    INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
     BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
-    CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
-
+    
     spreadsheet = GoogleSheetClass(
         service_account_json=SERVICE_ACCOUNT_JSON, 
         table_url=GOOGLE_SHEETS_URL,
-        BUYERS_SHEET_NAME=BUYERS_SHEET_NAME
+        buyers_sheet_name=BUYERS_SHEET_NAME
     )
-    nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
-    instruction_str = spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
+    
+    ARTICLES_SHEET = os.getenv("ARTICLES_SHEET_STR")
+    INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
+    CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
+
+    nm_id = await spreadsheet.get_nm_id(ARTICLES_SHEET)
+    instruction_str = await spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
 
     # создаём экземпляр класса OpenAiRequestClass
     GPT_MODEL_NAME_STR = os.getenv("GPT_MODEL_NAME_STR")
