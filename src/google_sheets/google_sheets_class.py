@@ -1,107 +1,84 @@
+import asyncio
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from gspread import service_account
-from gspread.utils import rowcol_to_a1
+from typing import Any, Dict, List, Optional
 from google.oauth2.service_account import Credentials
-from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet, AsyncioGspreadWorksheet
-import gspread_asyncio
-import gspread
-from typing import Any, Dict, List
-from typing import Optional
-import asyncio
+from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
+from gspread.utils import rowcol_to_a1
 
 class GoogleSheetClass:
-    """Асинхронное взаимодействие с Google Sheets"""
-    
+    """⚡ Быстрое асинхронное взаимодействие с Google Sheets с кэшами и пакетными апдейтами."""
     def __init__(self, service_account_json: str, table_url: str, buyers_sheet_name: str):
         self.service_account_json = service_account_json
         self.table_url = table_url
         self.BUYERS_SHEET_NAME = buyers_sheet_name
-        
-        # создаём асинхронного менеджера клиента
+
+        # Авторизация
         def get_creds():
             scopes = [
                 "https://www.googleapis.com/auth/spreadsheets",
                 "https://www.googleapis.com/auth/drive",
             ]
             return Credentials.from_service_account_file(service_account_json, scopes=scopes)
+
         self._agcm = AsyncioGspreadClientManager(get_creds)
-        self._client = None                        # gspread client (лениво создаётся)
-        self._spreadsheet_cache = None             # кэш Spreadsheet
-        self._header_cache: dict[str, list[str]] = {}  # кэш хедеров по листам
+        self._client = None
+        self._spreadsheet_cache: Optional[AsyncioGspreadSpreadsheet] = None
+
+        # Кэши
+        self._header_cache: dict[str, list[str]] = {}
+        self._row_index_cache: dict[str, dict[str, int]] = {}
+
+        # Очередь для фоновых обновлений
+        self._update_queue: asyncio.Queue = asyncio.Queue()
+        self._background_task = None
     
+    # === Авторизация и кэширование ===
     async def _get_client(self):
-        """Авторизация клиента (лениво, 1 раз за всё время работы)."""
         if self._client is None:
             self._client = await self._agcm.authorize()
         return self._client
 
     async def _get_spreadsheet(self) -> AsyncioGspreadSpreadsheet:
-        """Возвращает spreadsheet по URL с кэшем."""
         if not self._spreadsheet_cache:
             client = await self._get_client()
             self._spreadsheet_cache = await client.open_by_url(self.table_url)
         return self._spreadsheet_cache
+
+    async def _get_sheet(self, sheet_name: Optional[str] = None):
+        spreadsheet = await self._get_spreadsheet()
+        return await spreadsheet.worksheet(sheet_name or self.BUYERS_SHEET_NAME)
+
     
+    # === Кэширование заголовков и индексов ===
+    async def _get_header(self, sheet) -> list[str]:
+        if sheet.title not in self._header_cache:
+            header = await sheet.row_values(1)
+            self._header_cache[sheet.title] = header
+        return self._header_cache[sheet.title]
+
+    async def _build_row_index_cache(self, sheet) -> dict[str, int]:
+        all_rows = await sheet.get_all_values()
+        mapping = {}
+        for i, row in enumerate(all_rows[1:], start=2):
+            if len(row) > 1 and row[1]:
+                mapping[row[1]] = i
+        self._row_index_cache[sheet.title] = mapping
+        return mapping
+
+    async def _get_row_index(self, sheet, telegram_id: int) -> Optional[int]:
+        cache = self._row_index_cache.get(sheet.title)
+        if not cache:
+            cache = await self._build_row_index_cache(sheet)
+        return cache.get(str(telegram_id))
+    
+    # === Утилиты ===
     @staticmethod
     def _get_now_str() -> str:
-        """Текущее время в Москве в строковом формате"""
         return datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S")
     
-    async def get_nm_id(self, sheet_articles: str) -> str:
-        spreadsheet = await self._get_spreadsheet()
-        sheet = await spreadsheet.worksheet(sheet_articles)
-        nm_id_cell = await sheet.acell("A2")
-        return nm_id_cell.value
-    
-    async def delete_row(self, telegram_id: int) -> None:
-        spreadsheet = await self._get_spreadsheet()
-        sheet = await spreadsheet.worksheet(self.BUYERS_SHEET_NAME)
-        all_rows = await sheet.get_all_values()
-
-        for i, row in enumerate(all_rows[1:], start=2):
-            if len(row) > 1 and row[1] == str(telegram_id):
-                # delete row with telegram_id = telegram_id
-                await sheet.delete_rows(i)
-                print(f"[INFO] Deleted row for {telegram_id} user")
-                return
-        print(f"[WARN] User {telegram_id} not found in sheet!")
-    
-    async def get_instruction(self, sheet_instruction: str, nm_id: str) -> str:
-        spreadsheet = await self._get_spreadsheet()
-        sheet = await spreadsheet.worksheet(sheet_instruction)
-        instruction_cell = await sheet.acell("A1")
-        instruction_str = instruction_cell.value
-
-        months = {
-            1: "января",
-            2: "февраля",
-            3: "марта",
-            4: "апреля",
-            5: "мая",
-            6: "июня",
-            7: "июля",
-            8: "августа",
-            9: "сентября",
-            10: "октября",
-            11: "ноября",
-            12: "декабря",
-        }
-
-        today = datetime.now(ZoneInfo("Europe/Moscow"))
-        today_date = f"{today.day}_{months[today.month]}"
-
-        # Экранируем фигурные скобки, кроме наших шаблонов
-        instruction_str = (
-            instruction_str.replace("{", "{{").replace("}", "}}")
-            .replace("{{nm_id}}", "{nm_id}")
-            .replace("{{today_date}}", "{today_date}")
-        )
-
-        filled = instruction_str.format(nm_id=nm_id, today_date=today_date)
-        return re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", filled)
-    
+    # === Основные операции ===
 
     async def add_new_buyer(
         self,
@@ -121,8 +98,7 @@ class GoogleSheetClass:
         amount: str = "None",
         paid: str = "None",
     ) -> None:
-        spreadsheet = await self._get_spreadsheet()
-        sheet = await spreadsheet.worksheet(sheet_name)
+        sheet = await self._get_sheet(sheet_name)
         now = self._get_now_str()
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
 
@@ -145,35 +121,38 @@ class GoogleSheetClass:
             paid,
         ]
         await sheet.append_row(new_row, value_input_option="USER_ENTERED")
+
+        # обновляем кэш строки
+        if sheet.title in self._row_index_cache:
+            self._row_index_cache[sheet.title][str(telegram_id)] = len(self._row_index_cache[sheet.title]) + 2
+
         print(f"[INFO] Added new buyer {telegram_id}")
 
+    async def delete_row(self, telegram_id: int) -> None:
+        sheet = await self._get_sheet()
+        row_index = await self._get_row_index(sheet, telegram_id)
+        if not row_index:
+            print(f"[WARN] User {telegram_id} not found!")
+            return
+        await sheet.delete_rows(row_index)
+        self._row_index_cache.get(sheet.title, {}).pop(str(telegram_id), None)
+        print(f"[INFO] Deleted row for {telegram_id}")
+
+    # === Быстрое обновление статусов ===
     async def update_buyer_last_time_message(self, telegram_id: int) -> None:
-        spreadsheet = await self._get_spreadsheet()
-        sheet = await spreadsheet.worksheet(self.BUYERS_SHEET_NAME)
-        all_rows = await sheet.get_all_values()
+        """Быстрое обновление колонки 'последнее сообщение'."""
+        sheet = await self._get_sheet()
+        header = await self._get_header(sheet)
+        row_index = await self._get_row_index(sheet, telegram_id)
+        if not row_index:
+            print(f"[WARN] User {telegram_id} not found!")
+            return
         now = self._get_now_str()
-
-        for i, row in enumerate(all_rows[1:], start=2):
-            if len(row) > 1 and row[1] == str(telegram_id):
-                await sheet.update_cell(i, 4, now)
-                print(f"[INFO] Updated last message for {telegram_id} → {now}")
-                return
-
-        print(f"[WARN] User {telegram_id} not found in sheet!")
-
-
-    async def _get_sheet(self, sheet_name: Optional[str] = None):
-        """Возвращает конкретный лист по имени (или buyers_sheet_name по умолчанию)."""
-        spreadsheet = await self._get_spreadsheet()
-        return await spreadsheet.worksheet(sheet_name or self.BUYERS_SHEET_NAME)
-
-
-    async def _get_header(self, sheet) -> list[str]:
-        """Кэшируем первую строку (заголовки)."""
-        if sheet.title not in self._header_cache:
-            header = await sheet.row_values(1)
-            self._header_cache[sheet.title] = header
-        return self._header_cache[sheet.title]
+        await sheet.batch_update([{
+            "range": rowcol_to_a1(row_index, 4),
+            "values": [[now]]
+        }])
+        print(f"[INFO] Updated last message for {telegram_id} → {now}")
     
     async def update_buyer_button_status(
         self,
@@ -182,92 +161,85 @@ class GoogleSheetClass:
         button_name: str,
         value: str,
     ) -> None:
-        """⚡ Быстрая версия обновления одной ячейки."""
         sheet = await self._get_sheet(sheet_name)
         header = await self._get_header(sheet)
+        row_index = await self._get_row_index(sheet, telegram_id)
+        if not row_index:
+            print(f"[WARN] User {telegram_id} not found!")
+            return
 
-        # Соответствие кнопок и столбцов
         col_map = [
             "agree", "subscribe", "order", "receive",
-            "feedback", "shk", "requisites",
-            "phone_number", "bank", "amount"
+            "feedback", "shk", "requisites", "phone_number", "bank", "amount"
         ]
-        # Привязка к хедерам (сдвиг на +5, как у тебя)
-        new_col_map = {
-            k: header[i + 5] for i, k in enumerate(col_map) if i + 5 < len(header)
-        }
-
+        new_col_map = {k: header[i + 5] for i, k in enumerate(col_map) if i + 5 < len(header)}
         col_name = new_col_map.get(button_name)
         if not col_name:
             print(f"[WARN] Unknown button_name: {button_name}")
             return
 
-        try:
-            cell = await sheet.find(str(telegram_id))
-        except Exception:
-            print(f"[WARN] User {telegram_id} not found for update!")
-            return
-
-        # Находим индекс столбца по имени
         if col_name not in header:
             print(f"[WARN] Column '{col_name}' not found.")
             return
 
         col_index = header.index(col_name) + 1
-        cell_label = rowcol_to_a1(cell.row, col_index)
+        now = self._get_now_str()
 
-        await sheet.batch_update([{
-            "range": cell_label,
-            "values": [[value]]
-        }])
+        # Добавляем обновление в очередь
+        await self._update_queue.put((
+            sheet,
+            [
+                {"range": rowcol_to_a1(row_index, col_index), "values": [[value]]},
+                {"range": rowcol_to_a1(row_index, 4), "values": [[now]]},
+            ],
+        ))
 
-        await self.update_buyer_last_time_message(telegram_id)
-        print(f"[INFO] Updated {button_name} for {telegram_id} → {value}")   
+        # Если фоновая задача ещё не запущена — запускаем
+        if not self._background_task or self._background_task.done():
+            self._background_task = asyncio.create_task(self._background_updater())
 
-    # async def update_buyer_button_status(
-    #     self,
-    #     sheet_name: str,
-    #     telegram_id: int,
-    #     button_name: str,
-    #     value: str,
-    # ) -> None:
-    #     spreadsheet = await self._get_spreadsheet()
-    #     sheet = await spreadsheet.worksheet(sheet_name)
-    #     records = await sheet.get_all_records()
-    #     if not records:
-    #         print("[WARN] No records found in sheet.")
-    #         return
+    async def _background_updater(self):
+        """Периодически отправляет пакет обновлений в Google Sheets."""
+        await asyncio.sleep(0.5)  # даём возможность накопиться изменениям
+        updates_by_sheet: dict[Any, list[dict]] = {}
 
-    #     keys = list(records[0].keys())
-    #     col_map = [
-    #         "agree",
-    #         "subscribe",
-    #         "order",
-    #         "receive",
-    #         "feedback",
-    #         "shk",
-    #         "requisites",
-    #         "phone_number",
-    #         "bank",
-    #         "amount"
-    #     ]
+        while not self._update_queue.empty():
+            sheet, updates = await self._update_queue.get()
+            updates_by_sheet.setdefault(sheet, []).extend(updates)
 
-    #     new_col_map = {k: keys[i + 5] for i, k in enumerate(col_map) if i + 5 < len(keys)}
+        # Отправляем обновления пакетами
+        for sheet, updates in updates_by_sheet.items():
+            try:
+                await sheet.batch_update(updates)
+                print(f"[BATCH] Updated {len(updates)} cells on '{sheet.title}'")
+            except Exception as e:
+                print(f"[ERROR] Batch update failed on {sheet.title}: {e}")
 
-    #     header_row = await sheet.row_values(1)
-    #     for i, record in enumerate(records, start=2):
-    #         if str(record.get(keys[1])) == str(telegram_id):
-    #             col_name = new_col_map.get(button_name)
-    #             if not col_name:
-    #                 print(f"[WARN] Unknown button_name: {button_name}")
-    #                 return
-    #             if col_name not in header_row:
-    #                 print(f"[WARN] Column '{col_name}' not found.")
-    #                 return
-    #             col_index = header_row.index(col_name) + 1
-    #             await sheet.update_cell(i, col_index, value)
-    #             await self.update_buyer_last_time_message(telegram_id)
-    #             print(f"[INFO] Updated {button_name} for {telegram_id} → {value}")
-    #             return
+    # === Прочие методы ===
+    async def get_nm_id(self, sheet_articles: str) -> str:
+        sheet = await (await self._get_spreadsheet()).worksheet(sheet_articles)
+        nm_id_cell = await sheet.acell("A2")
+        return nm_id_cell.value
 
-    #     print(f"[WARN] User {telegram_id} not found for update!")
+    async def get_instruction(self, sheet_instruction: str, nm_id: str) -> str:
+        sheet = await (await self._get_spreadsheet()).worksheet(sheet_instruction)
+        instruction_cell = await sheet.acell("A1")
+        instruction_str = instruction_cell.value
+
+        months = {
+            1: "января", 2: "февраля", 3: "марта", 4: "апреля",
+            5: "мая", 6: "июня", 7: "июля", 8: "августа",
+            9: "сентября", 10: "октября", 11: "ноября", 12: "декабря"
+        }
+
+        today = datetime.now(ZoneInfo("Europe/Moscow"))
+        today_date = f"{today.day}_{months[today.month]}"
+
+        instruction_str = (
+            instruction_str.replace("{", "{{").replace("}", "}}")
+            .replace("{{nm_id}}", "{nm_id}")
+            .replace("{{today_date}}", "{today_date}")
+        )
+
+        filled = instruction_str.format(nm_id=nm_id, today_date=today_date)
+        return re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", filled)
