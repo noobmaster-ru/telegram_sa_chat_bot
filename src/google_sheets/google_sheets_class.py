@@ -2,14 +2,14 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from gspread import service_account
-
+from gspread.utils import rowcol_to_a1
 from google.oauth2.service_account import Credentials
 from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet, AsyncioGspreadWorksheet
 import gspread_asyncio
 import gspread
 from typing import Any, Dict, List
-
-
+from typing import Optional
+import asyncio
 
 class GoogleSheetClass:
     """Асинхронное взаимодействие с Google Sheets"""
@@ -26,13 +26,23 @@ class GoogleSheetClass:
                 "https://www.googleapis.com/auth/drive",
             ]
             return Credentials.from_service_account_file(service_account_json, scopes=scopes)
-        
-        self.agcm = AsyncioGspreadClientManager(get_creds)
+        self._agcm = AsyncioGspreadClientManager(get_creds)
+        self._client = None                        # gspread client (лениво создаётся)
+        self._spreadsheet_cache = None             # кэш Spreadsheet
+        self._header_cache: dict[str, list[str]] = {}  # кэш хедеров по листам
     
+    async def _get_client(self):
+        """Авторизация клиента (лениво, 1 раз за всё время работы)."""
+        if self._client is None:
+            self._client = await self._agcm.authorize()
+        return self._client
+
     async def _get_spreadsheet(self) -> AsyncioGspreadSpreadsheet:
-        """Возвращает асинхронный объект таблицы"""
-        agc = await self.agcm.authorize()
-        return await agc.open_by_url(self.table_url)
+        """Возвращает spreadsheet по URL с кэшем."""
+        if not self._spreadsheet_cache:
+            client = await self._get_client()
+            self._spreadsheet_cache = await client.open_by_url(self.table_url)
+        return self._spreadsheet_cache
     
     @staticmethod
     def _get_now_str() -> str:
@@ -150,8 +160,21 @@ class GoogleSheetClass:
                 return
 
         print(f"[WARN] User {telegram_id} not found in sheet!")
-    
 
+
+    async def _get_sheet(self, sheet_name: Optional[str] = None):
+        """Возвращает конкретный лист по имени (или buyers_sheet_name по умолчанию)."""
+        spreadsheet = await self._get_spreadsheet()
+        return await spreadsheet.worksheet(sheet_name or self.BUYERS_SHEET_NAME)
+
+
+    async def _get_header(self, sheet) -> list[str]:
+        """Кэшируем первую строку (заголовки)."""
+        if sheet.title not in self._header_cache:
+            header = await sheet.row_values(1)
+            self._header_cache[sheet.title] = header
+        return self._header_cache[sheet.title]
+    
     async def update_buyer_button_status(
         self,
         sheet_name: str,
@@ -159,43 +182,92 @@ class GoogleSheetClass:
         button_name: str,
         value: str,
     ) -> None:
-        spreadsheet = await self._get_spreadsheet()
-        sheet = await spreadsheet.worksheet(sheet_name)
-        records = await sheet.get_all_records()
-        if not records:
-            print("[WARN] No records found in sheet.")
+        """⚡ Быстрая версия обновления одной ячейки."""
+        sheet = await self._get_sheet(sheet_name)
+        header = await self._get_header(sheet)
+
+        # Соответствие кнопок и столбцов
+        col_map = [
+            "agree", "subscribe", "order", "receive",
+            "feedback", "shk", "requisites",
+            "phone_number", "bank", "amount"
+        ]
+        # Привязка к хедерам (сдвиг на +5, как у тебя)
+        new_col_map = {
+            k: header[i + 5] for i, k in enumerate(col_map) if i + 5 < len(header)
+        }
+
+        col_name = new_col_map.get(button_name)
+        if not col_name:
+            print(f"[WARN] Unknown button_name: {button_name}")
             return
 
-        keys = list(records[0].keys())
-        col_map = [
-            "agree",
-            "subscribe",
-            "order",
-            "receive",
-            "feedback",
-            "shk",
-            "requisites",
-            "phone_number",
-            "bank",
-            "amount",
-        ]
+        try:
+            cell = await sheet.find(str(telegram_id))
+        except Exception:
+            print(f"[WARN] User {telegram_id} not found for update!")
+            return
 
-        new_col_map = {k: keys[i + 5] for i, k in enumerate(col_map) if i + 5 < len(keys)}
+        # Находим индекс столбца по имени
+        if col_name not in header:
+            print(f"[WARN] Column '{col_name}' not found.")
+            return
 
-        header_row = await sheet.row_values(1)
-        for i, record in enumerate(records, start=2):
-            if str(record.get(keys[1])) == str(telegram_id):
-                col_name = new_col_map.get(button_name)
-                if not col_name:
-                    print(f"[WARN] Unknown button_name: {button_name}")
-                    return
-                if col_name not in header_row:
-                    print(f"[WARN] Column '{col_name}' not found.")
-                    return
-                col_index = header_row.index(col_name) + 1
-                await sheet.update_cell(i, col_index, value)
-                await self.update_buyer_last_time_message(telegram_id)
-                print(f"[INFO] Updated {button_name} for {telegram_id} → {value}")
-                return
+        col_index = header.index(col_name) + 1
+        cell_label = rowcol_to_a1(cell.row, col_index)
 
-        print(f"[WARN] User {telegram_id} not found for update!")
+        await sheet.batch_update([{
+            "range": cell_label,
+            "values": [[value]]
+        }])
+
+        await self.update_buyer_last_time_message(telegram_id)
+        print(f"[INFO] Updated {button_name} for {telegram_id} → {value}")   
+
+    # async def update_buyer_button_status(
+    #     self,
+    #     sheet_name: str,
+    #     telegram_id: int,
+    #     button_name: str,
+    #     value: str,
+    # ) -> None:
+    #     spreadsheet = await self._get_spreadsheet()
+    #     sheet = await spreadsheet.worksheet(sheet_name)
+    #     records = await sheet.get_all_records()
+    #     if not records:
+    #         print("[WARN] No records found in sheet.")
+    #         return
+
+    #     keys = list(records[0].keys())
+    #     col_map = [
+    #         "agree",
+    #         "subscribe",
+    #         "order",
+    #         "receive",
+    #         "feedback",
+    #         "shk",
+    #         "requisites",
+    #         "phone_number",
+    #         "bank",
+    #         "amount"
+    #     ]
+
+    #     new_col_map = {k: keys[i + 5] for i, k in enumerate(col_map) if i + 5 < len(keys)}
+
+    #     header_row = await sheet.row_values(1)
+    #     for i, record in enumerate(records, start=2):
+    #         if str(record.get(keys[1])) == str(telegram_id):
+    #             col_name = new_col_map.get(button_name)
+    #             if not col_name:
+    #                 print(f"[WARN] Unknown button_name: {button_name}")
+    #                 return
+    #             if col_name not in header_row:
+    #                 print(f"[WARN] Column '{col_name}' not found.")
+    #                 return
+    #             col_index = header_row.index(col_name) + 1
+    #             await sheet.update_cell(i, col_index, value)
+    #             await self.update_buyer_last_time_message(telegram_id)
+    #             print(f"[INFO] Updated {button_name} for {telegram_id} → {value}")
+    #             return
+
+    #     print(f"[WARN] User {telegram_id} not found for update!")
