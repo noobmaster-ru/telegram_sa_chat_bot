@@ -1,5 +1,6 @@
 import re
 import logging
+import asyncio
 
 from aiogram import Router, F
 from aiogram.types import Message,  CallbackQuery
@@ -475,37 +476,33 @@ async def confirm_requisites_yes(
     data = await state.get_data()
     telegram_id = callback.from_user.id
 
-    # сохраняем  реквизиты карты в гугл-таблицу 
-    await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
-        telegram_id=telegram_id,
-        button_name="requisites",
-        value=data.get('card_number', '-')
-    )
-
-    # сохраняем сумму выплаты в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
-        telegram_id=telegram_id,
-        button_name="amount",
-        value=data.get('amount', '-')
-    )
-
-    # сохраняем номер телефона в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
-        telegram_id=telegram_id,
-        button_name="phone_number",
-        value=data.get('phone_number', '-')
-    )
-
-    # сохраняем банк в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
-        telegram_id=telegram_id,
-        button_name="bank",
-        value=data.get('bank', '-')
-    )
+    tasks = [
+        spreadsheet.update_buyer_button_status(
+            sheet_name=BUYERS_SHEET_NAME,
+            telegram_id=telegram_id,
+            button_name="requisites",
+            value=data.get('card_number', '-')
+        ),
+        spreadsheet.update_buyer_button_status(
+            sheet_name=BUYERS_SHEET_NAME,
+            telegram_id=telegram_id,
+            button_name="amount",
+            value=data.get('amount', '-')
+        ),
+        spreadsheet.update_buyer_button_status(
+            sheet_name=BUYERS_SHEET_NAME,
+            telegram_id=telegram_id,
+            button_name="phone_number",
+            value=data.get('phone_number', '-')
+        ),
+        spreadsheet.update_buyer_button_status(
+            sheet_name=BUYERS_SHEET_NAME,
+            telegram_id=telegram_id,
+            button_name="bank",
+            value=data.get('bank', '-')
+        )
+    ]
+    await asyncio.gather(*tasks)
     await state.clear()
     await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
