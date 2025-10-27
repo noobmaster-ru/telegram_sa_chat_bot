@@ -13,10 +13,10 @@ router = Router()
 
 
 async def ask_is_shk_cut_question(
-    message: Message, 
+    callback: CallbackQuery, 
     state: FSMContext
 ):
-    await message.answer(
+    await callback.message.edit_text(
         "✂️ ШК разрезали?", 
         reply_markup=get_yes_no_keyboard("shk","разрезал(а)")
     )
@@ -49,16 +49,13 @@ async def handle_question_answer(
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
-        await callback.message.answer(
+        await callback.message.edit_text(
             "✂️ ШК разрезали?", 
             reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
         )
         await state.set_state(UserFlow.waiting_for_shk)
-        await callback.answer()
         return
 
-    # если ответ "Да" → переходим к следующему вопросу
     await callback.message.answer("✅ Все ответы получены, спасибо!")
     await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
     await state.set_state(UserFlow.waiting_for_requisites)
-    await callback.answer()

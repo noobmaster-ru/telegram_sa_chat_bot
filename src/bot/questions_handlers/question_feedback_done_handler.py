@@ -1,5 +1,5 @@
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery
 from aiogram import Router, F
 
 
@@ -11,10 +11,10 @@ from src.bot.questions_handlers.question_shk_handler import ask_is_shk_cut_quest
 router = Router()
 
 async def ask_is_feedback_done_question(
-    message: Message, 
+    callback: CallbackQuery, 
     state: FSMContext
 ):
-    await message.answer(
+    await callback.message.edit_text(
         "💬 Вы оставили отзыв?", 
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
     )
@@ -52,9 +52,7 @@ async def handle_question_answer(
             reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
         )
         await state.set_state(UserFlow.waiting_for_feedback)
-        await callback.answer()
         return
 
     # если ответ "Да" → переходим к следующему вопросу
-    await ask_is_shk_cut_question(callback.message, state)
-    await callback.answer()
+    await ask_is_shk_cut_question(callback, state)

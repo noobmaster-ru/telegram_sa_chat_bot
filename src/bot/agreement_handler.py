@@ -52,7 +52,7 @@ async def handle_agreement(
                     value="Да"
                 )
                 # 👉 Начинаем пошаговый диалог
-                await start_buyer_flow(callback.message, spreadsheet, BUYERS_SHEET_NAME, state)
+                await start_buyer_flow(callback.message, state)
             else:
                 # Не подписан
                 await callback.message.answer(

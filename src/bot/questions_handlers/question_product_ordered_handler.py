@@ -48,14 +48,12 @@ async def handle_question_answer(
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
-        await callback.message.answer(
+        await callback.message.edit_text(
             "📦 Вы заказали товар?",
             reply_markup=get_yes_no_keyboard("order","заказал(а)")
         )
         await state.set_state(UserFlow.waiting_for_order)
-        await callback.answer()
         return
 
     # если ответ "Да" → переходим к следующему вопросу
-    await ask_is_product_receive_question(callback.message, state)
-    await callback.answer()
+    await ask_is_product_receive_question(callback, state)
