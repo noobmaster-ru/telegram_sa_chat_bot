@@ -7,6 +7,3 @@ from .unexpected_text_handler import router as unexpected_text_router
 
 
 from .questions_handlers.question_product_ordered_handler import router as order_router
-from .questions_handlers.questiong_order_receive_handler import router as receive_order_router
-from .questions_handlers.question_feedback_done_handler import router as feedback_router
-from .questions_handlers.question_shk_handler import router as shk_router

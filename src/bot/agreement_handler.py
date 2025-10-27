@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 
 
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from src.bot.questions_handlers.question_flow_handler import start_buyer_flow
+# from src.bot.questions_handlers.question_flow_handler import start_buyer_flow
 from src.bot.states.user_flow import UserFlow
 
 
@@ -40,7 +40,7 @@ async def handle_agreement(
             )
             if member.status in ("member", "administrator", "creator"):
                 # Пользователь подписан → продолжаем
-                await callback.message.answer(
+                await callback.message.edit_text(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
 
@@ -52,7 +52,12 @@ async def handle_agreement(
                     value="Да"
                 )
                 # 👉 Начинаем пошаговый диалог
-                await start_buyer_flow(callback.message, state)
+                await state.set_state(UserFlow.waiting_for_order)
+                await callback.message.edit_text(
+                    "📦 Вы заказали товар?", 
+                    reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+                )
+                return
             else:
                 # Не подписан
                 await callback.message.answer(
@@ -66,10 +71,9 @@ async def handle_agreement(
                 "⚠️ Не удалось проверить подписку. Проверьте, что бот — администратор канала."
             )
     else:
-        await callback.message.answer(
+        await callback.message.edit_text(
             "❌ Без согласия участие невозможно. Вы согласны на условия?",
             reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
         )
         await state.set_state(UserFlow.waiting_for_agreement)
-
-    await callback.answer()
+        return 

@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from src.bot.questions_handlers.question_flow_handler import start_buyer_flow
+# from src.bot.questions_handlers.question_flow_handler import start_buyer_flow
 
 
 from src.google_sheets.google_sheets_class import GoogleSheetClass
@@ -39,7 +39,7 @@ async def handle_subscription(
             )
             if member.status in ("member", "administrator", "creator"):
                 # Пользователь подписан → продолжаем
-                await callback.message.answer(
+                await callback.message.edit_text(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
 
@@ -51,7 +51,14 @@ async def handle_subscription(
                     value="Да"
                 )
                 # 👉 Начинаем пошаговый диалог
-                await start_buyer_flow(callback.message, spreadsheet, BUYERS_SHEET_NAME, state)
+                await callback.message.edit_text(
+                    "📦 Вы заказали товар?", 
+                    reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+                )
+                await state.set_state(UserFlow.waiting_for_order)
+                return
+                # await state.set_state(UserFlow.waiting_for_order)
+                # await start_buyer_flow(callback.message, spreadsheet, BUYERS_SHEET_NAME, state)
             else:
                 # Не подписан
                 await callback.message.answer(
@@ -71,5 +78,3 @@ async def handle_subscription(
             reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
         )
         await state.set_state(UserFlow.waiting_for_subcription_to_channel)
-
-    await callback.answer()

@@ -13,10 +13,7 @@ from src.bot import (
     requisites_router, 
     unexpected_text_router,
     
-    order_router,
-    receive_order_router,
-    feedback_router,
-    shk_router
+    order_router
 )
 
 from src.google_sheets.google_sheets_class import GoogleSheetClass
@@ -80,9 +77,7 @@ async def main():
     # первые роутеры - с вопросами да/нет
     dp.include_router(unexpected_text_router)
     dp.include_router(order_router)
-    dp.include_router(receive_order_router)
-    dp.include_router(feedback_router)
-    dp.include_router(shk_router)
+
     
     # сначала поставим роутер, который ловит текстовые сообщения-реквизиты
     dp.include_router(requisites_router)
