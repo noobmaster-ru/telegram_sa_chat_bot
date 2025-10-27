@@ -49,7 +49,7 @@ async def handle_order_answer(
         await state.set_state(UserFlow.waiting_for_order)
         return
     await callback.message.edit_text(
-        "📬 Вы получили товар?", 
+        f"📬 Вы получили товар {nm_id}?", 
         reply_markup=get_yes_no_keyboard("receive", "получил(а)")
     )
     await state.set_state(UserFlow.waiting_for_order_receive)
@@ -96,7 +96,7 @@ async def handle_receive_answer(
         return
     # ✅ Следующий вопрос
     await callback.message.edit_text(
-        "💬 Вы оставили отзыв?", 
+        f"💬 Вы оставили отзыв на {nm_id}?", 
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
     )
     await state.set_state(UserFlow.waiting_for_feedback)
@@ -143,7 +143,7 @@ async def handle_feedback_answer(
         return
     # ✅ Следующий вопрос
     await callback.message.edit_text(
-        "✂️ ШК разрезали?", 
+        f"✂️ ШК разрезали на {nm_id}?", 
         reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
     )
     await state.set_state(UserFlow.waiting_for_shk)

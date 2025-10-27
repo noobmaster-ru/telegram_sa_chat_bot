@@ -18,7 +18,8 @@ async def handle_subscription(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
-    CHANNEL_USERNAME: str
+    CHANNEL_USERNAME: str,
+    nm_id: str
 ):
     telegram_id = callback.from_user.id
     value = "Да" if callback.data == "subscribe_yes" else "Нет"
@@ -52,27 +53,39 @@ async def handle_subscription(
                 )
                 # 👉 Начинаем пошаговый диалог
                 await callback.message.edit_text(
-                    "📦 Вы заказали товар?", 
+                    f"📦 Вы заказали товар {nm_id}?", 
                     reply_markup=get_yes_no_keyboard("order", "заказал(а)")
                 )
                 await state.set_state(UserFlow.waiting_for_order)
                 return
             else:
-                # Не подписан
-                await callback.message.answer(
-                    "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
-                    f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
-                    reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
-                )
+                try:
+                    # Не подписан
+                    await callback.message.edit_text(
+                        "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
+                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                        reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
+                    )
+                except:
+                    await callback.message.edit_text(
+                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                        reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
+                    )
         except TelegramBadRequest:
             await callback.message.answer(
                 "⚠️ Не удалось проверить подписку. Проверьте, что бот — администратор канала."
             )
     else:
         # Не подписан
-        await callback.message.answer(
-            "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
-            f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
-            reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
-        )
+        try:
+            await callback.message.edit_text(
+                "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
+                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
+            )
+        except:
+            await callback.message.edit_text(
+                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
+            )
         await state.set_state(UserFlow.waiting_for_subcription_to_channel)
