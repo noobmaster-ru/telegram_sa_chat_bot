@@ -45,7 +45,19 @@ class GoogleSheetClass:
         nm_id_cell = await sheet.acell("A2")
         return nm_id_cell.value
     
+    async def delete_row(self, telegram_id: int) -> None:
+        spreadsheet = await self._get_spreadsheet()
+        sheet = await spreadsheet.worksheet(self.BUYERS_SHEET_NAME)
+        all_rows = await sheet.get_all_values()
 
+        for i, row in enumerate(all_rows[1:], start=2):
+            if len(row) > 1 and row[1] == str(telegram_id):
+                # delete row with telegram_id = telegram_id
+                await sheet.delete_rows(i)
+                print(f"[INFO] Deleted row for {telegram_id} user")
+                return
+        print(f"[WARN] User {telegram_id} not found in sheet!")
+    
     async def get_instruction(self, sheet_instruction: str, nm_id: str) -> str:
         spreadsheet = await self._get_spreadsheet()
         sheet = await spreadsheet.worksheet(sheet_instruction)

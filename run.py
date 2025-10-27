@@ -63,6 +63,7 @@ async def main():
     dp = Dispatcher()
     
     ADMIN_ID_LIST = [694144143, 547299317]
+    FIRST_MESSAGE_LIST = []
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
@@ -72,7 +73,8 @@ async def main():
             "nm_id": nm_id,
             "CHANNEL_USERNAME": CHANNEL_USERNAME,
             "ADMIN_ID_LIST": ADMIN_ID_LIST,
-            "client_gpt_5": client_gpt_5
+            "client_gpt_5": client_gpt_5,
+            "FIRST_MESSAGE_LIST": FIRST_MESSAGE_LIST
         }
     )
     # первые роутеры - с вопросами да/нет

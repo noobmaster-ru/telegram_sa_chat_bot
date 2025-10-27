@@ -26,7 +26,6 @@ logging.basicConfig(
     ],
 )
 
-first_message = []
 
 # список "добрых" слов
 OK_WORDS = {"ок","Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!", "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!", "окей!", "хорошо,сейчас", "понял"}
@@ -47,7 +46,8 @@ async def handle_business_message(
     BUYERS_SHEET_NAME: str,
     nm_id: str,
     ADMIN_ID_LIST: list,
-    client_gpt_5: OpenAiRequestClass
+    client_gpt_5: OpenAiRequestClass,
+    FIRST_MESSAGE_LIST: list
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "без username"
@@ -56,9 +56,9 @@ async def handle_business_message(
 
 
     # тест - отвечать могут только я и тема
-    if telegram_id in ADMIN_ID_LIST and not telegram_id in first_message: #and not user_exists(user_id)
+    if telegram_id in ADMIN_ID_LIST and not telegram_id in FIRST_MESSAGE_LIST: #and not user_exists(user_id)
         # add_user(user_id, username)
-        first_message.append(telegram_id)
+        FIRST_MESSAGE_LIST.append(telegram_id)
         # Сохраняем данные пользователя при первом сообщении
         await spreadsheet.add_new_buyer(
             sheet_name=BUYERS_SHEET_NAME,

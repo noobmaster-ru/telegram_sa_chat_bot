@@ -1,9 +1,9 @@
 from aiogram import Router, types
-from aiogram.filters import StateFilter
+from aiogram.filters import StateFilter,  Command
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-
+from aiogram.fsm.context import FSMContext
 from src.google_sheets.google_sheets_class import GoogleSheetClass
 from src.ai_module.open_ai_requests_class import OpenAiRequestClass
 
@@ -11,7 +11,22 @@ from src.ai_module.open_ai_requests_class import OpenAiRequestClass
 # пока бот ждёт нажатие кнопки в любом из заданных состояний.
 router = Router()
 
-
+# --- 0. перезапускаем бота для админов---
+@router.business_message(Command('reset'))
+async def reset_admin(
+    message: types.Message,
+    FIRST_MESSAGE_LIST: list,
+    spreadsheet: GoogleSheetClass,
+    ADMIN_ID_LIST: list,
+    state: FSMContext
+):
+    telegram_id = message.from_user.id
+    if telegram_id in ADMIN_ID_LIST:
+        FIRST_MESSAGE_LIST.clear()
+        await spreadsheet.delete_row(telegram_id)
+        await state.clear()
+        await message.answer("bot reseted!")
+    
 # --- 1. Ожидание согласия на условия ---
 @router.business_message(StateFilter(UserFlow.waiting_for_agreement))
 async def handle_unexpected_text_waiting_for_agreement(
