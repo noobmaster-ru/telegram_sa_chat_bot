@@ -37,9 +37,7 @@ async def handle_question_answer(
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
 
-    # сохраняем время в гугл-таблицу
-    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
-    
+
     # сохраняем ответ в гугл-таблицу
     spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,

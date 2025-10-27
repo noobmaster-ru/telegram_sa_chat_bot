@@ -91,7 +91,7 @@ class GoogleSheetClass():
 
         # если таблица не пуста, ищем пользователя начиная со 2-й строки
         for i, row in enumerate(all_rows[1:], start=2):
-            if len(row) > 0 and row[1] == telegram_id:
+            if len(row) > 0 and row[1] == str(telegram_id):
                 # обновляем только дату последнего сообщения
                 sheet.update_cell(i, 4, now)
                 return
