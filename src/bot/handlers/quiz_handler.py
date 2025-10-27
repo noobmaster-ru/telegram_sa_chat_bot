@@ -16,7 +16,8 @@ async def handle_order_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
-    state: FSMContext
+    state: FSMContext,
+    nm_id: str
 ):
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
@@ -35,10 +36,16 @@ async def handle_order_answer(
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
-        await callback.message.edit_text(
-            "Когда закажете товар, нажмите на кнопку 'Да, заказал(а)'",
-            reply_markup=get_yes_no_keyboard("order", "заказал(а)")
-        )
+        try:
+            await callback.message.edit_text(
+                f"Когда закажете товар {nm_id}, нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+            )
+        except:
+            await callback.message.edit_text(
+                f"Нужно заказать товар {nm_id}, когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+            )
         await state.set_state(UserFlow.waiting_for_order)
         return
     await callback.message.edit_text(
@@ -49,12 +56,13 @@ async def handle_order_answer(
 
 
 # Юзер после "📬 Вы получили товар?" нажал на кнопку какую-то
-@router.callback_query(StateFilter(UserFlow.waiting_for_order_receive),F.data.startswith("receive_"))
+@router.callback_query(StateFilter(UserFlow.waiting_for_order_receive), F.data.startswith("receive_"))
 async def handle_receive_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
-    state: FSMContext
+    state: FSMContext,
+    nm_id: str
 ):
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
@@ -74,10 +82,16 @@ async def handle_receive_answer(
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
-        await callback.message.edit_text(
-            "Когда получите товар, нажмите на кнопку 'Да, получил(а)'", 
-            reply_markup=get_yes_no_keyboard("receive", "получил(а)")
-        )
+        try:
+            await callback.message.edit_text(
+                f"Когда получите товар {nm_id}, нажмите на кнопку 'Да, получил(а)'", 
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
+            )
+        except:
+            await callback.message.edit_text(
+                f"Нужно получить товар {nm_id}, после - нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+            )
         await state.set_state(UserFlow.waiting_for_order_receive)
         return
     # ✅ Следующий вопрос
@@ -94,7 +108,8 @@ async def handle_feedback_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
-    state: FSMContext
+    state: FSMContext,
+    nm_id: str
 ):
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
@@ -114,10 +129,16 @@ async def handle_feedback_answer(
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
-        await callback.message.answer(
-            "Когда оставите отзыв, нажмите на кнопку 'Да, оставил(а)'", 
-            reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
-        )
+        try:
+            await callback.message.edit_text(
+                f"Когда оставите отзыв на товар {nm_id}, нажмите на кнопку 'Да, оставил(а)'", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
+            )
+        except:
+            await callback.message.edit_text(
+                f"Нужно оставить отзыв 5 звезд на товар {nm_id}, затем нажмите на кнопку 'Да, оставил(а)'", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
+            )
         await state.set_state(UserFlow.waiting_for_feedback)
         return
     # ✅ Следующий вопрос
@@ -134,7 +155,8 @@ async def handle_shk_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
-    state: FSMContext
+    state: FSMContext,
+    nm_id: str
 ):
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
@@ -154,14 +176,20 @@ async def handle_shk_answer(
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
-        await callback.message.edit_text(
-            "Когда разрежите ШК, нажмите на кнопку 'Да, разрезал(а)'", 
-            reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
-        )
+        try:
+            await callback.message.edit_text(
+                f"Когда разрежете ШК от {nm_id}, нажмите на кнопку 'Да, разрезал(а)'", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+            )
+        except:
+            await callback.message.edit_text(
+                f"Нужно разрезать ШК товара {nm_id}, затем нажмите на кнопку 'Да, разрезал(а)'", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+            )
         await state.set_state(UserFlow.waiting_for_shk)
         return
+    
     # ✅ Завершение опроса
     await callback.message.edit_text("✅ Все ответы получены, спасибо!")
-    # await callback.message.answer("✅ Все ответы получены, спасибо!")
     await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
     await state.set_state(UserFlow.waiting_for_requisites)

@@ -51,7 +51,7 @@ async def handle_agreement(
                     button_name="subscribe", 
                     value="Да"
                 )
-                # 👉 Начинаем пошаговый диалог
+                # 👉 start quiz_handlers
                 await state.set_state(UserFlow.waiting_for_order)
                 await callback.message.edit_text(
                     "📦 Вы заказали товар?", 
@@ -71,9 +71,15 @@ async def handle_agreement(
                 "⚠️ Не удалось проверить подписку. Проверьте, что бот — администратор канала."
             )
     else:
-        await callback.message.edit_text(
-            "❌ Без согласия участие невозможно. Вы согласны на условия?",
-            reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
-        )
+        try:
+            await callback.message.edit_text(
+                "Без согласия участие невозможно. Вы согласны на условия?",
+                reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
+            )
+        except:
+            await callback.message.edit_text(
+                "Вы согласны на условия?",
+                reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
+            )
         await state.set_state(UserFlow.waiting_for_agreement)
         return 
