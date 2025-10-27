@@ -77,17 +77,13 @@ async def handle_unexpected_text_waiting_for_order(
 async def handle_unexpected_text_waiting_for_order_receive(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass,
-    CHANNEL_USERNAME: str
+    client_gpt_5: OpenAiRequestClass
 ):
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
     spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
-    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(
-        new_prompt=text,
-        CHANNEL_NAME=CHANNEL_USERNAME
-    )
+    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(new_prompt=text)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("receive", "получил(а)")
@@ -105,9 +101,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     text = message.text
     # обновляем время последнего сообщения
     spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
-    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_receive_product_and_before_feedback_check_point(
-        new_prompt=text
-    )
+    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_receive_product_and_before_feedback_check_point(new_prompt=text)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а) отзыв")
@@ -119,18 +113,14 @@ async def handle_unexpected_text_waiting_for_feedback_done(
 async def handle_unexpected_text_waiting_for_shk(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass,
-    CHANNEL_USERNAME: str
+    client_gpt_5: OpenAiRequestClass
 ):
     telegram_id = message.from_user.id
     text = message.text
 
     # обновляем время последнего сообщения
     spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
-    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_feedback_and_before_shk_check_point(
-        new_prompt=text,
-        CHANNEL_NAME=CHANNEL_USERNAME
-    )
+    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_feedback_and_before_shk_check_point(new_prompt=text)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("shk", "разрезал(а) ШК")

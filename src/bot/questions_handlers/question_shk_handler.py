@@ -39,6 +39,9 @@ async def handle_question_answer(
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
 
+    # сохраняем время в гугл-таблицу
+    spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    
     # сохраняем ответ в гугл-таблицу
     spreadsheet.update_buyer_button_status(
         sheet_name=BUYERS_SHEET_NAME,
@@ -62,4 +65,4 @@ async def handle_question_answer(
     await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
     await state.set_state(UserFlow.waiting_for_requisites)
     await callback.answer()
-    return
+    # return

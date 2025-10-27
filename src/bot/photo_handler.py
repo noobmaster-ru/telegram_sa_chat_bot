@@ -26,6 +26,7 @@ async def handle_photo(
     telegram_id = message.from_user.id
     username = message.from_user.username or "без username"
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
+    # тестируем пока только мы с Тёмой
     if telegram_id in ADMIN_ID_LIST:
         # обновляем время последнего сообщения
         spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
