@@ -2,10 +2,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram import Router, F
 
-from google_sheets.google_sheets_class import GoogleSheetClass
-from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from handlers.states.user_flow import UserFlow
-from handlers.questions_handlers.question_shk_handler import ask_is_shk_cut_question
+
+from src.google_sheets.google_sheets_class import GoogleSheetClass
+from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.states.user_flow import UserFlow
+from src.bot.questions_handlers.question_shk_handler import ask_is_shk_cut_question
 
 router = Router()
 

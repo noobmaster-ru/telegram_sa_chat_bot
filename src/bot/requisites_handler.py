@@ -1,18 +1,20 @@
+import re
+
 from aiogram import Router, F
 from aiogram.types import Message
-import re
-from google_sheets.google_sheets_class import GoogleSheetClass
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 
-from handlers.states.user_flow import UserFlow
-from ai_module.open_ai_requests_class import OpenAiRequestClass
+from src.bot.states.user_flow import UserFlow
+
+from src.ai_module.open_ai_requests_class import OpenAiRequestClass
+from src.google_sheets.google_sheets_class import GoogleSheetClass
+
 router = Router()
 
 
 # Номер карты: 4 группы по 4 цифры, разделитель пробел или дефис опционален.
 card_pattern = r"(\d{4}(?:[ -]?\d{4}){3})"
-
 
 # Сумма: обязательно суффикс р/руб/рублей, допускаем пробел перед суффиксом
 amount_pattern = r"(\d+\s?(?:р|руб|рублей|₽|Р|Рублей))"
@@ -28,9 +30,7 @@ async def handle_requisites_message(
     BUYERS_SHEET_NAME: str,
     ADMIN_ID_LIST: list,
     state: FSMContext,
-    client_gpt_5: OpenAiRequestClass,
-    instruction_str: str,
-    CHANNEL_USERNAME: str
+    client_gpt_5: OpenAiRequestClass
 ):
     """
     Ловит сообщения с реквизитами:
@@ -45,19 +45,10 @@ async def handle_requisites_message(
     # тестируем только мы с темой
     if telegram_id in ADMIN_ID_LIST:
         # обновляем время последнего сообщения
-        spreadsheet.update_buyer_last_time_message(
-            sheet_name=BUYERS_SHEET_NAME,
-            telegram_id=telegram_id
-        )
+        spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
 
-        # !! загоняем в ии текст с реквизитами, чтобы он выделил четко карту/телефон/сумму!!
-        gpt_5_response = await client_gpt_5.get_gpt_5_response_requisites(
-            new_prompt=text,
-            instruction_str=instruction_str,
-            CHANNEL_NAME=CHANNEL_USERNAME
-        )
-        # await message.answer(gpt_5_response)
-        
+        # !!! загоняем в ии текст с реквизитами, чтобы он выделил четко карту/телефон/сумму!!!
+        gpt_5_response = await client_gpt_5.get_gpt_5_response_requisites(new_prompt=text)        
         
         card_match = re.search(card_pattern, gpt_5_response)
         amount_match = re.search(amount_pattern, gpt_5_response)

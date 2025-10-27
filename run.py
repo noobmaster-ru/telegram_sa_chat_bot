@@ -1,9 +1,11 @@
-from aiogram import Bot, Dispatcher
-import asyncio
 import os 
+import logging
+import asyncio
 from dotenv import load_dotenv
+from aiogram import Bot, Dispatcher
 
-from handlers import (
+
+from src.bot import (
     message_router, 
     agreement_router, 
     subscribtion_router, 
@@ -17,9 +19,8 @@ from handlers import (
     shk_router
 )
 
-from google_sheets.google_sheets_class import GoogleSheetClass
-from ai_module.open_ai_requests_class import OpenAiRequestClass
-import logging
+from src.google_sheets.google_sheets_class import GoogleSheetClass
+from src.ai_module.open_ai_requests_class import OpenAiRequestClass
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,18 +34,30 @@ async def main():
     SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON_STR")
     GOOGLE_SHEETS_URL = os.getenv("GOOGLE_SHEETS_URL_STR")
     
-    LOWER_LIMIT_OF_MESSAGE_LENGTH = int(os.getenv("LOWER_LIMIT_OF_MESSAGE_LENGTH_INT"))
+
     ARTICLES_SHEET = os.getenv("ARTICLES_SHEET_STR")
     INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
     BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
-
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
-    GPT_MODEL_NAME = os.getenv("GPT_MODEL_NAME_STR")
-    
-    client_gpt_5 = OpenAiRequestClass(GPT_MODEL_NAME)
-    spreadsheet = GoogleSheetClass(SERVICE_ACCOUNT_JSON, GOOGLE_SHEETS_URL)
+
+    spreadsheet = GoogleSheetClass(
+        service_account_json=SERVICE_ACCOUNT_JSON, 
+        table_url=GOOGLE_SHEETS_URL,
+        BUYERS_SHEET_NAME=BUYERS_SHEET_NAME
+    )
     nm_id = spreadsheet.get_nm_id(ARTICLES_SHEET)
     instruction_str = spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
+
+    # создаём экземпляр класса OpenAiRequestClass
+    GPT_MODEL_NAME_STR = os.getenv("GPT_MODEL_NAME_STR")
+    OPENAI_API_KEY = os.getenv("OPENAI_TOKEN_STR")
+    PROXY = os.getenv("PROXY")
+    client_gpt_5 = OpenAiRequestClass(
+        OPENAI_API_KEY=OPENAI_API_KEY, 
+        GPT_MODEL_NAME_STR=GPT_MODEL_NAME_STR, 
+        PROXY=PROXY,
+        instruction_str=instruction_str
+    )
 
     bot = Bot(token=TG_BOT_TOKEN)
     dp = Dispatcher()
@@ -54,7 +67,6 @@ async def main():
     dp.workflow_data.update(
         {
             "instruction_str": instruction_str,
-            "LOWER_LIMIT_OF_MESSAGE_LENGTH": LOWER_LIMIT_OF_MESSAGE_LENGTH,
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
             "nm_id": nm_id,
@@ -69,12 +81,12 @@ async def main():
     dp.include_router(receive_order_router)
     dp.include_router(feedback_router)
     dp.include_router(shk_router)
+    
     # сначала поставим роутер, который ловит текстовые сообщения-реквизиты
     dp.include_router(requisites_router)
     # и затем только роутер, который ловит все текстовые сообщения
     dp.include_router(message_router)
     
-    # dp.include_router(question_router)
     dp.include_router(agreement_router)
     dp.include_router(subscribtion_router)
     dp.include_router(photo_router)

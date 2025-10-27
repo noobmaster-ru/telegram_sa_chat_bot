@@ -1,31 +1,29 @@
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from aiogram.types import Message, CallbackQuery
-from aiogram import Router, F
+from src.bot.states.user_flow import UserFlow
+from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.questions_handlers.question_feedback_done_handler import ask_is_feedback_done_question
 
-from google_sheets.google_sheets_class import GoogleSheetClass
-
-
-from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-
-from handlers.states.user_flow import UserFlow
+from src.google_sheets.google_sheets_class import GoogleSheetClass
 
 router = Router()
 
 
-async def ask_is_shk_cut_question(
+async def ask_is_product_receive_question(
     message: Message, 
     state: FSMContext
 ):
     await message.answer(
-        "✂️ ШК разрезали?", 
-        reply_markup=get_yes_no_keyboard("shk","разрезал(а)")
+        "📬 Вы получили товар?", 
+        reply_markup=get_yes_no_keyboard("receive", "получил(а)")
     )
     # переключаемся в состояние ожидания ответа на кнопку после "📦 Вы заказали товар?"
-    await state.set_state(UserFlow.waiting_for_shk)
+    await state.set_state(UserFlow.waiting_for_order_receive)
 
-# Юзер после "✂️ ШК разрезали?" нажал на кнопку какую-то
-@router.callback_query(F.data.startswith("shk_"))
+# Юзер после "📬 Вы получили товар?" нажал на кнопку какую-то
+@router.callback_query(F.data.startswith("receive_"))
 async def handle_question_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
@@ -51,16 +49,13 @@ async def handle_question_answer(
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
         await callback.message.answer(
-            "✂️ ШК разрезали?", 
-            reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+            "📬 Вы получили товар?", 
+            reply_markup=get_yes_no_keyboard("receive", "получил(а)")
         )
-        await state.set_state(UserFlow.waiting_for_shk)
+        await state.set_state(UserFlow.waiting_for_order_receive)
         await callback.answer()
         return
 
     # если ответ "Да" → переходим к следующему вопросу
-    await callback.message.answer("✅ Все ответы получены, спасибо!")
-    await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
-    await state.set_state(UserFlow.waiting_for_requisites)
+    await ask_is_feedback_done_question(callback.message, state)
     await callback.answer()
-    return

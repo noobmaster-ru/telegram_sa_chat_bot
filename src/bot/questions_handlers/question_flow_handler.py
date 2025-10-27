@@ -1,9 +1,9 @@
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from google_sheets.google_sheets_class import GoogleSheetClass
+from src.google_sheets.google_sheets_class import GoogleSheetClass
 
-from handlers.questions_handlers.question_product_ordered_handler import ask_is_product_ordered_question
+from src.bot.questions_handlers.question_product_ordered_handler import ask_is_product_ordered_question
 
 # # === Старт последовательных вопросов ===
 async def start_buyer_flow(

@@ -1,11 +1,11 @@
-# handlers/photo_handler.py
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from handlers.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from google_sheets.google_sheets_class import GoogleSheetClass
+from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.google_sheets.google_sheets_class import GoogleSheetClass
+
 router = Router()
 
 
@@ -20,7 +20,6 @@ async def handle_photo(
     message: Message,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str,
     ADMIN_ID_LIST: list
 ):
     user_data = await state.get_data()
@@ -29,10 +28,8 @@ async def handle_photo(
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
     if telegram_id in ADMIN_ID_LIST:
         # обновляем время последнего сообщения
-        spreadsheet.update_buyer_last_time_message(
-            sheet_name=BUYERS_SHEET_NAME,
-            telegram_id=telegram_id
-        )
+        spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+        
         if photo_type == "order":
             # спрашиваем подтверждение, что это фото заказа
             await message.answer(

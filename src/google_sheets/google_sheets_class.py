@@ -1,13 +1,15 @@
-from gspread import service_account
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import re
+from gspread import service_account
+
 
 class GoogleSheetClass():
-    def __init__(self, service_account_json: str, table_url: str):
+    def __init__(self, service_account_json: str, table_url: str, BUYERS_SHEET_NAME: str):
         self.client = service_account(filename=service_account_json)
         self.spreadsheet = self.client.open_by_url(table_url)
-    
+        self.BUYERS_SHEET_NAME = BUYERS_SHEET_NAME
+        
     def get_nm_id(self, sheet_articles: str) -> int:
         sheet = self.spreadsheet.worksheet(sheet_articles)
         nm_id = sheet.acell('A2').value
@@ -74,7 +76,6 @@ class GoogleSheetClass():
 
     def update_buyer_last_time_message(
         self,
-        sheet_name: str,
         telegram_id: int
     ) -> None:
         """
@@ -82,10 +83,9 @@ class GoogleSheetClass():
         Формат таблицы:
         Ссылка на ник | Дата первого | Дата последнего | Артикул | Согласен на условия | Подписка на канал | Заказ сделан | Отзыв оставлен | ШК разрезаны |  Реквизиты | Выплата произведена
         """
-        sheet = self.spreadsheet.worksheet(sheet_name)
+        sheet = self.spreadsheet.worksheet(self.BUYERS_SHEET_NAME)
         all_rows = sheet.get_all_values()  # все строки листа
         now = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S")
-        # user_link = f"https://t.me/{username}" if username != "без username" else "—"
 
         # если таблица не пуста, ищем пользователя начиная со 2-й строки
         for i, row in enumerate(all_rows[1:], start=2):
