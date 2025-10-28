@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from google.oauth2.service_account import Credentials
 from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
 from gspread.utils import rowcol_to_a1
+import json
 
 class GoogleSheetClass:
     """⚡ Быстрое асинхронное взаимодействие с Google Sheets с кэшами и пакетными апдейтами."""
@@ -13,16 +14,23 @@ class GoogleSheetClass:
         self.service_account_json = service_account_json
         self.table_url = table_url
         self.BUYERS_SHEET_NAME = buyers_sheet_name
+        
+        # ✅ Загружаем JSON сразу при инициализации
+        with open(self.service_account_json, "r") as f:
+            self.service_account_info = json.load(f)
 
-        # Авторизация
-        def get_creds():
-            scopes = [
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive",
-            ]
-            return Credentials.from_service_account_file(service_account_json, scopes=scopes)
+        self.scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ]
 
-        self._agcm = AsyncioGspreadClientManager(get_creds)
+        # ✅ Создаём Credentials один раз
+        self._creds = Credentials.from_service_account_info(
+            self.service_account_info, scopes=self.scopes
+        )
+
+        # ✅ Передаём функцию, возвращающую эти креды
+        self._agcm = AsyncioGspreadClientManager(lambda: self._creds)
         self._client = None
         self._spreadsheet_cache: Optional[AsyncioGspreadSpreadsheet] = None
 

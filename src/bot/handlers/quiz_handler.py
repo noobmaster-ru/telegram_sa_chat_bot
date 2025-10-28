@@ -89,8 +89,8 @@ async def handle_receive_answer(
             )
         except:
             await callback.message.edit_text(
-                f"Нужно получить товар {nm_id}, после - нажмите на кнопку 'Да, заказал(а)'",
-                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+                f"Нужно получить товар {nm_id}, после - нажмите на кнопку 'Да, получил(а)'",
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
             )
         await state.set_state(UserFlow.waiting_for_order_receive)
         return

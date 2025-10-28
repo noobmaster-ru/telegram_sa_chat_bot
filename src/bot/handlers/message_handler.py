@@ -1,8 +1,7 @@
 import logging
-
-from aiogram import Router, F
+from aiogram import Router,  types, F
 from aiogram.types import Message
-from aiogram.filters import StateFilter
+from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
 
 
@@ -30,14 +29,63 @@ logging.basicConfig(
 # список "добрых" слов
 OK_WORDS = {"ок","Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!", "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!", "окей!", "хорошо,сейчас", "понял"}
 
+# перезапуск бота для админов
+@router.business_message(Command('reset'))
+async def reset_admin(
+    message: types.Message,
+    spreadsheet: GoogleSheetClass,
+    ADMIN_ID_LIST: list,
+    state: FSMContext
+):
+    telegram_id = message.from_user.id
+    if telegram_id in ADMIN_ID_LIST:
+        await spreadsheet.delete_row(telegram_id)
+        await state.clear()
+        await message.answer("bot reseted!")
 
 @router.business_message(StateFilter("generating"))
 async def wait_response(message: Message):
     await message.answer("Ожидайте ответа, пожалуйста ...")
 
+
+@router.business_message(StateFilter(UserFlow.continue_dialog))
+async def handle_other_message(
+    message: Message, 
+    state: FSMContext, 
+    instruction_str: str,
+    spreadsheet: GoogleSheetClass,
+    BUYERS_SHEET_NAME: str,
+    nm_id: str,
+    ADMIN_ID_LIST: list,
+    client_gpt_5: OpenAiRequestClass,
+    # FIRST_MESSAGE_LIST: list
+):
+    telegram_id = message.from_user.id
+    text = message.text if message.text else "(без текста)"
+
+    # обновляем время последнего сообщения
+    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+
+    if "?" in text: 
+        # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
+        await state.set_state('generating')
+        gpt5_response_text = await client_gpt_5.create_gpt_5_response(new_prompt=text)
+        await state.set_state(UserFlow.continue_dialog)
+        await message.answer(gpt5_response_text)
+    else:
+        if len(text) > 10:
+            await state.set_state('generating')
+            gpt5_response_text = await client_gpt_5.create_gpt_5_response(new_prompt=text)
+            await state.set_state(UserFlow.continue_dialog)
+            await message.answer(gpt5_response_text)    
+        elif text in OK_WORDS:
+            await message.answer("👍")
+        else:
+            await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")
+
 # здесь надо было business_message указать!!!!!
-# первое сообщений пользователя ловит
-@router.business_message(F.text)
+# первое сообщений пользователя ловит - просто текст
+@router.business_message(StateFilter(None))
 async def handle_business_message(
     message: Message, 
     state: FSMContext, 
@@ -47,7 +95,7 @@ async def handle_business_message(
     nm_id: str,
     ADMIN_ID_LIST: list,
     client_gpt_5: OpenAiRequestClass,
-    FIRST_MESSAGE_LIST: list
+    # FIRST_MESSAGE_LIST: list
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "без username"
@@ -57,64 +105,33 @@ async def handle_business_message(
 
     # тест - отвечать могут только я и тема
     # if telegram_id in ADMIN_ID_LIST and not telegram_id in FIRST_MESSAGE_LIST: #and not user_exists(user_id)
+
+    # add_user(user_id, username)
+    # FIRST_MESSAGE_LIST.append(telegram_id)
+    # Сохраняем данные пользователя при первом сообщении
+    await spreadsheet.add_new_buyer(
+        sheet_name=BUYERS_SHEET_NAME,
+        username=username,
+        telegram_id=telegram_id,
+        nm_id=nm_id
+    )
+    # логируем сообщение
+    logging.info(
+        f"Первое сообщение от (@{username}, {full_name}), id={telegram_id}: {text} ..."
+    )
+
+
+    # Отправляем инструкцию
+    await message.answer(
+        instruction_str,
+        parse_mode="MarkdownV2",
+    )
+    # После инструкции — отправляем кнопки "Согласны на условия?"
+    await message.answer(
+        "Согласны на условия?",
+        reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
+    )
+    # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
+    await state.set_state(UserFlow.waiting_for_agreement)
+
     
-    if not telegram_id in FIRST_MESSAGE_LIST:
-        # add_user(user_id, username)
-        FIRST_MESSAGE_LIST.append(telegram_id)
-        # Сохраняем данные пользователя при первом сообщении
-        await spreadsheet.add_new_buyer(
-            sheet_name=BUYERS_SHEET_NAME,
-            username=username,
-            telegram_id=telegram_id,
-            nm_id=nm_id
-        )
-        # логируем сообщение
-        logging.info(
-            f"Первое сообщение от (@{username}, {full_name}), id={telegram_id}: {text} ..."
-        )
-
-
-        # Отправляем инструкцию
-        await message.answer(
-            instruction_str,
-            parse_mode="MarkdownV2",
-        )
-        # После инструкции — отправляем кнопки "Согласны на условия?"
-        await message.answer(
-            "Согласны на условия?",
-            reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
-        )
-        # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
-        await state.set_state(UserFlow.waiting_for_agreement)
-    # тестируем пока только я и тема
-    # elif telegram_id in ADMIN_ID_LIST:
-    
-    else:
-
-        # обновляем время последнего сообщения
-        await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
-
-        if "?" in text: 
-            # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
-            await state.set_state('generating')
-            try:
-                gpt5_response_text = await client_gpt_5.create_gpt_5_response(new_prompt=text)
-            except Exception as e:
-                await message.answer(f"Произошла ошибка: {e}")
-            finally:
-                await state.clear()
-            await message.answer(gpt5_response_text)
-        else:
-            if len(text) > 10:
-                await state.set_state('generating')
-                try: 
-                    gpt5_response_text = await client_gpt_5.create_gpt_5_response(new_prompt=text)
-                except Exception as e:
-                    await message.answer(f"Произошла ошибка: {e}")            
-                finally:
-                    await state.clear()
-                await message.answer(gpt5_response_text)    
-            elif text in OK_WORDS:
-                await message.answer("👍")
-            else:
-                await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")

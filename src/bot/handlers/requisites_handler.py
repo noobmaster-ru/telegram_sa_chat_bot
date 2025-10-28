@@ -20,10 +20,10 @@ router = Router()
 card_pattern = r"\b(?:\d{16}|\d{4}(?:[ -]\d{4}){3})\b"
 
 # Сумма с "р", "руб", "₽"
-amount_pattern = r"(\d+\s?(?:р|руб|рублей|₽|Р|Рублей))"
+# amount_pattern = r"(\d+\s?(?:р|руб|рублей|₽|Р|Рублей))"
+amount_pattern = r"\b(\d{1,6}(?:[.,]\d{1,2})?\s?(?:р|руб|рублей|₽|Р|Рублей)?)\b"
 
 # Телефон в формате +7910... или 8910... или 7910...
-# phone_pattern = r"\b(?:\+7\d{10}|8\d{10}|7\d{10})\b"
 phone_pattern = r"\b(?:\+7|8|7)[\s\-()]?\d{3}[\s\-()]?\d{3}[\s\-()]?\d{2}[\s\-()]?\d{2}\b"
 
 # Название банка
@@ -95,7 +95,7 @@ async def handle_requisites_message(
     phone = data.get("phone_number")
     amt = data.get("amount")
     bank_name = data.get("bank")
-    logging.info(f"card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
+    logging.info(f"telegram_id = {telegram_id}, card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
     
     # если банк, карта, телефон и сумма
     if bank_name and card_number and  phone_number and amt:
@@ -130,7 +130,7 @@ async def handle_requisites_message(
             f"Номер телефона: `{phone}`\n"
             f"Номер карты: `{card_number}`\n"
             f"Банк: `{bank}`\n\n"
-            f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+            f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
         await state.set_state(UserFlow.waiting_for_amount)
@@ -142,14 +142,14 @@ async def handle_requisites_message(
             await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n\n"
-                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
         if card_number:
             await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n\n"
-                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )  
         await state.set_state(UserFlow.waiting_for_amount)
@@ -163,7 +163,7 @@ async def handle_requisites_message(
                 f"Номер карты: `{card_number}`\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Банк: `{bank}`\n\n"
-                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
         elif card_number:
@@ -171,7 +171,7 @@ async def handle_requisites_message(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n"
                 f"Банк: `{bank}`\n\n"
-                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             ) 
         else:
@@ -179,7 +179,7 @@ async def handle_requisites_message(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Банк: `{bank}`\n\n"
-                f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
         await state.set_state(UserFlow.waiting_for_amount)
@@ -351,7 +351,7 @@ async def handle_amount(message: Message, state: FSMContext):
                 return 
             else:
                 await message.answer(
-                    f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                    f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                     parse_mode="Markdown"
                 )  
                 await state.set_state(UserFlow.waiting_for_amount)
@@ -370,7 +370,7 @@ async def handle_amount(message: Message, state: FSMContext):
                 return 
             else:
                 await message.answer(
-                    f"💬 Пожалуйста, отправьте название сумму перевода, например: 500 рублей",
+                    f"💬 Пожалуйста, отправьте  сумму перевода, например: 500 рублей",
                     parse_mode="Markdown"
                 )  
                 await state.set_state(UserFlow.waiting_for_amount)
@@ -503,7 +503,7 @@ async def confirm_requisites_yes(
         )
     ]
     await asyncio.gather(*tasks)
-    await state.clear()
+    await state.set_state(UserFlow.continue_dialog)
     await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
         f"Номер телефона: `{data.get('phone_number', '')}`\n"
@@ -512,3 +512,5 @@ async def confirm_requisites_yes(
         f"Ожидайте выплату в ближайшее время, спасибо ☺️",
         parse_mode="Markdown"
     )
+    # удаляем данные из состояния и из redis
+    await state.set_data({})

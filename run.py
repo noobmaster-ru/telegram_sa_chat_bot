@@ -4,6 +4,8 @@ import asyncio
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 
+from aiogram.fsm.storage.redis import RedisStorage
+import redis.asyncio as asyncredis
 
 from src.bot import (
     message_router, 
@@ -12,7 +14,6 @@ from src.bot import (
     photo_router , 
     requisites_router, 
     unexpected_text_router,
-    
     order_router
 )
 
@@ -56,11 +57,13 @@ async def main():
         instruction_str=instruction_str
     )
 
+    # Redis storage
+    REDIS_URL = os.getenv("REDIS_URL")
+    redis = await asyncredis.from_url(REDIS_URL)
     bot = Bot(token=TG_BOT_TOKEN)
-    dp = Dispatcher()
+    dp = Dispatcher(storage=RedisStorage(redis))
     
     ADMIN_ID_LIST = [694144143, 547299317]
-    FIRST_MESSAGE_LIST = []
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
@@ -71,18 +74,18 @@ async def main():
             "CHANNEL_USERNAME": CHANNEL_USERNAME,
             "ADMIN_ID_LIST": ADMIN_ID_LIST,
             "client_gpt_5": client_gpt_5,
-            "FIRST_MESSAGE_LIST": FIRST_MESSAGE_LIST
         }
     )
+    #роутер, который ловит все текстовые сообщения
+    dp.include_router(message_router)
     # первые роутеры - с вопросами да/нет
     dp.include_router(unexpected_text_router)
     dp.include_router(order_router)
 
     
-    # сначала поставим роутер, который ловит текстовые сообщения-реквизиты
+    #роутер, который ловит текстовые сообщения-реквизиты
     dp.include_router(requisites_router)
-    # и затем только роутер, который ловит все текстовые сообщения
-    dp.include_router(message_router)
+    
     
     dp.include_router(agreement_router)
     dp.include_router(subscribtion_router)
