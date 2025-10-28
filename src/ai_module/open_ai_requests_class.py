@@ -2,14 +2,17 @@ import os
 import httpx
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+import logging
 
-class OpenAiRequestClass():
+class OpenAiRequestClass:
     def __init__(
         self, 
         OPENAI_API_KEY: str,
         GPT_MODEL_NAME_STR: str,
         PROXY: str,
-        instruction_str: str
+        instruction_str: str,
+        max_tokens: int,
+        temperature: float
     ):
         # Подгружаем переменные окружения
         load_dotenv()
@@ -23,97 +26,78 @@ class OpenAiRequestClass():
         )
         self.model_name = GPT_MODEL_NAME_STR
         self.instruction_str = instruction_str
-    
-    async def create_gpt_5_response(self,new_prompt: str) -> str:
+        self.max_tokens = max_tokens 
+        self.temperature = temperature
+
+    async def _create_response(self, context_message: str) -> str:
+        """
+        Базовый метод для общения с GPT — принимает текст подсказки (context_message),
+        автоматически подставляет инструкцию и модель.
+        """
         response = await self.client.chat.completions.create(
+            model=self.model_name,
             messages=[
                 {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: {new_prompt}"
+                    "role": "user",
+                    "content": (
+                        f"Вот наши правила на возврат средств за товар: '{self.instruction_str}'. "
+                        f"{context_message}"
+                    )
                 }
             ],
-            model=self.model_name,
+            max_tokens=self.max_tokens,          # ограничиваем длину ответа 
+            temperature=self.temperature,         # снижает «творчество» ради скорости и стабильности
+            # timeout=12,              # чтобы не ждать вечно
         )
         return response.choices[0].message.content
 
-    # промпт до согласия на условия - второе сообщение пользователя
+
+    async def create_gpt_5_response(self, new_prompt: str) -> str:
+        return await self._create_response(
+            f"Покупатель уже выполнил наши правила: получил товар, оставил отзыв, "
+            f"разрезал этикетки, отправил реквизиты. Ответь вежливо на вопрос: '{new_prompt}'"
+        )
+   
+    
     async def get_gpt_5_response_before_agreement_point(self, new_prompt: str) -> str:
-        response = await self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: '{new_prompt}' и попроси его также нажать на кнопку соглашения с нашими условиями в Telegram ниже "
-                }
-            ],
-            model=self.model_name
+        return await self._create_response(
+            f"Чтобы вернуть деньги, покупатель должен согласиться с нашими правилами. "
+            f"Ответь на его вопрос: '{new_prompt}' и попроси нажать на кнопку 'Да, согласен' в Telegram."
         )
-        return response.choices[0].message.content
-    
-    # промпт после согласия и до подписки на канал
+
+
     async def get_gpt_5_response_after_agreement_and_before_subscription_point(
-        self,
-        new_prompt: str,
-        CHANNEL_NAME: str
+        self, new_prompt: str, CHANNEL_NAME: str
     ) -> str:
-        response = await self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: '{new_prompt}' и попроси его также подписать на наш канал {CHANNEL_NAME} и после нажать на кнопку 'Да, подписался'."
-                }
-            ],
-            model=self.model_name,
+        return await self._create_response(
+            f"Чтобы вернуть деньги, покупатель должен подписаться на канал {CHANNEL_NAME}. "
+            f"Ответь на вопрос: '{new_prompt}' и попроси нажать на кнопку 'Да, подписался'."
         )
-        return response.choices[0].message.content
-
-    # промпт после согласия, подписки на канал , но до проверки наличия заказа товара
+    
+    
     async def get_gpt_5_response_after_subscription_and_before_order_point(self, new_prompt: str) -> str:
-        response = await self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: '{new_prompt}' и проверь заказал ли он товар, если заказал, то попроси его нажать на кнопку 'Да, заказал'"
-                }
-            ],
-            model=self.model_name
+        return await self._create_response(
+            f"Чтобы вернуть деньги, нужно проверить, заказал ли покупатель товар. "
+            f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, заказал'."
         )
-        return response.choices[0].message.content
 
-    # промпт после согласия, подписки на канал , но до проверки наличия заказа товара
+
     async def get_gpt_5_response_after_order_and_before_receive_product_point(self, new_prompt: str) -> str:
-        response = await self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: '{new_prompt}' и проверь, что он получил товар, если получил, то попроси его нажать на кнопку 'Да, получил'"
-                }
-            ],
-            model=self.model_name
+        return await self._create_response(
+            f"Чтобы вернуть деньги, нужно убедиться, что покупатель получил товар. "
+            f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, получил'."
         )
-        return response.choices[0].message.content
-    
-    # промпт после согласия, подписки на канал , проверки наличия заказа товара, но до проверки наличия отзыва 
+
+
     async def get_gpt_5_response_after_receive_product_and_before_feedback_check_point(self, new_prompt: str) -> str:
-        response = await self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: '{new_prompt}' и проверь оставил ли он отзыв как нужно , если оставил, то попроси его нажать на кнопку 'Да, оставил'"
-                }
-            ],
-            model=self.model_name
+        return await self._create_response(
+            f"Чтобы вернуть деньги, нужно проверить, оставил ли покупатель отзыв. "
+            f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, оставил'."
         )
-        return response.choices[0].message.content
-    
-    # промпт после согласия, подписки на канал , проверки наличия заказа товара, проверки наличия отзыва , но до ШК
+
+
     async def get_gpt_5_response_after_feedback_and_before_shk_check_point(self, new_prompt: str) -> str:
-        response = await self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user", 
-                    "content": f"Инструкция: '{self.instruction_str}'. Запомни это. Ты чат помощник маркетплейса, нам нужно научить покупателей оставлять отзыв. Твоя цель - чтобы покупатель научился оставлять отзыв и был доволен покупкой. Ответь на вопрос пользователя: '{new_prompt}' и проверь разрезал ли он этикетки , если разрезал, то попроси его нажать на кнопку 'Да, разрезал'"
-                }
-            ],
-            model=self.model_name
+        return await self._create_response(
+            f"Чтобы вернуть деньги, нужно убедиться, что покупатель разрезал этикетки (ШК). "
+            f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, разрезал(а) ШК'."
         )
-        return response.choices[0].message.content

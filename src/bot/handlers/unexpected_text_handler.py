@@ -18,12 +18,15 @@ async def handle_unexpected_text_waiting_for_agreement(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
+    state: FSMContext
 ):
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await state.set_state('generating')
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(new_prompt=text)
+    await state.set_state(UserFlow.waiting_for_agreement)
     await message.answer(
         gpt_5_response, 
         reply_markup=get_yes_no_keyboard("agree","согласен(на)")
@@ -36,15 +39,18 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     spreadsheet: GoogleSheetClass,
     CHANNEL_USERNAME: str,
     client_gpt_5: OpenAiRequestClass,
+    state: FSMContext
 ):
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await state.set_state('generating')
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_agreement_and_before_subscription_point(
         new_prompt=text,
         CHANNEL_NAME=CHANNEL_USERNAME
     )
+    await state.set_state(UserFlow.waiting_for_subcription_to_channel)
     await message.answer(
         f'{gpt_5_response}\nПока вы не подпишетесь на канал — раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:',
         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
@@ -57,16 +63,18 @@ async def handle_unexpected_text_waiting_for_order(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    CHANNEL_USERNAME: str
+    CHANNEL_USERNAME: str,
+    state: FSMContext
 ):
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
-    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_agreement_and_before_subscription_point(
-        new_prompt=text,
-        CHANNEL_NAME=CHANNEL_USERNAME
+    await state.set_state('generating')
+    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_subscription_and_before_order_point(
+        new_prompt=text
     )
+    await state.set_state(UserFlow.waiting_for_order)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("order", "заказал(а)")
@@ -77,13 +85,16 @@ async def handle_unexpected_text_waiting_for_order(
 async def handle_unexpected_text_waiting_for_order_receive(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass
+    client_gpt_5: OpenAiRequestClass,
+    state: FSMContext
 ):
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await state.set_state('generating')
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(new_prompt=text)
+    await state.set_state(UserFlow.waiting_for_order_receive)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("receive", "получил(а)")
@@ -96,12 +107,15 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
+    state: FSMContext
 ):
     telegram_id = message.from_user.id
     text = message.text
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await state.set_state('generating')
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_receive_product_and_before_feedback_check_point(new_prompt=text)
+    await state.set_state(UserFlow.waiting_for_feedback)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а) отзыв")
@@ -113,14 +127,17 @@ async def handle_unexpected_text_waiting_for_feedback_done(
 async def handle_unexpected_text_waiting_for_shk(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass
+    client_gpt_5: OpenAiRequestClass,
+    state: FSMContext
 ):
     telegram_id = message.from_user.id
     text = message.text
 
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await state.set_state('generating')
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_feedback_and_before_shk_check_point(new_prompt=text)
+    await state.set_state(UserFlow.waiting_for_shk)
     await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("shk", "разрезал(а) ШК")

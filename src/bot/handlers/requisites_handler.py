@@ -208,7 +208,6 @@ async def handle_requisites_message(
             await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
-                f"Номер карты: `{card_number}`\n"
                 f"Сумма: `{amt}`\n\n"
                 f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
                 parse_mode="Markdown"

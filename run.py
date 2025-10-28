@@ -50,11 +50,16 @@ async def main():
     GPT_MODEL_NAME_STR = os.getenv("GPT_MODEL_NAME_STR")
     OPENAI_API_KEY = os.getenv("OPENAI_TOKEN_STR")
     PROXY = os.getenv("PROXY")
+    MAX_TOKENS = int(os.getenv("GPT_MAX_TOKENS"))
+    GPT_TEMPERATURE = float(os.getenv("GPT_TEMPERATURE"))
+    
     client_gpt_5 = OpenAiRequestClass(
         OPENAI_API_KEY=OPENAI_API_KEY, 
         GPT_MODEL_NAME_STR=GPT_MODEL_NAME_STR, 
         PROXY=PROXY,
-        instruction_str=instruction_str
+        instruction_str=instruction_str,
+        max_tokens=MAX_TOKENS,
+        temperature=GPT_TEMPERATURE
     )
 
     # Redis storage
