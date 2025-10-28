@@ -56,7 +56,9 @@ async def handle_business_message(
 
 
     # тест - отвечать могут только я и тема
-    if telegram_id in ADMIN_ID_LIST and not telegram_id in FIRST_MESSAGE_LIST: #and not user_exists(user_id)
+    # if telegram_id in ADMIN_ID_LIST and not telegram_id in FIRST_MESSAGE_LIST: #and not user_exists(user_id)
+    
+    if not telegram_id in FIRST_MESSAGE_LIST:
         # add_user(user_id, username)
         FIRST_MESSAGE_LIST.append(telegram_id)
         # Сохраняем данные пользователя при первом сообщении
@@ -85,8 +87,10 @@ async def handle_business_message(
         # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
         await state.set_state(UserFlow.waiting_for_agreement)
     # тестируем пока только я и тема
-    elif telegram_id in ADMIN_ID_LIST:
-        
+    # elif telegram_id in ADMIN_ID_LIST:
+    
+    else:
+
         # обновляем время последнего сообщения
         await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
 

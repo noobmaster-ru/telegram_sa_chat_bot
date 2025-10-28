@@ -53,8 +53,8 @@ async def handle_requisites_message(
     
     telegram_id = message.from_user.id
     # тестируем только мы с темой
-    if telegram_id not in ADMIN_ID_LIST:
-        return
+    # if telegram_id not in ADMIN_ID_LIST:
+    #     return
 
     text = message.text.strip() if message.text else "(без текста)"
 
