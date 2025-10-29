@@ -9,8 +9,19 @@ from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
 
 
-from src.ai_module.open_ai_requests_class import OpenAiRequestClass
-from src.google_sheets.google_sheets_class import GoogleSheetClass
+from src.services.open_ai_requests_class import OpenAiRequestClass
+from src.services.google_sheets_class import GoogleSheetClass
+
+import redis.asyncio as asyncredis
+
+
+async def is_known_user(
+    redis: asyncredis,
+    REDIS_KEY_SET_TELEGRAM_IDS: str,
+    user_id: int,
+) -> bool:
+    """Проверяет, есть ли user_id в Redis."""
+    return await redis.sismember(REDIS_KEY_SET_TELEGRAM_IDS, user_id)
 
 
 router = Router()
@@ -57,7 +68,7 @@ async def handle_other_message(
     BUYERS_SHEET_NAME: str,
     nm_id: str,
     ADMIN_ID_LIST: list,
-    client_gpt_5: OpenAiRequestClass,
+    client_gpt_5: OpenAiRequestClass
     # FIRST_MESSAGE_LIST: list
 ):
     telegram_id = message.from_user.id
@@ -95,6 +106,8 @@ async def handle_business_message(
     nm_id: str,
     ADMIN_ID_LIST: list,
     client_gpt_5: OpenAiRequestClass,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
     # FIRST_MESSAGE_LIST: list
 ):
     telegram_id = message.from_user.id
@@ -102,12 +115,12 @@ async def handle_business_message(
     full_name = message.from_user.full_name or "без full_name"
     text = message.text if message.text else "(без текста)"
 
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        return
 
-    # тест - отвечать могут только я и тема
-    # if telegram_id in ADMIN_ID_LIST and not telegram_id in FIRST_MESSAGE_LIST: #and not user_exists(user_id)
-
-    # add_user(user_id, username)
-    # FIRST_MESSAGE_LIST.append(telegram_id)
+    # новый пользователь — обрабатываем
+    
     # Сохраняем данные пользователя при первом сообщении
     await spreadsheet.add_new_buyer(
         sheet_name=BUYERS_SHEET_NAME,

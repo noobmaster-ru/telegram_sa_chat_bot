@@ -17,8 +17,8 @@ from src.bot import (
     order_router
 )
 
-from src.google_sheets.google_sheets_class import GoogleSheetClass
-from src.ai_module.open_ai_requests_class import OpenAiRequestClass
+from src.services.google_sheets_class import GoogleSheetClass
+from src.services.open_ai_requests_class import OpenAiRequestClass
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,7 +64,9 @@ async def main():
 
     # Redis storage
     REDIS_URL = os.getenv("REDIS_URL")
+    REDIS_KEY_SET_TELEGRAM_IDS = os.getenv("REDIS_KEY_SET_TELEGRAM_IDS")
     redis = await asyncredis.from_url(REDIS_URL)
+    
     bot = Bot(token=TG_BOT_TOKEN)
     dp = Dispatcher(storage=RedisStorage(redis))
     
@@ -79,6 +81,8 @@ async def main():
             "CHANNEL_USERNAME": CHANNEL_USERNAME,
             "ADMIN_ID_LIST": ADMIN_ID_LIST,
             "client_gpt_5": client_gpt_5,
+            "redis": redis,
+            "REDIS_KEY_SET_USERS_ID": REDIS_KEY_SET_TELEGRAM_IDS
         }
     )
     #роутер, который ловит все текстовые сообщения

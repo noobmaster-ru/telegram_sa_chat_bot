@@ -4,9 +4,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 import logging
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from src.google_sheets.google_sheets_class import GoogleSheetClass
-
+from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.states.user_flow import UserFlow
+
+
+from src.bot.handlers.message_handler import is_known_user
+import redis.asyncio as asyncredis
+
 router = Router()
 
 
@@ -21,13 +25,18 @@ async def handle_photo(
     message: Message,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    ADMIN_ID_LIST: list
+    ADMIN_ID_LIST: list,
+    redis: asyncredis,
+    REDIS_KEY_SET_USERS_ID: str
 ):
     user_data = await state.get_data()
     telegram_id = message.from_user.id
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
     
-
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     

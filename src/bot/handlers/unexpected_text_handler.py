@@ -1,11 +1,11 @@
 from aiogram import Router, types
 from aiogram.filters import StateFilter,  Command
+from aiogram.fsm.context import FSMContext
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from aiogram.fsm.context import FSMContext
-from src.google_sheets.google_sheets_class import GoogleSheetClass
-from src.ai_module.open_ai_requests_class import OpenAiRequestClass
+from src.services.google_sheets_class import GoogleSheetClass
+from src.services.open_ai_requests_class import OpenAiRequestClass
 
 # Этот обработчик сработает, если пользователь напишет текст,
 # пока бот ждёт нажатие кнопки в любом из заданных состояний.

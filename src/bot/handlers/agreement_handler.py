@@ -9,7 +9,7 @@ from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
 
 
-from src.google_sheets.google_sheets_class import GoogleSheetClass
+from src.services.google_sheets_class import GoogleSheetClass
 
 router = Router()
 

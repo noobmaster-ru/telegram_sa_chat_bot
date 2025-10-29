@@ -11,3 +11,5 @@ data/
 .env
 
 pgdata/
+
+load_telegram_users_to_redis.py
