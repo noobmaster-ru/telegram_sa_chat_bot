@@ -90,3 +90,4 @@ async def handle_agreement(
             )
         await state.set_state(UserFlow.waiting_for_agreement)
         return 
+    await callback.answer()

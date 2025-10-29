@@ -53,6 +53,7 @@ async def handle_order_answer(
         reply_markup=get_yes_no_keyboard("receive", "получил(а)")
     )
     await state.set_state(UserFlow.waiting_for_order_receive)
+    await callback.answer()
 
 
 # Юзер после "📬 Вы получили товар?" нажал на кнопку какую-то
@@ -100,6 +101,7 @@ async def handle_receive_answer(
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
     )
     await state.set_state(UserFlow.waiting_for_feedback)
+    await callback.answer()
 
     
 # Юзер после "💬 Вы оставили отзыв?" нажал на кнопку какую-то
@@ -147,6 +149,7 @@ async def handle_feedback_answer(
         reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
     )
     await state.set_state(UserFlow.waiting_for_shk)
+    await callback.answer()
 
 
 # Юзер после "✂️ ШК разрезали?" нажал на кнопку какую-то
