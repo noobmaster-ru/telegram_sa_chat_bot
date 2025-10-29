@@ -194,5 +194,5 @@ async def handle_shk_answer(
     
     # ✅ Завершение опроса
     await callback.message.edit_text("✅ Все ответы получены, спасибо!")
-    await callback.message.answer("☺️ Можете отправлять свои реквизиты: номер карты/телефона и сумму для оплаты. Мы свяжемся с вами через некоторое время.")
+    await callback.message.answer("☺️ Можете отправлять свои реквизиты:\n- Номер карты: AAAA BBBB CCCC DDDD или\n- Номер телефона: 8910XXXXXXX \n- Название банка: Сбербанк, Т-банк\n-Cумму для оплаты: 500 рублей\nМы свяжемся с вами через некоторое время,спасибо")
     await state.set_state(UserFlow.waiting_for_requisites)
