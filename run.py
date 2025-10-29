@@ -84,6 +84,7 @@ async def main():
     #роутер, который ловит все текстовые сообщения
     dp.include_router(message_router)
     # первые роутеры - с вопросами да/нет
+    dp.include_router(photo_router)
     dp.include_router(unexpected_text_router)
     dp.include_router(order_router)
 
@@ -94,7 +95,6 @@ async def main():
     
     dp.include_router(agreement_router)
     dp.include_router(subscribtion_router)
-    dp.include_router(photo_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
