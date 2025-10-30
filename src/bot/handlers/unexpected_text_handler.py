@@ -10,7 +10,10 @@ from src.services.open_ai_requests_class import OpenAiRequestClass
 # Этот обработчик сработает, если пользователь напишет текст,
 # пока бот ждёт нажатие кнопки в любом из заданных состояний.
 router = Router()
+import logging
+import redis.asyncio as asyncredis
 
+from src.bot.handlers.message_handler import is_known_user
     
 # --- 1. Ожидание согласия на условия ---
 @router.business_message(StateFilter(UserFlow.waiting_for_agreement))
@@ -18,10 +21,19 @@ async def handle_unexpected_text_waiting_for_agreement(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
 ):
     telegram_id = message.from_user.id
     text = message.text
+    
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     await state.set_state('generating')
@@ -39,10 +51,19 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     spreadsheet: GoogleSheetClass,
     CHANNEL_USERNAME: str,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
 ):
     telegram_id = message.from_user.id
     text = message.text
+    
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     await state.set_state('generating')
@@ -64,10 +85,19 @@ async def handle_unexpected_text_waiting_for_order(
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
     CHANNEL_USERNAME: str,
-    state: FSMContext
+    state: FSMContext,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
 ):
     telegram_id = message.from_user.id
     text = message.text
+    
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     await state.set_state('generating')
@@ -86,10 +116,19 @@ async def handle_unexpected_text_waiting_for_order_receive(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
 ):
     telegram_id = message.from_user.id
     text = message.text
+    
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     await state.set_state('generating')
@@ -107,10 +146,19 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
 ):
     telegram_id = message.from_user.id
     text = message.text
+    
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     await state.set_state('generating')
@@ -128,11 +176,19 @@ async def handle_unexpected_text_waiting_for_shk(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    REDIS_KEY_SET_USERS_ID: str,
+    redis: asyncredis
 ):
     telegram_id = message.from_user.id
     text = message.text
-
+    
+    # уже писал нам — пропускаем
+    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
+        return
+    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
     await state.set_state('generating')
