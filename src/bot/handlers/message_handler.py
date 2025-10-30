@@ -111,9 +111,9 @@ async def handle_business_message(
     # FIRST_MESSAGE_LIST: list
 ):
     telegram_id = message.from_user.id
-    username = message.from_user.username or "без username"
-    full_name = message.from_user.full_name or "без full_name"
-    text = message.text if message.text else "(без текста)"
+    username = message.from_user.username or "-"
+    full_name = message.from_user.full_name or "-"
+    text = message.text if message.text else "-"
 
     # уже писал нам — пропускаем
     if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
