@@ -117,6 +117,8 @@ async def handle_business_message(
 
     # уже писал нам — пропускаем
     if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis data base , skip")
+        await message.answer()
         return
 
     # новый пользователь — обрабатываем

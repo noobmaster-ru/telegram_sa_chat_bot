@@ -35,6 +35,8 @@ async def handle_photo(
     
     # уже писал нам — пропускаем
     if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        logging.info(f"{telegram_id} in redis database , skip")
+        await message.answer()
         return
     
     # обновляем время последнего сообщения
