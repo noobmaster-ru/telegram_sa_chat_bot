@@ -33,11 +33,14 @@ async def handle_photo(
     telegram_id = message.from_user.id
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
     
-    # уже писал нам — пропускаем
+
     if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        # уже писал нам — пропускаем
         logging.info(f"{telegram_id} in redis database , skip")
         await message.answer()
         return
+
+    # новый пользователь - обрабатываем
     
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)

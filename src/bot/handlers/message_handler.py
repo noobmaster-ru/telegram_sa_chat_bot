@@ -15,13 +15,21 @@ from src.services.google_sheets_class import GoogleSheetClass
 import redis.asyncio as asyncredis
 
 
+# async def is_known_user(
+#     redis: asyncredis,
+#     REDIS_KEY_SET_TELEGRAM_IDS: str,
+#     user_id: int,
+# ) -> bool:
+#     """Проверяет, есть ли user_id в Redis."""
+#     return await redis.sismember(REDIS_KEY_SET_TELEGRAM_IDS, str(user_id))
+
 async def is_known_user(
-    redis: asyncredis,
-    REDIS_KEY_SET_TELEGRAM_IDS: str,
+    redis_client: asyncredis.Redis,
+    redis_key: str,
     user_id: int,
 ) -> bool:
     """Проверяет, есть ли user_id в Redis."""
-    return await redis.sismember(REDIS_KEY_SET_TELEGRAM_IDS, str(user_id))
+    return await redis_client.sismember(redis_key, str(user_id))
 
 
 router = Router()
@@ -115,8 +123,8 @@ async def handle_business_message(
     full_name = message.from_user.full_name or "-"
     text = message.text if message.text else "-"
 
-    # уже писал нам — пропускаем
     if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
+        # уже писал нам — пропускаем
         logging.info(f"{telegram_id} in redis data base , skip")
         await message.answer()
         return
@@ -149,4 +157,4 @@ async def handle_business_message(
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
     await state.set_state(UserFlow.waiting_for_agreement)
 
-    
+
