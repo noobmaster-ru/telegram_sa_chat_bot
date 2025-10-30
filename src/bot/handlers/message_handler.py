@@ -12,25 +12,6 @@ from src.bot.states.user_flow import UserFlow
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.services.google_sheets_class import GoogleSheetClass
 
-import redis.asyncio as asyncredis
-
-
-# async def is_known_user(
-#     redis: asyncredis,
-#     REDIS_KEY_SET_TELEGRAM_IDS: str,
-#     user_id: int,
-# ) -> bool:
-#     """Проверяет, есть ли user_id в Redis."""
-#     return await redis.sismember(REDIS_KEY_SET_TELEGRAM_IDS, str(user_id))
-
-async def is_known_user(
-    redis_client: asyncredis.Redis,
-    redis_key: str,
-    user_id: int,
-) -> bool:
-    """Проверяет, есть ли user_id в Redis."""
-    return await redis_client.sismember(redis_key, str(user_id))
-
 
 router = Router()
 
@@ -71,13 +52,8 @@ async def wait_response(message: Message):
 async def handle_other_message(
     message: Message, 
     state: FSMContext, 
-    instruction_str: str,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str,
-    nm_id: str,
-    ADMIN_ID_LIST: list,
     client_gpt_5: OpenAiRequestClass
-    # FIRST_MESSAGE_LIST: list
 ):
     telegram_id = message.from_user.id
     text = message.text if message.text else "(без текста)"
@@ -111,25 +87,13 @@ async def handle_business_message(
     instruction_str: str,
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
-    nm_id: str,
-    ADMIN_ID_LIST: list,
-    client_gpt_5: OpenAiRequestClass,
-    REDIS_KEY_SET_USERS_ID: str,
-    redis: asyncredis
-    # FIRST_MESSAGE_LIST: list
+    nm_id: str
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
     text = message.text if message.text else "-"
 
-    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
-        # уже писал нам — пропускаем
-        logging.info(f"{telegram_id} in redis data base , skip")
-        await message.answer()
-        return
-
-    # новый пользователь — обрабатываем
     
     # Сохраняем данные пользователя при первом сообщении
     await spreadsheet.add_new_buyer(
@@ -140,7 +104,7 @@ async def handle_business_message(
     )
     # логируем сообщение
     logging.info(
-        f"Первое сообщение от (@{username}, {full_name}), id={telegram_id}: {text} ..."
+        f"FIRST MESSAGE from (@{username}, {full_name}), id={telegram_id}: {text} ..."
     )
 
 

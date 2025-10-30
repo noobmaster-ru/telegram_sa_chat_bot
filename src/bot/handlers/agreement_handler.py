@@ -5,7 +5,6 @@ from aiogram.fsm.context import FSMContext
 
 
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-# from src.bot.questions_handlers.question_flow_handler import start_buyer_flow
 from src.bot.states.user_flow import UserFlow
 
 
@@ -90,4 +89,3 @@ async def handle_agreement(
             )
         await state.set_state(UserFlow.waiting_for_agreement)
         return 
-    await callback.answer()

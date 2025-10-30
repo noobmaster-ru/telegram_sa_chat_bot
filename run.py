@@ -1,5 +1,5 @@
 import os 
-import logging
+# import logging
 import asyncio
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
@@ -20,11 +20,7 @@ from src.bot import (
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 
-logging.basicConfig(
-    level=logging.INFO,
-    filename="logs/bot.log",
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 
 async def main():
     load_dotenv()
@@ -65,11 +61,19 @@ async def main():
     # Redis storage
     REDIS_URL = os.getenv("REDIS_URL")
     REDIS_KEY_SET_TELEGRAM_IDS = os.getenv("REDIS_KEY_SET_TELEGRAM_IDS")
+    
+
     redis = await asyncredis.from_url(REDIS_URL)
+    storage = RedisStorage(redis) 
     
     bot = Bot(token=TG_BOT_TOKEN)
-    dp = Dispatcher(storage=RedisStorage(redis))
+    dp = Dispatcher(storage=storage)
     
+    # Подключаем middleware и передаём готовое подключение
+    middleware_check_redis = CheckRedisUserMiddleware(redis, REDIS_KEY_SET_TELEGRAM_IDS)
+    dp.business_message.middleware(middleware_check_redis)
+    dp.callback_query.middleware(middleware_check_redis)
+
     ADMIN_ID_LIST = [694144143, 547299317]
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(

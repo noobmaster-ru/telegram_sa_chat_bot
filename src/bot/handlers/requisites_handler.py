@@ -40,7 +40,6 @@ bank_pattern = (
 async def handle_requisites_message(
     message: Message,
     spreadsheet: GoogleSheetClass,
-    ADMIN_ID_LIST: list,
     state: FSMContext,
     client_gpt_5: OpenAiRequestClass
 ):
@@ -52,10 +51,6 @@ async def handle_requisites_message(
     """
     
     telegram_id = message.from_user.id
-    # тестируем только мы с темой
-    # if telegram_id not in ADMIN_ID_LIST:
-    #     return
-
     text = message.text.strip() if message.text else "(без текста)"
 
     # обновляем время последнего сообщения
@@ -275,6 +270,13 @@ async def handle_requisites_message(
         )
         await state.set_state(UserFlow.confirming_requisites)
         return 
+    
+    # если юзер мега тупой и ввел какой-то текст, то загоняем текст в модель
+    # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
+    await state.set_state('generating')
+    gpt5_response_text = await client_gpt_5.create_gpt_5_response_requisites(new_prompt=text)
+    await state.set_state(UserFlow.waiting_for_requisites)
+    await message.answer(gpt5_response_text)
 
 @router.business_message(StateFilter(UserFlow.waiting_for_amount))
 async def handle_amount(message: Message, state: FSMContext):
@@ -337,7 +339,6 @@ async def handle_amount(message: Message, state: FSMContext):
                 )
                 await state.set_state(UserFlow.confirming_requisites)
                 return
-        # await state.set_state(UserFlow.confirming_requisites)
     else:
         await message.answer(
             f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",

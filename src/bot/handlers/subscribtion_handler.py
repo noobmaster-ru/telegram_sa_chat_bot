@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-# from src.bot.questions_handlers.question_flow_handler import start_buyer_flow
+
 
 
 from src.services.google_sheets_class import GoogleSheetClass

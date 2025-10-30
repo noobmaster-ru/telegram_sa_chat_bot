@@ -8,9 +8,6 @@ from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.states.user_flow import UserFlow
 
 
-from src.bot.handlers.message_handler import is_known_user
-import redis.asyncio as asyncredis
-
 router = Router()
 
 
@@ -26,21 +23,11 @@ async def handle_photo(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     ADMIN_ID_LIST: list,
-    redis: asyncredis,
-    REDIS_KEY_SET_USERS_ID: str
 ):
     user_data = await state.get_data()
     telegram_id = message.from_user.id
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
-    
 
-    if await is_known_user(redis, REDIS_KEY_SET_USERS_ID, telegram_id):
-        # уже писал нам — пропускаем
-        logging.info(f"{telegram_id} in redis database , skip")
-        await message.answer()
-        return
-
-    # новый пользователь - обрабатываем
     
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
@@ -75,7 +62,6 @@ async def handle_photo_order(
     nm_id: str
 ):
     answer = "yes" if callback.data.endswith("yes") else "no"
-    username = callback.from_user.username or "без username"
 
     if answer == "yes":
         await callback.message.edit_text("✅ Фото заказа принято!")
@@ -141,7 +127,6 @@ async def handle_photo_shk(
     nm_id: str
 ):
     answer = "yes" if callback.data.endswith("yes") else "no"
-    username = callback.from_user.username or "без username"
 
     if answer == "yes":
         await callback.message.edit_text("✅ Фото разрезанного ШК принято!")
@@ -155,7 +140,6 @@ async def handle_photo_shk(
             )
             await state.set_state(UserFlow.waiting_for_agreement)
         elif current_state == UserFlow.waiting_for_subcription_to_channel:
-            # Не подписан
             await callback.message.edit_text(
                 "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
                 f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
@@ -163,7 +147,6 @@ async def handle_photo_shk(
             )
             await state.set_state(UserFlow.waiting_for_subcription_to_channel)
         elif current_state == UserFlow.waiting_for_order:
-            # 👉 Начинаем пошаговый диалог
             await callback.message.edit_text(
                 f"📦 Вы заказали товар {nm_id}?", 
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)")
@@ -176,7 +159,6 @@ async def handle_photo_shk(
             )
             await state.set_state(UserFlow.waiting_for_order_receive)
         elif current_state == UserFlow.waiting_for_feedback:
-            # ✅ Следующий вопрос
             await callback.message.edit_text(
                 f"💬 Вы оставили отзыв на {nm_id}?", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
@@ -195,5 +177,3 @@ async def handle_photo_shk(
             await callback.message.edit_text("❌ Фото ШК не принято. Попробуйте прислать корректное фото.")
         except:
             await callback.message.edit_text("Пришлите корректное фото разрезанных ШК.")
-
-    await callback.answer()
