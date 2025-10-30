@@ -21,7 +21,7 @@ async def is_known_user(
     user_id: int,
 ) -> bool:
     """Проверяет, есть ли user_id в Redis."""
-    return await redis.sismember(REDIS_KEY_SET_TELEGRAM_IDS, user_id)
+    return await redis.sismember(REDIS_KEY_SET_TELEGRAM_IDS, str(user_id))
 
 
 router = Router()
