@@ -25,7 +25,6 @@ async def handle_subscription(
     value = "Да" if callback.data == "subscribe_yes" else "Нет"
 
     await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="subscribe",
         value=value
@@ -46,7 +45,6 @@ async def handle_subscription(
 
                 # обновляем статус в таблице
                 await spreadsheet.update_buyer_button_status(
-                    sheet_name=BUYERS_SHEET_NAME, 
                     telegram_id=telegram_id, 
                     button_name="subscribe", 
                     value="Да"

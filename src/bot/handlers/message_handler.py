@@ -95,13 +95,6 @@ async def handle_business_message(
     text = message.text if message.text else "-"
 
     
-    # Сохраняем данные пользователя при первом сообщении
-    await spreadsheet.add_new_buyer(
-        sheet_name=BUYERS_SHEET_NAME,
-        username=username,
-        telegram_id=telegram_id,
-        nm_id=nm_id
-    )
     # логируем сообщение
     logging.info(
         f"FIRST MESSAGE from (@{username}, {full_name}), id={telegram_id}: {text} ..."
@@ -121,4 +114,9 @@ async def handle_business_message(
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
     await state.set_state(UserFlow.waiting_for_agreement)
 
-
+    # Сохраняем данные пользователя при первом сообщении
+    await spreadsheet.add_new_buyer(
+        username=username,
+        telegram_id=telegram_id,
+        nm_id=nm_id
+    )

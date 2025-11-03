@@ -1,20 +1,26 @@
-import asyncio
 import re
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import Any, Dict, List, Optional
 from google.oauth2.service_account import Credentials
 from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
-from gspread.utils import rowcol_to_a1
-import json
+from redis.asyncio import Redis
+
+import logging
 
 class GoogleSheetClass:
     """⚡ Быстрое асинхронное взаимодействие с Google Sheets с кэшами и пакетными апдейтами."""
-    def __init__(self, service_account_json: str, table_url: str, buyers_sheet_name: str):
-        self.service_account_json = service_account_json
+    def __init__(
+        self, 
+        service_account_json: str,
+        table_url: str, 
+        buyers_sheet_name: str,
+        redis_client: Redis
+    ):
+        # Авторизация и получение объекта листа
         self.table_url = table_url
-        self.BUYERS_SHEET_NAME = buyers_sheet_name
-        
+        self.buyers_sheet_name = buyers_sheet_name
+        self.service_account_json = service_account_json
         # ✅ Загружаем JSON сразу при инициализации
         with open(self.service_account_json, "r") as f:
             self.service_account_info = json.load(f)
@@ -30,207 +36,152 @@ class GoogleSheetClass:
         )
 
         # ✅ Передаём функцию, возвращающую эти креды
-        self._agcm = AsyncioGspreadClientManager(lambda: self._creds)
-        self._client = None
-        self._spreadsheet_cache: Optional[AsyncioGspreadSpreadsheet] = None
+        self.agcm = AsyncioGspreadClientManager(lambda: self._creds)
+        self.client = None
+        self.spreadsheet = None
+        self.sheet = None
 
-        # Кэши
-        self._header_cache: dict[str, list[str]] = {}
-        self._row_index_cache: dict[str, dict[str, int]] = {}
-
-        # Очередь для фоновых обновлений
-        self._update_queue: asyncio.Queue = asyncio.Queue()
-        self._background_task = None
+        self.header_row = None 
+        self._header_cache = None
+        
+        # redis
+        self.redis = redis_client
+        self.redis_key = "user_row_position_in_google_sheets"
     
-    # === Авторизация и кэширование ===
-    async def _get_client(self):
-        if self._client is None:
-            self._client = await self._agcm.authorize()
-        return self._client
+    async def get_client(self):
+        if self.client is None:
+            self.client = await self.agcm.authorize()
+        return self.client
 
-    async def _get_spreadsheet(self) -> AsyncioGspreadSpreadsheet:
-        if not self._spreadsheet_cache:
-            client = await self._get_client()
-            self._spreadsheet_cache = await client.open_by_url(self.table_url)
-        return self._spreadsheet_cache
-
-    async def _get_sheet(self, sheet_name: Optional[str] = None):
-        spreadsheet = await self._get_spreadsheet()
-        return await spreadsheet.worksheet(sheet_name or self.BUYERS_SHEET_NAME)
-
+    async def get_spreadsheet(self) -> AsyncioGspreadSpreadsheet:
+        if self.spreadsheet is None:
+            client = await self.get_client()
+            self.spreadsheet = await client.open_by_url(self.table_url)
+        return self.spreadsheet
     
-    # === Кэширование заголовков и индексов ===
-    async def _get_header(self, sheet) -> list[str]:
-        if sheet.title not in self._header_cache:
-            header = await sheet.row_values(1)
-            self._header_cache[sheet.title] = header
-        return self._header_cache[sheet.title]
-
-    async def _build_row_index_cache(self, sheet) -> dict[str, int]:
-        all_rows = await sheet.get_all_values()
-        mapping = {}
-        for i, row in enumerate(all_rows[1:], start=2):
-            if len(row) > 1 and row[1]:
-                mapping[row[1]] = i
-        self._row_index_cache[sheet.title] = mapping
-        return mapping
-
-    async def _get_row_index(self, sheet, telegram_id: int) -> Optional[int]:
-        cache = self._row_index_cache.get(sheet.title)
-        if not cache:
-            cache = await self._build_row_index_cache(sheet)
-        return cache.get(str(telegram_id))
+    async def get_sheet(self):
+        if self.sheet is None:
+            self.sheet = await self.spreadsheet.worksheet(self.buyers_sheet_name)
+            self.header_row = await self.sheet.row_values(1)
+            self._header_cache = {header: idx + 1 for idx, header in enumerate(self.header_row)}
+        return self.sheet 
     
     # === Утилиты ===
     @staticmethod
     def _get_now_str() -> str:
-        return datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S")
+        return str(datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S"))
     
-    # === Основные операции ===
+    async def get_user_row(self, telegram_id: int) -> int:
+        """Возвращает индекс строки из Redis или ищет в таблице, если в кэше нет."""
+        key = f"{self.redis_key}:{telegram_id}"
+        row_index = await self.redis.get(key)
+        if row_index:
+            return int(row_index)
 
-    async def add_new_buyer(
-        self,
-        sheet_name: str,
-        username: str,
-        telegram_id: int,
-        nm_id: str,
-        status_agree: str = "None",
-        status_subscribe_to_channel: str = "None",
-        status_order: str = "None",
-        status_order_received: str = "None",
-        status_feedback: str = "None",
-        status_shk: str = "None",
-        requisites: str = "None",
-        phone_number: str = "None",
-        bank: str = "None",
-        amount: str = "None",
-        paid: str = "None",
-    ) -> None:
-        sheet = await self._get_sheet(sheet_name)
+        # ❌ Если нет в Redis — ищем в таблице
+        sheet = self.sheet or await self.get_sheet()
+        cell = await sheet.find(str(telegram_id))
+        row_index = cell.row
+
+        # ✅ Сохраняем в Redis
+        await self.redis.set(key, row_index)
+        return row_index 
+  
+    # === Основные операции ===
+    async def add_new_buyer(self, username: str, telegram_id: int, nm_id: int) -> None:
+        sheet = self.sheet or await self.get_sheet()
+        new_row = [''] * len(self._header_cache)
+        
         now = self._get_now_str()
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
 
-        new_row = [
-            user_link,
-            str(telegram_id),
-            now,
-            now,
-            nm_id,
-            status_agree,
-            status_subscribe_to_channel,
-            status_order,
-            status_order_received,
-            status_feedback,
-            status_shk,
-            requisites,
-            phone_number,
-            bank,
-            amount,
-            paid,
-        ]
-        await sheet.append_row(new_row, value_input_option="USER_ENTERED")
+        new_row[0] = user_link # ссылка на ник
+        new_row[1] = str(telegram_id) # telegram_Id
+        new_row[2] = now # дата первого сообщения
+        new_row[3] = now # дата последнего сообщения
+        new_row[4] = str(nm_id) # артикул
 
-        # обновляем кэш строки
-        if sheet.title in self._row_index_cache:
-            self._row_index_cache[sheet.title][str(telegram_id)] = len(self._row_index_cache[sheet.title]) + 2
+        await sheet.append_row(new_row)  
 
-        print(f"[INFO] Added new buyer {telegram_id}")
-
-    async def delete_row(self, telegram_id: int) -> None:
-        sheet = await self._get_sheet()
-        row_index = await self._get_row_index(sheet, telegram_id)
-        if not row_index:
-            print(f"[WARN] User {telegram_id} not found!")
-            return
-        await sheet.delete_rows(row_index)
-        self._row_index_cache.get(sheet.title, {}).pop(str(telegram_id), None)
-        print(f"[INFO] Deleted row for {telegram_id}")
-
+        # После добавления — найти строку юзера в гугл-таблице и сохранить в Redis в кэш 
+        cell = await sheet.find(str(telegram_id))
+        await self.redis.set(f"{self.redis_key}:{telegram_id}", cell.row)
+    
     # === Быстрое обновление статусов ===
     async def update_buyer_last_time_message(self, telegram_id: int) -> None:
-        """Быстрое обновление колонки 'последнее сообщение'."""
-        sheet = await self._get_sheet()
-        header = await self._get_header(sheet)
-        row_index = await self._get_row_index(sheet, telegram_id)
-        if not row_index:
-            print(f"[WARN] User {telegram_id} not found!")
-            return
-        now = self._get_now_str()
-        await sheet.batch_update([{
-            "range": rowcol_to_a1(row_index, 4),
-            "values": [[now]]
-        }])
-        print(f"[INFO] Updated last message for {telegram_id} → {now}")
-    
+        sheet = self.sheet or await self.get_sheet()
+        row_index = await self.get_user_row(telegram_id)
+        col_index = self._header_cache.get('Дата последнего сообщения')
+        await sheet.update_cell(row_index, col_index, self._get_now_str())
+
+
     async def update_buyer_button_status(
         self,
-        sheet_name: str,
         telegram_id: int,
         button_name: str,
         value: str,
     ) -> None:
-        sheet = await self._get_sheet(sheet_name)
-        header = await self._get_header(sheet)
-        row_index = await self._get_row_index(sheet, telegram_id)
-        if not row_index:
-            print(f"[WARN] User {telegram_id} not found!")
-            return
+        sheet = self.sheet or await self.get_sheet()
+        # Маппинг логических имён на реальные заголовки
+        button_to_column = {
+            "agree": "Условия", 
+            "subscribe": "Подписка на канал",
+            "order": "Заказ сделан",
+            "receive": "Заказ получен",
+            "feedback": "Отзыв оставлен",
+            "shk": "ШК разрезаны", 
+            "requisites": "Номер карты", 
+            "phone_number": "Номер телефона", 
+            "bank": "Банк", 
+            "amount": "Сумма,₽",
+            "photo_order": "Скрин заказа",
+            "photo_shk": "Фото разрезанных ШК"
+        }
+        column_name = button_to_column.get(button_name)
+        row_index = await self.get_user_row(telegram_id)
+        col_index = self._header_cache[column_name]
+        await sheet.update_cell(row_index, col_index, value)
+   
+    async def write_requisites_into_google_sheets(
+        self,
+        telegram_id: int,
+        card_number: str,
+        phone_number: str,
+        bank: str,
+        amount: str,
+    ) -> None:
+        """Обновляет реквизиты (карта, сумма, телефон, банк) одной операцией."""
+        sheet = self.sheet or await self.get_sheet()
+        row_index = await self.get_user_row(telegram_id)
 
-        col_map = [
-            "agree", "subscribe", "order", "receive",
-            "feedback", "shk", "requisites", "phone_number", "bank", "amount"
-        ]
-        new_col_map = {k: header[i + 5] for i, k in enumerate(col_map) if i + 5 < len(header)}
-        col_name = new_col_map.get(button_name)
-        if not col_name:
-            print(f"[WARN] Unknown button_name: {button_name}")
-            return
+        # Маппинг из логических имен в заголовки
+        fields = {
+            "Номер карты": card_number or '-',
+            "Номер телефона": phone_number or '-',
+            "Банк": bank or '-',
+            "Сумма,₽": amount or '-',
+        }
 
-        if col_name not in header:
-            print(f"[WARN] Column '{col_name}' not found.")
-            return
-
-        col_index = header.index(col_name) + 1
-        now = self._get_now_str()
-
-        # Добавляем обновление в очередь
-        await self._update_queue.put((
-            sheet,
-            [
-                {"range": rowcol_to_a1(row_index, col_index), "values": [[value]]},
-                {"range": rowcol_to_a1(row_index, 4), "values": [[now]]},
-            ],
-        ))
-
-        # Если фоновая задача ещё не запущена — запускаем
-        if not self._background_task or self._background_task.done():
-            self._background_task = asyncio.create_task(self._background_updater())
-
-    async def _background_updater(self):
-        """Периодически отправляет пакет обновлений в Google Sheets."""
-        await asyncio.sleep(0.5)  # даём возможность накопиться изменениям
-        updates_by_sheet: dict[Any, list[dict]] = {}
-
-        while not self._update_queue.empty():
-            sheet, updates = await self._update_queue.get()
-            updates_by_sheet.setdefault(sheet, []).extend(updates)
-
-        # Отправляем обновления пакетами
-        for sheet, updates in updates_by_sheet.items():
-            try:
-                await sheet.batch_update(updates)
-                print(f"[BATCH] Updated {len(updates)} cells on '{sheet.title}'")
-            except Exception as e:
-                print(f"[ERROR] Batch update failed on {sheet.title}: {e}")
-
-    # === Прочие методы ===
+        # Подготавливаем все апдейты для batch_update
+        updates = []
+        for column_name, value in fields.items():
+            col_index = self._header_cache[column_name]
+            # Конвертация номера столбца в букву (например 14 → N)
+            col_letter = chr(64 + col_index)
+            cell_range = f"{col_letter}{row_index}"
+            updates.append({"range": cell_range, "values": [[value]]})
+        logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {card_number}, {phone_number}, {bank}, {amount}")
+        # Один батч-запрос к API
+        await sheet.batch_update(updates)
+    
+    # === Other methods ===
     async def get_nm_id(self, sheet_articles: str) -> str:
-        sheet = await (await self._get_spreadsheet()).worksheet(sheet_articles)
+        sheet = await (await self.get_spreadsheet()).worksheet(sheet_articles)
         nm_id_cell = await sheet.acell("A2")
         return nm_id_cell.value
 
     async def get_instruction(self, sheet_instruction: str, nm_id: str) -> str:
-        sheet = await (await self._get_spreadsheet()).worksheet(sheet_instruction)
+        sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
         instruction_cell = await sheet.acell("A1")
         instruction_str = instruction_cell.value
 

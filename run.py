@@ -25,20 +25,32 @@ from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 async def main():
     load_dotenv()
     TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN_STR")
-    SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON_STR")
-    GOOGLE_SHEETS_URL = os.getenv("GOOGLE_SHEETS_URL_STR")
-    BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
+
+    # Redis storage
+    REDIS_URL = os.getenv("REDIS_URL")
+    REDIS_KEY_SET_TELEGRAM_IDS = os.getenv("REDIS_KEY_SET_TELEGRAM_IDS")
     
-    spreadsheet = GoogleSheetClass(
-        service_account_json=SERVICE_ACCOUNT_JSON, 
-        table_url=GOOGLE_SHEETS_URL,
-        buyers_sheet_name=BUYERS_SHEET_NAME
-    )
+
+    redis = await asyncredis.from_url(REDIS_URL)
+    storage = RedisStorage(redis) 
     
     ARTICLES_SHEET = os.getenv("ARTICLES_SHEET_STR")
     INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
 
+
+
+    SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON_STR")
+    GOOGLE_SHEETS_URL_STR = os.getenv("GOOGLE_SHEETS_URL_STR")
+    BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
+    
+    spreadsheet = GoogleSheetClass(
+        service_account_json=SERVICE_ACCOUNT_JSON, 
+        table_url=GOOGLE_SHEETS_URL_STR,
+        buyers_sheet_name=BUYERS_SHEET_NAME,
+        redis_client=redis
+    )
+    
     nm_id = await spreadsheet.get_nm_id(ARTICLES_SHEET)
     instruction_str = await spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
 
@@ -58,13 +70,6 @@ async def main():
         temperature=GPT_TEMPERATURE
     )
 
-    # Redis storage
-    REDIS_URL = os.getenv("REDIS_URL")
-    REDIS_KEY_SET_TELEGRAM_IDS = os.getenv("REDIS_KEY_SET_TELEGRAM_IDS")
-    
-
-    redis = await asyncredis.from_url(REDIS_URL)
-    storage = RedisStorage(redis) 
     
     bot = Bot(token=TG_BOT_TOKEN)
     dp = Dispatcher(storage=storage)

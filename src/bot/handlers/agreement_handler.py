@@ -25,7 +25,6 @@ async def handle_agreement(
     value = "Да" if callback.data == "agree_yes" else "Нет"
 
     await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name="agree",
         value=value
@@ -46,7 +45,6 @@ async def handle_agreement(
 
                 # обновляем статус в таблице
                 await spreadsheet.update_buyer_button_status(
-                    sheet_name=BUYERS_SHEET_NAME, 
                     telegram_id=telegram_id, 
                     button_name="subscribe", 
                     value="Да"

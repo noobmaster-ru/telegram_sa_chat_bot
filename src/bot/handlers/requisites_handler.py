@@ -51,7 +51,7 @@ async def handle_requisites_message(
     """
     
     telegram_id = message.from_user.id
-    text = message.text.strip() if message.text else "(без текста)"
+    text = message.text.strip()
 
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
@@ -90,7 +90,7 @@ async def handle_requisites_message(
     phone = data.get("phone_number")
     amt = data.get("amount")
     bank_name = data.get("bank")
-    logging.info(f"telegram_id = {telegram_id}, card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
+    logging.info(f"  user: {telegram_id} gave requisites: card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
     
     # если банк, карта, телефон и сумма
     if bank_name and card_number and  phone_number and amt:
@@ -133,7 +133,7 @@ async def handle_requisites_message(
     if not bank_name and card_number and not phone_number and not amt:
         await message.answer(
             f"📩 Получены реквизиты:\n"
-            f"Номер телефона: `{phone}`\n\n"
+            f"Номер карты: `{card_number}`\n\n"
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
@@ -181,6 +181,19 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             )  
         await state.set_state(UserFlow.waiting_for_amount)
+        return
+    
+
+    # если только cумма и банк
+    if not phone and not card_number and bank_name and amt:
+        await message.answer(
+            f"📩 Получены реквизиты:\n"
+            f"Банк: `{bank}`\n"
+            f"Сумма: `{amt}`\n\n"
+           f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
+            parse_mode="Markdown"
+        )  
+        await state.set_state(UserFlow.waiting_for_card_or_phone_number)
         return
     
     # если нет суммы платежа
@@ -494,6 +507,7 @@ async def confirm_requisites_no(callback: CallbackQuery, state: FSMContext):
     """
     Пользователь указал, что реквизиты неверные — начинаем ввод заново.
     """
+    await callback.answer()
     await state.clear()
     await state.set_state(UserFlow.waiting_for_requisites)
     await callback.message.edit_text(
@@ -509,39 +523,22 @@ async def confirm_requisites_yes(
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
 ):
+    await callback.answer()
     """
     Пользователь указал, что реквизиты верные — сохраняем их в гугл таблицу и очищаем состояние.
     """
     data = await state.get_data()
     telegram_id = callback.from_user.id
 
-    tasks = [
-        spreadsheet.update_buyer_button_status(
-            sheet_name=BUYERS_SHEET_NAME,
-            telegram_id=telegram_id,
-            button_name="requisites",
-            value=data.get('card_number', '-')
-        ),
-        spreadsheet.update_buyer_button_status(
-            sheet_name=BUYERS_SHEET_NAME,
-            telegram_id=telegram_id,
-            button_name="amount",
-            value=data.get('amount', '-')
-        ),
-        spreadsheet.update_buyer_button_status(
-            sheet_name=BUYERS_SHEET_NAME,
-            telegram_id=telegram_id,
-            button_name="phone_number",
-            value=data.get('phone_number', '-')
-        ),
-        spreadsheet.update_buyer_button_status(
-            sheet_name=BUYERS_SHEET_NAME,
-            telegram_id=telegram_id,
-            button_name="bank",
-            value=data.get('bank', '-')
-        )
-    ]
-    await asyncio.gather(*tasks)
+
+    await spreadsheet.write_requisites_into_google_sheets(
+        telegram_id=telegram_id,
+        card_number=data.get('card_number', '-'),
+        phone_number=data.get('phone_number','-'),
+        bank=data.get('bank','-'),
+        amount=data.get('amount','-'),
+    )
+
     await state.set_state(UserFlow.continue_dialog)
     await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"

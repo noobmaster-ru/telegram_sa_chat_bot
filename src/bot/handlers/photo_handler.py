@@ -7,7 +7,7 @@ from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.states.user_flow import UserFlow
 
-
+from aiogram.filters import StateFilter
 router = Router()
 
 
@@ -23,6 +23,8 @@ async def handle_photo(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     ADMIN_ID_LIST: list,
+    nm_id: str,
+    CHANNEL_USERNAME: str
 ):
     user_data = await state.get_data()
     telegram_id = message.from_user.id
@@ -51,7 +53,53 @@ async def handle_photo(
         )
     # other type
     else:
-        await message.edit_text("⚠️ Неизвестный тип фото. Пожалуйста, следуйте инструкциям.")
+        await message.answer("Пожалуйста, следуйте инструкциям.")
+        current_state = await state.get_state() 
+        if current_state == UserFlow.waiting_for_agreement:
+            await message.answer(
+                "Согласны на условия?",
+                reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
+            )
+            await state.set_state(UserFlow.waiting_for_agreement)
+        elif current_state == UserFlow.waiting_for_subcription_to_channel:
+            # Не подписан
+            await message.edit_text(
+                "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
+                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
+            )
+            await state.set_state(UserFlow.waiting_for_subcription_to_channel)
+        elif current_state == UserFlow.waiting_for_order:
+            # 👉 Начинаем пошаговый диалог
+            await message.edit_text(
+                f"📦 Вы заказали товар {nm_id}?", 
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+            )
+            await state.set_state(UserFlow.waiting_for_order)
+        elif current_state == UserFlow.waiting_for_order_receive:
+            await message.edit_text(
+                f"📬 Вы получили товар {nm_id}?", 
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
+            )
+            await state.set_state(UserFlow.waiting_for_order_receive)
+        elif current_state == UserFlow.waiting_for_feedback:
+            # ✅ Следующий вопрос
+            await message.edit_text(
+                f"💬 Вы оставили отзыв на {nm_id}?", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
+            )
+            await state.set_state(UserFlow.waiting_for_feedback)
+        # current_state == UserFlow.waiting_for_shk:
+        elif current_state == UserFlow.waiting_for_shk:
+            # ✅ Следующий вопрос
+            await message.edit_text(
+                f"✂️ ШК разрезали на {nm_id}?", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+            )
+            await state.set_state(UserFlow.waiting_for_shk)
+        else:
+            await message.answer("Отлично!")
+            await state.set_state(UserFlow.waiting_for_requisites)
 
 # ==== Обработка кнопок Да/Нет для фото заказа ====
 @router.callback_query(F.data.startswith("photo_order_"))
@@ -59,12 +107,20 @@ async def handle_photo_order(
     callback: CallbackQuery,
     state: FSMContext,
     CHANNEL_USERNAME: str,
-    nm_id: str
+    nm_id: str,
+    spreadsheet: GoogleSheetClass
 ):
     answer = "yes" if callback.data.endswith("yes") else "no"
-
+    telegram_id = callback.from_user.id
     if answer == "yes":
         await callback.message.edit_text("✅ Фото заказа принято!")
+
+        await spreadsheet.update_buyer_button_status(
+            telegram_id=telegram_id,
+            button_name="photo_order",
+            value="Да"
+        )
+
         # теперь ждём фото ШК
         await state.update_data(photo_type="shk")
         current_state = await state.get_state() 
@@ -103,13 +159,16 @@ async def handle_photo_order(
             )
             await state.set_state(UserFlow.waiting_for_feedback)
         # current_state == UserFlow.waiting_for_shk:
-        else:
+        elif current_state == UserFlow.waiting_for_shk:
             # ✅ Следующий вопрос
             await callback.message.edit_text(
                 f"✂️ ШК разрезали на {nm_id}?", 
                 reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
             )
             await state.set_state(UserFlow.waiting_for_shk)
+        else:
+            await callback.message.answer("Отлично!")
+            await state.set_state(UserFlow.waiting_for_requisites)
     else:
         try:
             await callback.message.edit_text("❌ Фото заказа не принято. Попробуйте прислать корректное фото.")
@@ -124,12 +183,18 @@ async def handle_photo_shk(
     callback: CallbackQuery, 
     state: FSMContext,
     CHANNEL_USERNAME: str,
-    nm_id: str
+    nm_id: str,
+    spreadsheet: GoogleSheetClass
 ):
     answer = "yes" if callback.data.endswith("yes") else "no"
-
+    telegram_id = callback.from_user.id
     if answer == "yes":
         await callback.message.edit_text("✅ Фото разрезанного ШК принято!")
+        await spreadsheet.update_buyer_button_status(
+            telegram_id=telegram_id,
+            button_name="photo_shk",
+            value="Да"
+        )
         await state.update_data(photo_type="other_type")
         # теперь ждём фото ШК
         current_state = await state.get_state() 
@@ -165,13 +230,16 @@ async def handle_photo_shk(
             )
             await state.set_state(UserFlow.waiting_for_feedback)
         # current_state == UserFlow.waiting_for_shk:
-        else:
+        elif current_state == UserFlow.waiting_for_shk:
             # ✅ Следующий вопрос
             await callback.message.edit_text(
                 f"✂️ ШК разрезали на {nm_id}?", 
                 reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
             )
             await state.set_state(UserFlow.waiting_for_shk)
+        else:
+            await callback.message.answer("Отлично!")
+            await state.set_state(UserFlow.waiting_for_requisites)
     else:
         try:
             await callback.message.edit_text("❌ Фото ШК не принято. Попробуйте прислать корректное фото.")

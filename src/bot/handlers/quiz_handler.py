@@ -19,6 +19,7 @@ async def handle_order_answer(
     state: FSMContext,
     nm_id: str
 ):
+    await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
@@ -28,7 +29,6 @@ async def handle_order_answer(
 
     # сохраняем ответ в гугл-таблицу
     await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name=key,
         value=value
@@ -64,6 +64,7 @@ async def handle_receive_answer(
     state: FSMContext,
     nm_id: str
 ):
+    await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
@@ -74,7 +75,6 @@ async def handle_receive_answer(
 
     # сохраняем ответ в гугл-таблицу
     await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name=key,
         value=value
@@ -111,6 +111,7 @@ async def handle_feedback_answer(
     state: FSMContext,
     nm_id: str
 ):
+    await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
@@ -121,7 +122,6 @@ async def handle_feedback_answer(
 
     # сохраняем ответ в гугл-таблицу
     await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name=key,
         value=value
@@ -158,6 +158,7 @@ async def handle_shk_answer(
     state: FSMContext,
     nm_id: str
 ):
+    await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
@@ -168,7 +169,6 @@ async def handle_shk_answer(
 
     # сохраняем ответ в гугл-таблицу
     await spreadsheet.update_buyer_button_status(
-        sheet_name=BUYERS_SHEET_NAME,
         telegram_id=telegram_id,
         button_name=key,
         value=value
