@@ -18,18 +18,20 @@ async def handle_subscription(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
-    CHANNEL_USERNAME: str,
-    nm_id: str
+    CHANNEL_USERNAME: str
 ):
     telegram_id = callback.from_user.id
     value = "Да" if callback.data == "subscribe_yes" else "Нет"
 
-    await spreadsheet.update_buyer_button_status(
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
+    
+    await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name="subscribe",
-        value=value
+        value=value,
+        is_tap_to_keyboard=True
     )
-
     if callback.data == "subscribe_yes":
         # Проверяем подписку
         try:

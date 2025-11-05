@@ -17,7 +17,6 @@ async def handle_order_answer(
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
     state: FSMContext,
-    nm_id: str
 ):
     await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
@@ -27,13 +26,16 @@ async def handle_order_answer(
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
 
-    # сохраняем ответ в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
+    
+
+    await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name=key,
-        value=value
+        value=value,
+        is_tap_to_keyboard=True
     )
-
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
         try:
@@ -62,7 +64,6 @@ async def handle_receive_answer(
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
     state: FSMContext,
-    nm_id: str
 ):
     await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
@@ -72,14 +73,18 @@ async def handle_receive_answer(
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
 
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
+    
 
-    # сохраняем ответ в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
+    
+ 
+    await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name=key,
-        value=value
+        value=value,
+        is_tap_to_keyboard=True
     )
-
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
         try:
@@ -109,7 +114,6 @@ async def handle_feedback_answer(
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
     state: FSMContext,
-    nm_id: str
 ):
     await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
@@ -118,15 +122,16 @@ async def handle_feedback_answer(
 
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
+    
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
 
-
-    # сохраняем ответ в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name=key,
-        value=value
+        value=value,
+        is_tap_to_keyboard=True
     )
-
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
         try:
@@ -156,7 +161,6 @@ async def handle_shk_answer(
     spreadsheet: GoogleSheetClass, 
     BUYERS_SHEET_NAME: str,
     state: FSMContext,
-    nm_id: str
 ):
     await callback.answer()
     """Обработка нажатия кнопок Да/Нет"""
@@ -165,14 +169,17 @@ async def handle_shk_answer(
 
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
+    
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
 
-
-    # сохраняем ответ в гугл-таблицу
-    await spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name=key,
-        value=value
-    )
+        value=value,
+        is_tap_to_keyboard=True
+    )  
+    
 
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":

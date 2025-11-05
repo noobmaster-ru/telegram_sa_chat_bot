@@ -23,16 +23,19 @@ async def handle_photo(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     ADMIN_ID_LIST: list,
-    nm_id: str,
     CHANNEL_USERNAME: str
 ):
     user_data = await state.get_data()
     telegram_id = message.from_user.id
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
-
+    nm_id = user_data.get("nm_id")
     
+
     # обновляем время последнего сообщения
-    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=False
+    )
     
     if photo_type == "order":
         # спрашиваем подтверждение, что это фото заказа
@@ -107,19 +110,23 @@ async def handle_photo_order(
     callback: CallbackQuery,
     state: FSMContext,
     CHANNEL_USERNAME: str,
-    nm_id: str,
     spreadsheet: GoogleSheetClass
 ):
-    answer = "yes" if callback.data.endswith("yes") else "no"
+    answer = "Да" if callback.data.endswith("yes") else "Нет"
     telegram_id = callback.from_user.id
-    if answer == "yes":
-        await callback.message.edit_text("✅ Фото заказа принято!")
+    data = await state.get_data()
+    nm_id = data.get("nm_id")
 
-        await spreadsheet.update_buyer_button_status(
-            telegram_id=telegram_id,
-            button_name="photo_order",
-            value="Да"
-        )
+    
+    await spreadsheet.update_buyer_button_and_time(
+        telegram_id=telegram_id,
+        button_name="photo_order",
+        value=answer,
+        is_tap_to_keyboard=True
+    )
+    
+    if answer == "Да":
+        await callback.message.edit_text("✅ Фото заказа принято!")
 
         # теперь ждём фото ШК
         await state.update_data(photo_type="shk")
@@ -183,18 +190,23 @@ async def handle_photo_shk(
     callback: CallbackQuery, 
     state: FSMContext,
     CHANNEL_USERNAME: str,
-    nm_id: str,
     spreadsheet: GoogleSheetClass
 ):
-    answer = "yes" if callback.data.endswith("yes") else "no"
+    answer = "Да" if callback.data.endswith("yes") else "Нет"
     telegram_id = callback.from_user.id
-    if answer == "yes":
+    data = await state.get_data()
+    nm_id = data.get("nm_id")
+
+    
+    await spreadsheet.update_buyer_button_and_time(
+        telegram_id=telegram_id,
+        button_name="photo_shk",
+        value=answer,
+        is_tap_to_keyboard=True
+    )
+    
+    if answer == "Да":
         await callback.message.edit_text("✅ Фото разрезанного ШК принято!")
-        await spreadsheet.update_buyer_button_status(
-            telegram_id=telegram_id,
-            button_name="photo_shk",
-            value="Да"
-        )
         await state.update_data(photo_type="other_type")
         # теперь ждём фото ШК
         current_state = await state.get_state() 

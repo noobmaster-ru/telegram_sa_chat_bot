@@ -24,53 +24,63 @@ from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 
 async def main():
     load_dotenv()
+    # Telegram
     TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN_STR")
-
+    CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
+    
     # Redis storage
     REDIS_URL = os.getenv("REDIS_URL")
+    REDIS_KEY_NM_IDS_ORDERED_LIST=os.getenv("REDIS_KEY_NM_IDS_ORDERED_LIST")
     REDIS_KEY_SET_TELEGRAM_IDS = os.getenv("REDIS_KEY_SET_TELEGRAM_IDS")
+    REDIS_KEY_USER_ROW_POSITION_STRING = os.getenv("REDIS_KEY_USER_ROW_POSITION_STRING")
+    REDIS_KEY_NM_IDS_REMAINS_HASH = os.getenv("REDIS_KEY_NM_IDS_REMAINS_HASH")
     
-
     redis = await asyncredis.from_url(REDIS_URL)
     storage = RedisStorage(redis) 
     
-    ARTICLES_SHEET = os.getenv("ARTICLES_SHEET_STR")
-    INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
-    CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
 
-
-
+    # Google Sheets
     SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON_STR")
     GOOGLE_SHEETS_URL_STR = os.getenv("GOOGLE_SHEETS_URL_STR")
+    
+    ARTICLES_SHEET = os.getenv("ARTICLES_SHEET_STR")
     BUYERS_SHEET_NAME = os.getenv("BUYERS_SHEET_NAME_STR")
+    INSTRUCTION_SHEET_NAME = os.getenv("INSTRUCTION_SHEET_NAME_STR")
     
     spreadsheet = GoogleSheetClass(
         service_account_json=SERVICE_ACCOUNT_JSON, 
         table_url=GOOGLE_SHEETS_URL_STR,
         buyers_sheet_name=BUYERS_SHEET_NAME,
-        redis_client=redis
+        redis_client=redis,
+        REDIS_KEY_USER_ROW_POSITION_STRING=REDIS_KEY_USER_ROW_POSITION_STRING,
+        REDIS_KEY_NM_IDS_ORDERED_LIST=REDIS_KEY_NM_IDS_ORDERED_LIST
     )
-    
-    nm_id = await spreadsheet.get_nm_id(ARTICLES_SHEET)
-    instruction_str = await spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, nm_id)
+    # загружаем данные по артикулам из google_sheets в redis
+    await spreadsheet.load_nm_ids_and_amounts_to_redis(
+        ARTICLES_SHEET,
+        REDIS_KEY_NM_IDS_ORDERED_LIST,
+        REDIS_KEY_NM_IDS_REMAINS_HASH
+    )
 
-    # создаём экземпляр класса OpenAiRequestClass
+    # Open AI
     GPT_MODEL_NAME_STR = os.getenv("GPT_MODEL_NAME_STR")
     OPENAI_API_KEY = os.getenv("OPENAI_TOKEN_STR")
     PROXY = os.getenv("PROXY")
     MAX_TOKENS = int(os.getenv("GPT_MAX_TOKENS"))
     GPT_TEMPERATURE = float(os.getenv("GPT_TEMPERATURE"))
     
+    instruction_template = await spreadsheet.get_instruction_template(INSTRUCTION_SHEET_NAME)
+    
     client_gpt_5 = OpenAiRequestClass(
         OPENAI_API_KEY=OPENAI_API_KEY, 
         GPT_MODEL_NAME_STR=GPT_MODEL_NAME_STR, 
         PROXY=PROXY,
-        instruction_str=instruction_str,
+        instruction_template=instruction_template,
         max_tokens=MAX_TOKENS,
         temperature=GPT_TEMPERATURE
     )
 
-    
+    # ============ START =============
     bot = Bot(token=TG_BOT_TOKEN)
     dp = Dispatcher(storage=storage)
     
@@ -79,19 +89,20 @@ async def main():
     dp.business_message.middleware(middleware_check_redis)
     dp.callback_query.middleware(middleware_check_redis)
 
+
     ADMIN_ID_LIST = [694144143, 547299317]
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
-            "instruction_str": instruction_str,
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
-            "nm_id": nm_id,
+            "INSTRUCTION_SHEET_NAME": INSTRUCTION_SHEET_NAME,
             "CHANNEL_USERNAME": CHANNEL_USERNAME,
             "ADMIN_ID_LIST": ADMIN_ID_LIST,
             "client_gpt_5": client_gpt_5,
             "redis": redis,
-            "REDIS_KEY_SET_USERS_ID": REDIS_KEY_SET_TELEGRAM_IDS
+            "REDIS_KEY_NM_IDS_ORDERED_LIST": REDIS_KEY_NM_IDS_ORDERED_LIST,
+            "REDIS_KEY_NM_IDS_REMAINS_HASH": REDIS_KEY_NM_IDS_REMAINS_HASH
         }
     )
     #роутер, который ловит все текстовые сообщения

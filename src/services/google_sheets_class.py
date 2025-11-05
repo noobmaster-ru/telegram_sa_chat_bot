@@ -15,7 +15,9 @@ class GoogleSheetClass:
         service_account_json: str,
         table_url: str, 
         buyers_sheet_name: str,
-        redis_client: Redis
+        redis_client: Redis,
+        REDIS_KEY_USER_ROW_POSITION_STRING: str,
+        REDIS_KEY_NM_IDS_ORDERED_LIST: str
     ):
         # Авторизация и получение объекта листа
         self.table_url = table_url
@@ -44,9 +46,14 @@ class GoogleSheetClass:
         self.header_row = None 
         self._header_cache = None
         
+        # названия столбцов: "Последнее сообщение", "Последнее нажатие на кнопку"
+        self.last_message_column_name = None
+        self.last_tap_column_name = None
+        
         # redis
         self.redis = redis_client
-        self.redis_key = "user_row_position_in_google_sheets"
+        self.REDIS_KEY_USER_ROW_POSITION_STRING = REDIS_KEY_USER_ROW_POSITION_STRING
+        self.REDIS_KEY_NM_IDS_ORDERED_LIST = REDIS_KEY_NM_IDS_ORDERED_LIST
     
     async def get_client(self):
         if self.client is None:
@@ -63,6 +70,9 @@ class GoogleSheetClass:
         if self.sheet is None:
             self.sheet = await self.spreadsheet.worksheet(self.buyers_sheet_name)
             self.header_row = await self.sheet.row_values(1)
+            # запишем в класс названия столбцов некоторых, чтобы облечить прод
+            self.last_message_column_name = self.header_row[4]
+            self.last_tap_column_name = self.header_row[5]
             self._header_cache = {header: idx + 1 for idx, header in enumerate(self.header_row)}
         return self.sheet 
     
@@ -73,7 +83,7 @@ class GoogleSheetClass:
     
     async def get_user_row(self, telegram_id: int) -> int:
         """Возвращает индекс строки из Redis или ищет в таблице, если в кэше нет."""
-        key = f"{self.redis_key}:{telegram_id}"
+        key = f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{telegram_id}"
         row_index = await self.redis.get(key)
         if row_index:
             return int(row_index)
@@ -88,7 +98,7 @@ class GoogleSheetClass:
         return row_index 
   
     # === Основные операции ===
-    async def add_new_buyer(self, username: str, telegram_id: int, nm_id: int) -> None:
+    async def add_new_buyer(self, username: str, full_name: str, telegram_id: int, nm_id: int) -> None:
         sheet = self.sheet or await self.get_sheet()
         new_row = [''] * len(self._header_cache)
         
@@ -97,31 +107,39 @@ class GoogleSheetClass:
 
         new_row[0] = user_link # ссылка на ник
         new_row[1] = str(telegram_id) # telegram_Id
-        new_row[2] = now # дата первого сообщения
-        new_row[3] = now # дата последнего сообщения
-        new_row[4] = str(nm_id) # артикул
+        new_row[2] = str(full_name) # полное имя юзера
+        new_row[3] = now # дата первого сообщения
+        new_row[4] = now # дата последнего сообщения
+        new_row[5] = '' # дата последнего нажатия на кнопку
+        new_row[6] = str(nm_id) # артикул
 
         await sheet.append_row(new_row)  
 
         # После добавления — найти строку юзера в гугл-таблице и сохранить в Redis в кэш 
         cell = await sheet.find(str(telegram_id))
-        await self.redis.set(f"{self.redis_key}:{telegram_id}", cell.row)
+        await self.redis.set(f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{telegram_id}", cell.row)
     
     # === Быстрое обновление статусов ===
-    async def update_buyer_last_time_message(self, telegram_id: int) -> None:
+    async def update_buyer_last_time_message(
+        self, 
+        telegram_id: int,
+        is_tap_to_keyboard: bool
+    ) -> None:
         sheet = self.sheet or await self.get_sheet()
         row_index = await self.get_user_row(telegram_id)
-        col_index = self._header_cache.get('Дата последнего сообщения')
+        column_header_name = self.last_tap_column_name if is_tap_to_keyboard else self.last_message_column_name
+        col_index = self._header_cache.get(column_header_name) 
         await sheet.update_cell(row_index, col_index, self._get_now_str())
 
-
-    async def update_buyer_button_status(
+    async def update_buyer_button_and_time(
         self,
         telegram_id: int,
         button_name: str,
         value: str,
+        is_tap_to_keyboard: bool
     ) -> None:
         sheet = self.sheet or await self.get_sheet()
+        row_index = await self.get_user_row(telegram_id)
         # Маппинг логических имён на реальные заголовки
         button_to_column = {
             "agree": "Условия", 
@@ -137,10 +155,24 @@ class GoogleSheetClass:
             "photo_order": "Скрин заказа",
             "photo_shk": "Фото разрезанных ШК"
         }
-        column_name = button_to_column.get(button_name)
-        row_index = await self.get_user_row(telegram_id)
-        col_index = self._header_cache[column_name]
-        await sheet.update_cell(row_index, col_index, value)
+        button_col_name = button_to_column.get(button_name)
+        time_col_name = (
+            self.last_tap_column_name if is_tap_to_keyboard
+            else self.last_message_column_name
+        )
+        # 2️⃣ Готовим список обновлений
+        updates = []
+        for column_name, val in [
+            (button_col_name, value),
+            (time_col_name, self._get_now_str())
+        ]:
+            col_index = self._header_cache[column_name]
+            col_letter = chr(64 + col_index)
+            cell_range = f"{col_letter}{row_index}"
+            updates.append({"range": cell_range, "values": [[val]]})
+
+        # 3️⃣ Один batch-запрос
+        await sheet.batch_update(updates)
    
     async def write_requisites_into_google_sheets(
         self,
@@ -174,13 +206,45 @@ class GoogleSheetClass:
         # Один батч-запрос к API
         await sheet.batch_update(updates)
     
-    # === Other methods ===
-    async def get_nm_id(self, sheet_articles: str) -> str:
-        sheet = await (await self.get_spreadsheet()).worksheet(sheet_articles)
-        nm_id_cell = await sheet.acell("A2")
-        return nm_id_cell.value
+    async def load_nm_ids_and_amounts_to_redis(
+        self,
+        sheet_name: str,
+        REDIS_KEY_NM_IDS_ORDERED_LIST: str,
+        REDIS_KEY_NM_IDS_REMAINS_HASH: str
+    ) -> None:
+        """
+        Загружает пары артикул-количество из Google Sheets в Redis с префиксом nm_id_in_articles_sheet
+        """
+        sheet = await (await self.get_spreadsheet()).worksheet(sheet_name)
+        values = await sheet.get_all_values()
 
-    async def get_instruction(self, sheet_instruction: str, nm_id: str) -> str:
+        # Пропускаем заголовок
+        pipe = self.redis.pipeline(transaction=True)
+        
+        
+        for row in values[1:]:
+            article, count = row[0].strip(), int(row[1])
+            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, article, count)
+            pipe.rpush(REDIS_KEY_NM_IDS_ORDERED_LIST, article)
+        await pipe.execute()
+
+
+        logging.info(f"✅ Put {len(values)-1} nm_ids into {REDIS_KEY_NM_IDS_ORDERED_LIST}")
+    
+    async def get_instruction_template(self, sheet_instruction: str) -> str:
+        """
+        Возвращает шаблон инструкции из Google Sheets (ячейка A1).
+        """
+        sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
+        instruction_cell = await sheet.acell("A1")
+        return instruction_cell.value
+    
+    async def get_instruction(
+        self,
+        sheet_instruction: str,
+        nm_id: str, 
+        count: int
+    ) -> str:
         sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
         instruction_cell = await sheet.acell("A1")
         instruction_str = instruction_cell.value
@@ -198,7 +262,8 @@ class GoogleSheetClass:
             instruction_str.replace("{", "{{").replace("}", "}}")
             .replace("{{nm_id}}", "{nm_id}")
             .replace("{{today_date}}", "{today_date}")
+            .replace("{{count}}", "{count}")
         )
 
-        filled = instruction_str.format(nm_id=nm_id, today_date=today_date)
+        filled = instruction_str.format(nm_id=nm_id, count=count ,today_date=today_date)
         return re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", filled)

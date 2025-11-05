@@ -53,8 +53,15 @@ async def handle_requisites_message(
     telegram_id = message.from_user.id
     text = message.text.strip()
 
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
+    nm_id_amount = user_data.get("nm_id_amount")
+    
     # обновляем время последнего сообщения
-    await spreadsheet.update_buyer_last_time_message(telegram_id=telegram_id)
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=False
+    )
 
 
     # --- Поиск данных ---
@@ -287,17 +294,31 @@ async def handle_requisites_message(
     # если юзер мега тупой и ввел какой-то текст, то загоняем текст в модель
     # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
     await state.set_state('generating')
-    gpt5_response_text = await client_gpt_5.create_gpt_5_response_requisites(new_prompt=text)
+    gpt5_response_text = await client_gpt_5.create_gpt_5_response_requisites(
+        new_prompt=text,
+        nm_id=nm_id,
+        count=nm_id_amount
+    )
     await state.set_state(UserFlow.waiting_for_requisites)
     await message.answer(gpt5_response_text)
 
 @router.business_message(StateFilter(UserFlow.waiting_for_amount))
-async def handle_amount(message: Message, state: FSMContext):
+async def handle_amount(
+    message: Message, 
+    state: FSMContext,
+    spreadsheet: GoogleSheetClass
+):
     text = message.text.strip()
+    telegram_id = message.from_user.id
     amounts = re.findall(amount_pattern, text, flags=re.IGNORECASE)
     amount = amounts[0] if amounts else None
     await state.update_data(amount=amount)
 
+    # обновляем время последнего сообщения
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=False
+    )  
     data = await state.get_data()
     if data.get('bank'):
         if data.get('card_number'):
@@ -361,8 +382,19 @@ async def handle_amount(message: Message, state: FSMContext):
 
 
 @router.business_message(StateFilter(UserFlow.waiting_for_card_or_phone_number))
-async def handle_amount(message: Message, state: FSMContext):
+async def handle_amount(
+    message: Message, 
+    state: FSMContext,
+    spreadsheet: GoogleSheetClass
+):
     text = message.text.strip()
+    telegram_id = message.from_user.id
+    # обновляем время последнего сообщения
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=False
+    )
+    
     # --- Поиск данных ---
     cards = re.findall(card_pattern, text)
     phones = re.findall(phone_pattern, text)
@@ -432,8 +464,18 @@ async def handle_amount(message: Message, state: FSMContext):
         return
 
 @router.business_message(StateFilter(UserFlow.waiting_for_bank))
-async def handle_bank_name(message: Message, state: FSMContext):
+async def handle_bank_name(
+    message: Message, 
+    state: FSMContext,
+    spreadsheet: GoogleSheetClass
+):
     text = message.text.strip()
+    telegram_id = message.from_user.id
+    # обновляем время последнего сообщения
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=False
+    )
     bank_match = re.search(bank_pattern, text, flags=re.IGNORECASE)
     bank = bank_match.group(0).capitalize() if bank_match else None
     await state.update_data(bank=bank)
@@ -503,18 +545,38 @@ async def handle_bank_name(message: Message, state: FSMContext):
 
 
 @router.callback_query(StateFilter(UserFlow.confirming_requisites), F.data == "confirm_requisites_no")
-async def confirm_requisites_no(callback: CallbackQuery, state: FSMContext):
+async def confirm_requisites_no(
+    callback: CallbackQuery, 
+    state: FSMContext,
+    spreadsheet: GoogleSheetClass
+):
     """
     Пользователь указал, что реквизиты неверные — начинаем ввод заново.
     """
     await callback.answer()
-    await state.clear()
+    
+    # Получаем текущее состояние FSM
+    user_data = await state.get_data()
+    
+    # Удаленияем определенного ключа (например, 'username') из словаря Python
+    if 'bank' in user_data:
+        del user_data['bank']
+    if 'amount' in user_data:
+        del user_data['amount']
+    if 'phone_number' in user_data:
+        del user_data['phone_number']
+    if 'card_number' in user_data:
+        del user_data['card_number']
+        
+    # Обновление данных в FSMContext
+    await state.set_data(user_data)
+    
+    # ставим новое состояние
     await state.set_state(UserFlow.waiting_for_requisites)
     await callback.message.edit_text(
         "❌ Хорошо, давайте попробуем ещё раз.\n"
         "Отправьте номер телефона, сумму для оплаты , название банка и (если есть) номер карты одним сообщением."
     )
-
 
 @router.callback_query(StateFilter(UserFlow.confirming_requisites), F.data == "confirm_requisites_yes")
 async def confirm_requisites_yes(
@@ -530,7 +592,12 @@ async def confirm_requisites_yes(
     data = await state.get_data()
     telegram_id = callback.from_user.id
 
-
+    # обновляем время последнего нажатия на кнопку
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=True
+    )
+    
     await spreadsheet.write_requisites_into_google_sheets(
         telegram_id=telegram_id,
         card_number=data.get('card_number', '-'),
@@ -548,5 +615,5 @@ async def confirm_requisites_yes(
         f"Ожидайте выплату в ближайшее время, спасибо ☺️",
         parse_mode="Markdown"
     )
-    # удаляем данные из состояния и из redis
-    await state.set_data({})
+    # удаляем данные из состояния и из redis (но можно и оставить так-то)
+    # await state.set_data({})

@@ -19,17 +19,20 @@ async def handle_agreement(
     spreadsheet: GoogleSheetClass,
     BUYERS_SHEET_NAME: str,
     CHANNEL_USERNAME: str,
-    nm_id: str
 ):
+    await callback.answer()
     telegram_id = callback.from_user.id
     value = "Да" if callback.data == "agree_yes" else "Нет"
+    data = await state.get_data()
+    nm_id = data.get("nm_id")
+    
 
-    await spreadsheet.update_buyer_button_status(
+    await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name="agree",
-        value=value
+        value=value,
+        is_tap_to_keyboard=True
     )
-
     if callback.data == "agree_yes":
         # Проверяем подписку
         try:
@@ -43,11 +46,12 @@ async def handle_agreement(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
 
-                # обновляем статус в таблице
-                await spreadsheet.update_buyer_button_status(
-                    telegram_id=telegram_id, 
-                    button_name="subscribe", 
-                    value="Да"
+
+                await spreadsheet.update_buyer_button_and_time(
+                    telegram_id=telegram_id,
+                    button_name="subscribe",
+                    value="Да",
+                    is_tap_to_keyboard=True
                 )
                 # 👉 start quiz_handlers
                 await state.set_state(UserFlow.waiting_for_order)
