@@ -43,6 +43,7 @@ class GoogleSheetClass:
         self.spreadsheet = None
         self.sheet = None
 
+        # первая строка - названия столбцов
         self.header_row = None 
         self._header_cache = None
         
@@ -153,7 +154,8 @@ class GoogleSheetClass:
             "bank": "Банк", 
             "amount": "Сумма,₽",
             "photo_order": "Скрин заказа",
-            "photo_shk": "Фото разрезанных ШК"
+            "photo_shk": "Фото разрезанных ШК",
+            "photo_feedback": "Скрин отзыва"
         }
         button_col_name = button_to_column.get(button_name)
         time_col_name = (

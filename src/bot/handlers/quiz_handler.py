@@ -15,7 +15,6 @@ router = Router()
 async def handle_order_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
-    BUYERS_SHEET_NAME: str,
     state: FSMContext,
 ):
     await callback.answer()
@@ -50,19 +49,18 @@ async def handle_order_answer(
             )
         await state.set_state(UserFlow.waiting_for_order)
         return
+    
+    # дальше переходим в состояние waiting_for_photo_order - ждем фотки заказа от юзера
     await callback.message.edit_text(
-        f"📬 Вы получили товар {nm_id}?", 
-        reply_markup=get_yes_no_keyboard("receive", "получил(а)")
+        f"Отправьте, пожалуйста фотографию сделанного, оплаченного заказа."
     )
-    await state.set_state(UserFlow.waiting_for_order_receive)
-
+    await state.set_state(UserFlow.waiting_for_photo_order)
 
 # Юзер после "📬 Вы получили товар?" нажал на кнопку какую-то
 @router.callback_query(StateFilter(UserFlow.waiting_for_order_receive), F.data.startswith("receive_"))
 async def handle_receive_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
-    BUYERS_SHEET_NAME: str,
     state: FSMContext,
 ):
     await callback.answer()
@@ -75,9 +73,6 @@ async def handle_receive_answer(
 
     user_data = await state.get_data()
     nm_id = user_data.get("nm_id")
-    
-
-    
  
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
@@ -99,6 +94,7 @@ async def handle_receive_answer(
             )
         await state.set_state(UserFlow.waiting_for_order_receive)
         return
+    
     # ✅ Следующий вопрос
     await callback.message.edit_text(
         f"💬 Вы оставили отзыв на {nm_id}?", 
@@ -112,7 +108,6 @@ async def handle_receive_answer(
 async def handle_feedback_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
-    BUYERS_SHEET_NAME: str,
     state: FSMContext,
 ):
     await callback.answer()
@@ -146,12 +141,13 @@ async def handle_feedback_answer(
             )
         await state.set_state(UserFlow.waiting_for_feedback)
         return
-    # ✅ Следующий вопрос
+    
+    # дальше переходим в состояние waiting_for_photo_feedback - ждем фотки отзыва от юзера
     await callback.message.edit_text(
-        f"✂️ ШК разрезали на {nm_id}?", 
-        reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+        f"Отправьте, пожалуйста скриншот отзыва на 5 звёзд"
     )
-    await state.set_state(UserFlow.waiting_for_shk)
+    await state.set_state(UserFlow.waiting_for_photo_feedback)
+    
 
 
 # Юзер после "✂️ ШК разрезали?" нажал на кнопку какую-то
@@ -196,7 +192,8 @@ async def handle_shk_answer(
         await state.set_state(UserFlow.waiting_for_shk)
         return
     
-    # ✅ Завершение опроса
-    await callback.message.edit_text("✅ Все ответы получены, спасибо!")
-    await callback.message.answer("☺️ Можете отправлять свои реквизиты:\n- Номер карты: AAAA BBBB CCCC DDDD или\n- Номер телефона: 8910XXXXXXX \n- Название банка: Сбербанк, Т-банк\n-Cумму для оплаты: 500 рублей\nМы свяжемся с вами через некоторое время,спасибо")
-    await state.set_state(UserFlow.waiting_for_requisites)
+    # дальше переходим в состояние waiting_for_photo_shk - ждем фотки разрезанных ШК
+    await callback.message.edit_text(
+        f"Отправьте, пожалуйста фотографию разрезанных ШК."
+    )
+    await state.set_state(UserFlow.waiting_for_photo_shk)
