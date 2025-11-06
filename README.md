@@ -37,4 +37,5 @@ alembic:
         users
     RESTART IDENTITY CASCADE;
 ```
+
 > VSCodeCounter
