@@ -5,9 +5,6 @@ from aiogram.fsm.context import FSMContext
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-
-
-
 from src.services.google_sheets_class import GoogleSheetClass
 
 router = Router()
@@ -17,7 +14,6 @@ async def handle_subscription(
     callback: CallbackQuery,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str,
     CHANNEL_USERNAME: str
 ):
     telegram_id = callback.from_user.id

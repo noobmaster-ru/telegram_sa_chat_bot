@@ -5,7 +5,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
-
 from src.services.google_sheets_class import GoogleSheetClass
 
 router = Router()
@@ -154,8 +153,7 @@ async def handle_feedback_answer(
 @router.callback_query(StateFilter(UserFlow.waiting_for_shk), F.data.startswith("shk_"))
 async def handle_shk_answer(
     callback: CallbackQuery, 
-    spreadsheet: GoogleSheetClass, 
-    BUYERS_SHEET_NAME: str,
+    spreadsheet: GoogleSheetClass,
     state: FSMContext,
 ):
     await callback.answer()

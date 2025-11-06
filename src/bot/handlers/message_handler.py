@@ -1,5 +1,6 @@
 import logging
-from aiogram import Router,  types, F
+from redis.asyncio import Redis
+from aiogram import Router,  types
 from aiogram.types import Message
 from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
@@ -7,11 +8,9 @@ from aiogram.fsm.context import FSMContext
 
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
-
-
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.services.google_sheets_class import GoogleSheetClass
-from redis.asyncio import Redis
+
 
 router = Router()
 

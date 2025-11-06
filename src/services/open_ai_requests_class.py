@@ -1,13 +1,10 @@
-import os
+import re
 import httpx
+import base64
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-import logging
-import re
-import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import base64
 
 class OpenAiRequestClass:
     def __init__(
@@ -48,13 +45,13 @@ class OpenAiRequestClass:
         Возвращает: 'Да' или 'Нет'
         """
         # конвертируем байты фото в base64
-        # base64_image = base64.b64encode(photo_bytes).decode("utf-8")
+
         ref_b64 = base64.b64encode(reference_bytes).decode("utf-8")
         user_b64 = base64.b64encode(user_bytes).decode("utf-8")
 
         # формируем сообщение
         response = await self.client.chat.completions.create(
-            model=self.model_name,  # можно gpt-4o (основная) или gpt-4o-mini (дешевле)
+            model=self.model_name,  
             messages=[
                 {
                     "role": "user",

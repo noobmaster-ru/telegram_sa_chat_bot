@@ -17,7 +17,6 @@ async def handle_agreement(
     callback: CallbackQuery,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str,
     CHANNEL_USERNAME: str,
 ):
     await callback.answer()

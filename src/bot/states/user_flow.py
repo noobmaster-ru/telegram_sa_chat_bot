@@ -25,5 +25,5 @@ class UserFlow(StatesGroup):
     waiting_for_card_or_phone_number = State()
     confirming_requisites = State()
     
-    start_question_flow = State()
+    # start_question_flow = State()
     continue_dialog = State()
