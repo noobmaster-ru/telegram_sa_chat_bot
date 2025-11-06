@@ -7,6 +7,7 @@ import re
 import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import base64
 
 class OpenAiRequestClass:
     def __init__(
@@ -33,6 +34,107 @@ class OpenAiRequestClass:
         self.max_tokens = max_tokens 
         self.temperature = temperature
 
+
+    async def _classify_photo(
+        self,
+        prefix_message: str,
+        reference_bytes: bytes,
+        user_bytes: bytes,
+        nm_id: str,
+        nm_id_name: str
+    ) -> str:
+        """
+        Сравнивает две фотографии: эталон (reference) и присланную пользователем.
+        Возвращает: 'Да' или 'Нет'
+        """
+        # конвертируем байты фото в base64
+        # base64_image = base64.b64encode(photo_bytes).decode("utf-8")
+        ref_b64 = base64.b64encode(reference_bytes).decode("utf-8")
+        user_b64 = base64.b64encode(user_bytes).decode("utf-8")
+
+        # формируем сообщение
+        response = await self.client.chat.completions.create(
+            model=self.model_name,  # можно gpt-4o (основная) или gpt-4o-mini (дешевле)
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text", 
+                            "text": (
+                                "Сравни две фотографии.\n"
+                                "1️⃣ Первая — это фотография товара.\n"
+                                "2️⃣ Вторая — скриншот(или фото), присланное пользователем.\n\n"
+                                f"{prefix_message} {nm_id}, название товара может быть: ({nm_id_name}).\n"
+                                "Ответь строго одним словом: Да или Нет"
+                            ),
+                        },
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{ref_b64}"}},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{user_b64}"}},
+                    ]
+                }
+            ],
+            max_tokens=5,
+            temperature=0  # детерминированный ответ
+        )
+
+        result = response.choices[0].message.content.strip()
+        return result
+    
+    async def classify_photo_order(
+        self, 
+        reference_bytes: bytes,
+        user_bytes: bytes,
+        nm_id: str,
+        nm_id_name: str = "'лампа кольцевая'/'светодиодный ночник'/'фонарики для лупы'/'осветитель для эндоскопа'/'подводная камера свет'"
+    ) -> str:
+        """
+        Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
+        """
+        return await self._classify_photo(
+            prefix_message="Определи есть ли на скриншоте заказ с сайта Wildberries товара",
+            reference_bytes=reference_bytes,
+            user_bytes=user_bytes,
+            nm_id=nm_id,
+            nm_id_name=nm_id_name
+        )
+    
+    async def classify_photo_feedback(
+        self, 
+        reference_bytes: bytes,
+        user_bytes: bytes,
+        nm_id: str,
+        nm_id_name: str = "'лампа кольцевая'/'светодиодный ночник'/'фонарики для лупы'/'осветитель для эндоскопа'/'подводная камера свет'"
+    ) -> str:
+        """
+        Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
+        """
+        return await self._classify_photo(
+            prefix_message="Определи есть ли на скриншоте отзыв с сайта Wildberries товара",
+            reference_bytes=reference_bytes,
+            user_bytes=user_bytes,
+            nm_id=nm_id,
+            nm_id_name=nm_id_name
+        )
+        
+    async def classify_photo_shk(
+        self, 
+        reference_bytes: bytes,
+        user_bytes: bytes,
+        nm_id: str,
+        nm_id_name: str = "'лампа кольцевая'/'светодиодный ночник'/'фонарики для лупы'/'осветитель для эндоскопа'/'подводная камера свет'"
+    ) -> str:
+        """
+        Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
+        """
+        return await self._classify_photo(
+            prefix_message="Определи есть ли на фотографии разрезанные этикетки(ШК) товара",
+            reference_bytes=reference_bytes,
+            user_bytes=user_bytes,
+            nm_id=nm_id,
+            nm_id_name=nm_id_name
+        )
+        
     async def _create_response(
         self,
         context_message: str,

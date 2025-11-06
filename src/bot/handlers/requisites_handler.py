@@ -592,13 +592,13 @@ async def confirm_requisites_yes(
     data = await state.get_data()
     telegram_id = callback.from_user.id
 
-    # обновляем время последнего нажатия на кнопку
-    await spreadsheet.update_buyer_last_time_message(
-        telegram_id=telegram_id,
-        is_tap_to_keyboard=True
-    )
-    
-    await spreadsheet.write_requisites_into_google_sheets(
+    # # обновляем время последнего нажатия на кнопку
+    # await spreadsheet.update_buyer_last_time_message(
+    #     telegram_id=telegram_id,
+    #     is_tap_to_keyboard=True
+    # )
+    # записываем данные в гугл-таблицу и однвременно обновим последнее время записи
+    await spreadsheet.write_requisites_into_google_sheets_and_update_last_time_message(
         telegram_id=telegram_id,
         card_number=data.get('card_number', '-'),
         phone_number=data.get('phone_number','-'),
@@ -609,9 +609,10 @@ async def confirm_requisites_yes(
     await state.set_state(UserFlow.continue_dialog)
     await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
-        f"Номер телефона: `{data.get('phone_number', '')}`\n"
-        f"Банк: {data.get('bank', '')}\n"
-        f"Сумма: `{data.get('amount', '')}`\n\n"
+        f"Номер карты: `{data.get('card_number', '-')}`\n"
+        f"Номер телефона: `{data.get('phone_number', '-')}`\n"
+        f"Банк: {data.get('bank', '-')}\n"
+        f"Сумма: `{data.get('amount', '-')}`\n\n"
         f"Ожидайте выплату в ближайшее время, спасибо ☺️",
         parse_mode="Markdown"
     )
