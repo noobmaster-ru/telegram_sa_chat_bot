@@ -143,19 +143,19 @@ class GoogleSheetClass:
         row_index = await self.get_user_row(telegram_id)
         # Маппинг логических имён на реальные заголовки
         button_to_column = {
-            "agree": "Условия", 
-            "subscribe": "Подписка на канал",
-            "order": "Заказ сделан",
-            "receive": "Заказ получен",
-            "feedback": "Отзыв оставлен",
-            "shk": "ШК разрезаны", 
-            "requisites": "Номер карты", 
-            "phone_number": "Номер телефона", 
-            "bank": "Банк", 
-            "amount": "Сумма,₽",
-            "photo_order": "Скрин заказа",
-            "photo_shk": "Фото разрезанных ШК",
-            "photo_feedback": "Скрин отзыва"
+            "agree": self.header_row[7], # Условия , дальше по порядку
+            "subscribe": self.header_row[8], # подписка на канал
+            "order": self.header_row[9], # заказ сделан
+            "photo_order": self.header_row[10], # скрин заказа GPT
+            "receive": self.header_row[11], # заказ получен
+            "feedback": self.header_row[12], # отзыв оставлен
+            "photo_feedback": self.header_row[13], # скрин отзыва GPT
+            "shk": self.header_row[14], # ШК разрезаны  
+            "photo_shk": self.header_row[15], # фото разрезанных ШК GPT
+            "requisites": self.header_row[16], # номер карты
+            "phone_number": self.header_row[17], # номер телефона
+            "bank": self.header_row[17], # банк 
+            "amount": self.header_row[18] # сумма
         }
         button_col_name = button_to_column.get(button_name)
         time_col_name = (
@@ -176,7 +176,7 @@ class GoogleSheetClass:
         # 3️⃣ Один batch-запрос
         await sheet.batch_update(updates)
    
-    async def write_requisites_into_google_sheets(
+    async def write_requisites_into_google_sheets_and_update_last_time_message(
         self,
         telegram_id: int,
         card_number: str,
@@ -190,10 +190,11 @@ class GoogleSheetClass:
 
         # Маппинг из логических имен в заголовки
         fields = {
-            "Номер карты": card_number or '-',
-            "Номер телефона": phone_number or '-',
-            "Банк": bank or '-',
-            "Сумма,₽": amount or '-',
+            self.header_row[16]: card_number or '-', # номер карты
+            self.header_row[17]: phone_number or '-', # столбец Номер телефона
+            self.header_row[18]: bank or '-', # столбец Банк
+            self.header_row[19]: amount or '-', # столбец Сумма
+            self.header_row[4]: self._get_now_str() # столбец Последнее сообщение
         }
 
         # Подготавливаем все апдейты для batch_update

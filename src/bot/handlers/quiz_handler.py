@@ -52,7 +52,7 @@ async def handle_order_answer(
     
     # дальше переходим в состояние waiting_for_photo_order - ждем фотки заказа от юзера
     await callback.message.edit_text(
-        f"Отправьте, пожалуйста фотографию сделанного, оплаченного заказа."
+        f"Отправьте, пожалуйста фотографию сделанного заказа."
     )
     await state.set_state(UserFlow.waiting_for_photo_order)
 
@@ -194,6 +194,6 @@ async def handle_shk_answer(
     
     # дальше переходим в состояние waiting_for_photo_shk - ждем фотки разрезанных ШК
     await callback.message.edit_text(
-        f"Отправьте, пожалуйста фотографию разрезанных ШК."
+        f"Отправьте, пожалуйста, фотографию разрезанных ШК."
     )
     await state.set_state(UserFlow.waiting_for_photo_shk)
