@@ -257,7 +257,8 @@ class GoogleSheetClass:
         self,
         sheet_instruction: str,
         nm_id: str, 
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
         instruction_cell = await sheet.acell("A1")
@@ -277,7 +278,13 @@ class GoogleSheetClass:
             .replace("{{nm_id}}", "{nm_id}")
             .replace("{{today_date}}", "{today_date}")
             .replace("{{count}}", "{count}")
+            .replace("{{product_title}}", "{product_title}")
         )
 
-        filled = instruction_str.format(nm_id=nm_id, count=count ,today_date=today_date)
+        filled = instruction_str.format(
+            nm_id=nm_id, 
+            count=count,
+            today_date=today_date,
+            product_title=product_title
+        )
         return re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", filled)

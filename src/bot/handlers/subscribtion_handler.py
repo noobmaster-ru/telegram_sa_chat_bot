@@ -16,6 +16,7 @@ async def handle_subscription(
     spreadsheet: GoogleSheetClass,
     CHANNEL_USERNAME: str
 ):
+    await callback.answer()
     telegram_id = callback.from_user.id
     value = "Да" if callback.data == "subscribe_yes" else "Нет"
 
@@ -41,14 +42,8 @@ async def handle_subscription(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
 
-                # обновляем статус в таблице
-                await spreadsheet.update_buyer_button_status(
-                    telegram_id=telegram_id, 
-                    button_name="subscribe", 
-                    value="Да"
-                )
                 # 👉 Начинаем пошаговый диалог
-                await callback.message.edit_text(
+                await callback.message.answer(
                     f"📦 Вы заказали товар {nm_id}?", 
                     reply_markup=get_yes_no_keyboard("order", "заказал(а)")
                 )

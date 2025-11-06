@@ -156,7 +156,12 @@ async def handle_first_message(
         nm_id_name=product_title
     )
     
-    instruction_str = await spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, available_nm_id, nm_id_amount)
+    instruction_str = await spreadsheet.get_instruction(
+        sheet_instruction=INSTRUCTION_SHEET_NAME, 
+        nm_id=available_nm_id, 
+        count=nm_id_amount,
+        product_title=product_title
+    )
     
     # Отправляем инструкцию
     await message.answer(
