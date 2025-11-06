@@ -145,7 +145,7 @@ async def handle_photo(
 
             await message.answer("☺️ Вы прислали все фотографии, которые были нам нужны. Спасибо!")
             await message.answer(
-                "Отправьте теперь нам, пожалуйста, свои реквизиты в формате:\nНомер карты в формате: AAAA BBBB CCCC DDDD\n  *ИЛИ*\nНомер телефона в формате: 8910XXXXXXX\n\nСпасибо",
+                "Отправьте теперь нам, пожалуйста, свои реквизиты в формате:\nНомер карты в формате:\nAAAA BBBB CCCC DDDD\n   *ИЛИ*\nНомер телефона в формате: 8910XXXXXXX\n\nСпасибо",
                 parse_mode="MarkdownV2"
             )
             await state.set_state(UserFlow.waiting_for_requisites)

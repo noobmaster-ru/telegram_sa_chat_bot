@@ -1,6 +1,7 @@
 import re
 import httpx
 import base64
+import logging
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from datetime import datetime
@@ -30,7 +31,8 @@ class OpenAiRequestClass:
         self.instruction_template = instruction_template
         self.max_tokens = max_tokens 
         self.temperature = temperature
-
+        # logging
+        self.logger = logging.getLogger(__name__)
 
     async def _classify_photo(
         self,
@@ -76,6 +78,11 @@ class OpenAiRequestClass:
         )
 
         result = response.choices[0].message.content.strip()
+        # logging usage of tokens per prompt
+        usage = response.usage
+        self.logger.info(
+            f"  GPT usage — input tokens: {usage.prompt_tokens}, output tokens: {usage.completion_tokens}, total tokens: {usage.total_tokens}"
+        )
         return result
     
     async def classify_photo_order(
@@ -176,6 +183,11 @@ class OpenAiRequestClass:
             max_tokens=self.max_tokens,          # ограничиваем длину ответа 
             temperature=self.temperature,         # снижает «творчество» ради скорости и стабильности
             # timeout=12,              # чтобы не ждать вечно
+        )
+        # logging usage of tokens per prompt
+        usage = response.usage
+        self.logger.info(
+            f"  GPT usage — input tokens: {usage.prompt_tokens}, output tokens: {usage.completion_tokens}, total tokens: {usage.total_tokens}"
         )
         return response.choices[0].message.content
 
