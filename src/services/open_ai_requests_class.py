@@ -90,7 +90,7 @@ class OpenAiRequestClass:
         reference_bytes: bytes,
         user_bytes: bytes,
         nm_id: str,
-        nm_id_name: str = "'лампа кольцевая'/'светодиодный ночник'/'фонарики для лупы'/'осветитель для эндоскопа'/'подводная камера свет'"
+        nm_id_name: str
     ) -> str:
         """
         Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
@@ -126,7 +126,7 @@ class OpenAiRequestClass:
         reference_bytes: bytes,
         user_bytes: bytes,
         nm_id: str,
-        nm_id_name: str = "'лампа кольцевая'/'светодиодный ночник'/'фонарики для лупы'/'осветитель для эндоскопа'/'подводная камера свет'"
+        nm_id_name: str 
     ) -> str:
         """
         Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'

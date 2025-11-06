@@ -102,7 +102,8 @@ async def handle_first_message(
     INSTRUCTION_SHEET_NAME: str,
     redis: Redis,
     REDIS_KEY_NM_IDS_ORDERED_LIST: str,
-    REDIS_KEY_NM_IDS_REMAINS_HASH: str
+    REDIS_KEY_NM_IDS_REMAINS_HASH: str,
+    REDIS_KEY_NM_IDS_TITLES_HASH: str
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
@@ -120,11 +121,12 @@ async def handle_first_message(
    
     # Получаем список артикулов в правильном порядке (загрузили в redis в run.py)
     articles = await redis.lrange(REDIS_KEY_NM_IDS_ORDERED_LIST, 0, -1)
-    
+
     for article in articles:
         # по ключу(артикулу) получаем количество остатков товара в redis
         nm_id_amount = await redis.hget(REDIS_KEY_NM_IDS_REMAINS_HASH, article)
         
+
         if nm_id_amount and int(nm_id_amount) > 0:
             # уменьшаем на 1 количество остатков артикула
             await redis.hincrby(REDIS_KEY_NM_IDS_REMAINS_HASH, article, -1) 
@@ -133,6 +135,10 @@ async def handle_first_message(
             nm_id_decoded = article.decode() if isinstance(article, bytes) else article
             available_nm_id = nm_id_decoded
             
+            # по ключу(артикулу) получаем название  товара в redis
+            title_bytes = await redis.hget(REDIS_KEY_NM_IDS_TITLES_HASH, article)
+            # декодируем обратно в строку
+            product_title = title_bytes.decode() if isinstance(title_bytes, bytes) else title_bytes
             # сохраняем количество остатков товара 
             nm_id_amount = int(nm_id_amount)
             break
@@ -143,10 +149,11 @@ async def handle_first_message(
         await message.answer("Извините, все товары закончились на складе. Кэшбека не будет.")
         return
 
-    # ========== Сохраняем артикул, остаток товара FSM - чтобы для каждого юзера был свой контекст =====
+    # ========== Сохраняем артикул, остаток товара,название товара в FSM - чтобы для каждого юзера был свой контекст =====
     await state.update_data(
         nm_id=available_nm_id,
-        nm_id_amount=nm_id_amount
+        nm_id_amount=nm_id_amount,
+        nm_id_name=product_title
     )
     
     instruction_str = await spreadsheet.get_instruction(INSTRUCTION_SHEET_NAME, available_nm_id, nm_id_amount)

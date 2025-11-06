@@ -34,6 +34,7 @@ async def main():
     REDIS_KEY_SET_TELEGRAM_IDS = os.getenv("REDIS_KEY_SET_TELEGRAM_IDS")
     REDIS_KEY_USER_ROW_POSITION_STRING = os.getenv("REDIS_KEY_USER_ROW_POSITION_STRING")
     REDIS_KEY_NM_IDS_REMAINS_HASH = os.getenv("REDIS_KEY_NM_IDS_REMAINS_HASH")
+    REDIS_KEY_NM_IDS_TITLES_HASH = os.getenv("REDIS_KEY_NM_IDS_TITLES_HASH")
     
     redis = await asyncredis.from_url(REDIS_URL)
     storage = RedisStorage(redis) 
@@ -59,7 +60,8 @@ async def main():
     await spreadsheet.load_nm_ids_and_amounts_to_redis(
         ARTICLES_SHEET,
         REDIS_KEY_NM_IDS_ORDERED_LIST,
-        REDIS_KEY_NM_IDS_REMAINS_HASH
+        REDIS_KEY_NM_IDS_REMAINS_HASH,
+        REDIS_KEY_NM_IDS_TITLES_HASH
     )
 
     # Open AI
@@ -102,7 +104,8 @@ async def main():
             "client_gpt_5": client_gpt_5,
             "redis": redis,
             "REDIS_KEY_NM_IDS_ORDERED_LIST": REDIS_KEY_NM_IDS_ORDERED_LIST,
-            "REDIS_KEY_NM_IDS_REMAINS_HASH": REDIS_KEY_NM_IDS_REMAINS_HASH
+            "REDIS_KEY_NM_IDS_REMAINS_HASH": REDIS_KEY_NM_IDS_REMAINS_HASH,
+            "REDIS_KEY_NM_IDS_TITLES_HASH": REDIS_KEY_NM_IDS_TITLES_HASH
         }
     )
     #роутер, который ловит все текстовые сообщения

@@ -40,6 +40,7 @@ async def handle_photo(
     telegram_id = message.from_user.id
     photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
     nm_id = user_data.get("nm_id")
+    nm_id_name = user_data.get("nm_id_name")
     
     # 1. получаем файл с фото от Telegram
     photo = message.photo[-1]  # лучшее качество
@@ -63,7 +64,8 @@ async def handle_photo(
         model_response = await client_gpt_5.classify_photo_order(
             reference_bytes=reference_bytes,
             user_bytes=user_bytes,
-            nm_id=nm_id
+            nm_id=nm_id,
+            nm_id_name=nm_id_name
         )
         # отвечаем пользователю
         await message.answer(
@@ -95,7 +97,8 @@ async def handle_photo(
         model_response = await client_gpt_5.classify_photo_feedback(
             reference_bytes=reference_bytes,
             user_bytes=user_bytes,
-            nm_id=nm_id
+            nm_id=nm_id,
+            nm_id_name=nm_id_name
         )
         # отвечаем пользователю
         await message.answer(
@@ -126,7 +129,8 @@ async def handle_photo(
         model_response = await client_gpt_5.classify_photo_shk(
             reference_bytes=reference_bytes,
             user_bytes=user_bytes,
-            nm_id=nm_id
+            nm_id=nm_id,
+            nm_id_name=nm_id_name
         )
         # отвечаем пользователю
         await message.answer(

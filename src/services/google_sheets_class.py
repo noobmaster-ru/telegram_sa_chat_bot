@@ -213,7 +213,8 @@ class GoogleSheetClass:
         self,
         sheet_name: str,
         REDIS_KEY_NM_IDS_ORDERED_LIST: str,
-        REDIS_KEY_NM_IDS_REMAINS_HASH: str
+        REDIS_KEY_NM_IDS_REMAINS_HASH: str,
+        REDIS_KEY_NM_IDS_TITLES_HASH: str,  # 👈 новое хранилище для названий
     ) -> None:
         """
         Загружает пары артикул-количество из Google Sheets в Redis с префиксом nm_id_in_articles_sheet
@@ -226,8 +227,18 @@ class GoogleSheetClass:
         
         
         for row in values[1:]:
-            article, count = row[0].strip(), int(row[1])
-            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, article, count)
+            if len(row) < 3:
+                continue  # если строка неполная, пропускаем
+            
+            article = row[0].strip() # артикул  nm_id
+            amount = int(row[1]) # количество остатков
+            title = row[2].strip() # названия товара
+            
+            # сохраняем количество в хэш: nm_id=amount 
+            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, article, amount)
+            # сохраняем название в хэш: nm_id=title 
+            pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, article, title)
+            # сохраняем порядок артикулов в список 
             pipe.rpush(REDIS_KEY_NM_IDS_ORDERED_LIST, article)
         await pipe.execute()
 
