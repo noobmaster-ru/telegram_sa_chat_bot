@@ -28,6 +28,8 @@ async def main():
     TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN_STR")
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME_STR")  # username канала
     
+    # Wildberries
+    WB_TOKEN = os.getenv("WB_TOKEN_STR")
     # Redis storage
     REDIS_URL = os.getenv("REDIS_URL")
     REDIS_KEY_NM_IDS_ORDERED_LIST=os.getenv("REDIS_KEY_NM_IDS_ORDERED_LIST")
@@ -96,6 +98,7 @@ async def main():
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
+            "WB_TOKEN": WB_TOKEN,
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,
             "INSTRUCTION_SHEET_NAME": INSTRUCTION_SHEET_NAME,

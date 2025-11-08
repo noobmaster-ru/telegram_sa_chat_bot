@@ -68,8 +68,16 @@ class OpenAiRequestClass:
                                 "Ответь строго одним словом: Да или Нет"
                             ),
                         },
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{ref_b64}"}},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{user_b64}"}},
+                        {
+                            "type": "image_image", 
+                            "image_url": {"url": f"data:image/jpeg;base64,{ref_b64}"},
+                            "detail": "high"
+                        },
+                        {
+                            "type": "image_image", 
+                            "image_url": {"url": f"data:image/jpeg;base64,{user_b64}"},
+                            "detail": "high"
+                        },
                     ]
                 }
             ],
