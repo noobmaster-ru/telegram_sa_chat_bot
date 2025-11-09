@@ -98,6 +98,7 @@ async def main():
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
+            # "bot": bot,
             "WB_TOKEN": WB_TOKEN,
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": BUYERS_SHEET_NAME,

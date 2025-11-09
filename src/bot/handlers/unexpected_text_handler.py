@@ -1,11 +1,14 @@
 from aiogram import Router, types
 from aiogram.filters import StateFilter,  Command
 from aiogram.fsm.context import FSMContext
+from aiogram import Bot
+from aiogram.enums import ChatAction
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
+from aiogram.methods import ReadBusinessMessage
 
 # Этот обработчик сработает, если пользователь напишет текст,
 # пока бот ждёт нажатие кнопки в любом из заданных состояний.
@@ -19,6 +22,7 @@ async def handle_unexpected_text_waiting_for_agreement(
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
     state: FSMContext,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     text = message.text
@@ -34,6 +38,20 @@ async def handle_unexpected_text_waiting_for_agreement(
         is_tap_to_keyboard=False
     )
     await state.set_state('generating')
+    # Сначала помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(
         new_prompt=text,
         nm_id=nm_id,
@@ -52,7 +70,8 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     spreadsheet: GoogleSheetClass,
     CHANNEL_USERNAME: str,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     text = message.text
@@ -68,6 +87,20 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     )
     
     await state.set_state('generating')
+    # помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_agreement_and_before_subscription_point(
         new_prompt=text,
         CHANNEL_NAME=CHANNEL_USERNAME,
@@ -87,7 +120,8 @@ async def handle_unexpected_text_waiting_for_order(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     text = message.text
@@ -103,6 +137,20 @@ async def handle_unexpected_text_waiting_for_order(
     )
     
     await state.set_state('generating')
+    # помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_subscription_and_before_order_point(
         new_prompt=text,
         nm_id=nm_id,
@@ -120,7 +168,8 @@ async def handle_unexpected_text_waiting_for_order_receive(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     text = message.text
@@ -135,6 +184,20 @@ async def handle_unexpected_text_waiting_for_order_receive(
     )
     
     await state.set_state('generating')
+    # помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(
         new_prompt=text,
         nm_id=nm_id,
@@ -153,7 +216,8 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     text = message.text
@@ -168,6 +232,20 @@ async def handle_unexpected_text_waiting_for_feedback_done(
         is_tap_to_keyboard=False
     )
     await state.set_state('generating')
+    # помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_receive_product_and_before_feedback_check_point(
         new_prompt=text,
         nm_id=nm_id,
@@ -186,7 +264,8 @@ async def handle_unexpected_text_waiting_for_shk(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
-    state: FSMContext
+    state: FSMContext,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     text = message.text
@@ -201,6 +280,20 @@ async def handle_unexpected_text_waiting_for_shk(
         is_tap_to_keyboard=False
     )
     await state.set_state('generating')
+    # помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_feedback_and_before_shk_check_point(
         new_prompt=text,
         nm_id=nm_id,

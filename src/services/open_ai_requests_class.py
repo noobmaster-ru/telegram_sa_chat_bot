@@ -62,21 +62,19 @@ class OpenAiRequestClass:
                             "type": "text", 
                             "text": (
                                 "Сравни две фотографии.\n"
-                                "1️⃣ Первая — это фотография товара.\n"
-                                "2️⃣ Вторая — скриншот(или фото), присланное пользователем.\n\n"
-                                f"{prefix_message} {nm_id}, название товара может быть: ({nm_id_name}).\n"
+                                "1️⃣ Первая — это фотография нашего товара.\n"
+                                "2️⃣ Вторая — скриншот, присланный пользователем.\n\n"
+                                f"{prefix_message} {nm_id}, название товара: ({nm_id_name}).\n"
                                 "Ответь строго одним словом: Да или Нет"
                             ),
                         },
                         {
-                            "type": "image_image", 
-                            "image_url": {"url": f"data:image/jpeg;base64,{ref_b64}"},
-                            "detail": "high"
+                            "type": "image_url", 
+                            "image_url": {"url": f"data:image/jpeg;base64,{ref_b64}"}
                         },
                         {
-                            "type": "image_image", 
-                            "image_url": {"url": f"data:image/jpeg;base64,{user_b64}"},
-                            "detail": "high"
+                            "type": "image_url", 
+                            "image_url": {"url": f"data:image/jpeg;base64,{user_b64}"}
                         },
                     ]
                 }
@@ -116,7 +114,7 @@ class OpenAiRequestClass:
         reference_bytes: bytes,
         user_bytes: bytes,
         nm_id: str,
-        nm_id_name: str = "'лампа кольцевая'/'светодиодный ночник'/'фонарики для лупы'/'осветитель для эндоскопа'/'подводная камера свет'"
+        nm_id_name: str
     ) -> str:
         """
         Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'

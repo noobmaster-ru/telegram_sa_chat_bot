@@ -4,12 +4,15 @@ from aiogram import Router,  types
 from aiogram.types import Message
 from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
+from aiogram.enums import ChatAction
+from aiogram.methods import ReadBusinessMessage
 
-
+from aiogram import Bot
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.services.google_sheets_class import GoogleSheetClass
+import asyncio
 
 
 router = Router()
@@ -43,8 +46,34 @@ async def reset_admin(
         await message.answer("bot reseted!")
 
 @router.business_message(StateFilter("generating"))
-async def wait_response(message: Message):
+async def wait_response(message: Message, bot: Bot):
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
     await message.answer("Ожидайте ответа, пожалуйста ...")
+
+@router.business_message(StateFilter("first_messages_state"))
+async def wait_response(message: Message, bot: Bot):
+    logging.info(f"  user {message.from_user.id} texted when we get him instruction")
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
+    return
 
 
 @router.business_message(StateFilter(UserFlow.continue_dialog))
@@ -66,10 +95,22 @@ async def handle_other_message(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await message.bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
     if "?" in text: 
         # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
-        await state.set_state('generating')
+        await state.set_state('generating')   
         gpt5_response_text = await client_gpt_5.create_gpt_5_response(
             new_prompt=text,
             nm_id=nm_id,
@@ -103,7 +144,8 @@ async def handle_first_message(
     redis: Redis,
     REDIS_KEY_NM_IDS_ORDERED_LIST: str,
     REDIS_KEY_NM_IDS_REMAINS_HASH: str,
-    REDIS_KEY_NM_IDS_TITLES_HASH: str
+    REDIS_KEY_NM_IDS_TITLES_HASH: str,
+    bot: Bot
 ):
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
@@ -162,15 +204,72 @@ async def handle_first_message(
         count=nm_id_amount,
         product_title=product_title
     )
+    # Отправляем приветсвие
+    business_connection_id = message.business_connection_id
+    await state.set_state('first_messages_state')
+
+    # небольшая задержка
+    await asyncio.sleep(13)
     
+    # Сначала помечаем сообщение как прочитанное
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    # небольшая задержка
+    await asyncio.sleep(5)
+    # показываем "печатает"
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
+    await asyncio.sleep(7.5)
+    await message.answer(text="Здравствуйте!")
+    
+    
+    # =========
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
+    await asyncio.sleep(16)
+    await message.answer(
+        text="Сейчас пришлю вам мою подробную инструкцию, пожалуйста, выполняйте все условия!! Вам также будет помогать мой робот-помощник🤖, вы не пугайтесь😂 , он поможет быстрее собрать все нужные данные, реквизиты, затем я их проверю и пришлю вам деньги ☺️. "
+    )
+    
+    
+    # =========
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
+    await asyncio.sleep(5)
+    await message.answer(text="Вот инструкция")
+    
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
+    await asyncio.sleep(5)
     # Отправляем инструкцию
     await message.answer(
         text=instruction_str,
         parse_mode="MarkdownV2",
     )
+    
+    await asyncio.sleep(10)
+    # Отправляем бота!
+    await message.answer("Здравствуйте! Я - 🤖-помощник Виктории.")
     # После инструкции — отправляем кнопки "Согласны на условия?"
     await message.answer(
-        "Согласны на условия?",
+        "Вы согласны на наши условия кэшбека?",
         reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
     )
     

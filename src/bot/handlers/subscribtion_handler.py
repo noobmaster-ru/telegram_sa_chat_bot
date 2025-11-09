@@ -41,11 +41,11 @@ async def handle_subscription(
                 await callback.message.edit_text(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
-
                 # 👉 Начинаем пошаговый диалог
                 await callback.message.answer(
-                    f"📦 Вы заказали товар {nm_id}?", 
-                    reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+                    f"📦 Вы заказали товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?",  
+                    reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
+                    parse_mode="MarkdownV2"
                 )
                 await state.set_state(UserFlow.waiting_for_order)
                 return

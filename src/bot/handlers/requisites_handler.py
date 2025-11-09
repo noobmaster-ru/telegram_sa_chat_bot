@@ -6,6 +6,7 @@ from aiogram import Router, F
 from aiogram.types import Message,  CallbackQuery
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.methods import ReadBusinessMessage
 
 from src.bot.states.user_flow import UserFlow
 
@@ -53,7 +54,13 @@ async def handle_requisites_message(
     — если чего-то не хватает — просит дополнить
     — если всё найдено — предлагает подтвердить
     """
-    
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=message.business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
     telegram_id = message.from_user.id
     text = message.text.strip()
 
@@ -312,6 +319,13 @@ async def handle_amount(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=message.business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
     text = message.text.strip()
     telegram_id = message.from_user.id
     amounts = re.findall(amount_pattern, text, flags=re.IGNORECASE)
@@ -473,6 +487,13 @@ async def handle_bank_name(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=message.business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
     text = message.text.strip()
     telegram_id = message.from_user.id
     # обновляем время последнего сообщения
@@ -557,6 +578,13 @@ async def confirm_requisites_no(
     """
     Пользователь указал, что реквизиты неверные — начинаем ввод заново.
     """
+    await callback.message.bot(
+        ReadBusinessMessage(
+            business_connection_id=callback.message.business_connection_id,
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id
+        )
+    )
     await callback.answer()
     
     # Получаем текущее состояние FSM
@@ -593,6 +621,13 @@ async def confirm_requisites_yes(
     """
     Пользователь указал, что реквизиты верные — сохраняем их в гугл таблицу и очищаем состояние.
     """
+    await callback.message.bot(
+        ReadBusinessMessage(
+            business_connection_id=callback.message.business_connection_id,
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id
+        )
+    )
     data = await state.get_data()
     telegram_id = callback.from_user.id
 

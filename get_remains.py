@@ -51,7 +51,7 @@ async def fetch_stocks(
     ) as resp:    
         if resp.status == 429:
             logging.warning("[WB API] Too many requests, retrying in 20s...")
-            await asyncio.sleep(20)
+            await asyncio.sleep(22)
             return await fetch_stocks(wb_token, session, nm_ids)
         if resp.status != 200:
             text = await resp.text()

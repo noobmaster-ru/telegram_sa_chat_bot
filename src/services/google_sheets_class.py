@@ -113,6 +113,7 @@ class GoogleSheetClass:
         new_row[4] = now # дата последнего сообщения
         new_row[5] = '' # дата последнего нажатия на кнопку
         new_row[6] = str(nm_id) # артикул
+        new_row[20] = str(full_name) # полное имя юзера
 
         await sheet.append_row(new_row)  
 
@@ -272,7 +273,10 @@ class GoogleSheetClass:
 
         today = datetime.now(ZoneInfo("Europe/Moscow"))
         today_date = f"{today.day}_{months[today.month]}"
-
+        
+        # ссылка на товар на вб
+        safe_url = f"https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP"
+        
         instruction_str = (
             instruction_str.replace("{", "{{").replace("}", "}}")
             .replace("{{nm_id}}", "{nm_id}")
@@ -287,4 +291,24 @@ class GoogleSheetClass:
             today_date=today_date,
             product_title=product_title
         )
-        return re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", filled)
+        # 3️⃣ Экранируем MarkdownV2 спецсимволы в остальном тексте
+        # но НЕ внутри конструкции [текст](ссылка)
+        def escape_md_except_links(text: str) -> str:
+            pattern = r"([_\[\]()~#+\-=|{}.!])"
+            parts = re.split(r"(\[.*?\]\(.*?\))", text)  # разбиваем по ссылкам
+            escaped_parts = []
+            for part in parts:
+                if part.startswith("[") and "](" in part:
+                    escaped_parts.append(part)  # не трогаем ссылки
+                else:
+                    escaped_parts.append(re.sub(pattern, r"\\\1", part))
+            return "".join(escaped_parts)
+
+        safe_text = escape_md_except_links(filled)
+        
+        # 4️⃣ Подставляем безопасную ссылку
+        safe_text = safe_text.replace(
+            f"[{nm_id}](https://www.wildberries.ru/catalog/{nm_id}/detail.aspx?targetUrl=SP)",
+            f"[{nm_id}]({safe_url})"
+        )
+        return safe_text
