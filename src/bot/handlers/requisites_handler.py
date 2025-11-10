@@ -400,7 +400,7 @@ async def handle_amount(
 
 
 @router.business_message(StateFilter(UserFlow.waiting_for_card_or_phone_number))
-async def handle_amount(
+async def handle_card_or_phone_number(
     message: Message, 
     state: FSMContext,
     spreadsheet: GoogleSheetClass

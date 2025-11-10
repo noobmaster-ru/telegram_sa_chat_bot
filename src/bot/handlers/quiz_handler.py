@@ -38,13 +38,15 @@ async def handle_order_answer(
     if value == "Нет":
         try:
             await callback.message.edit_text(
-                f"Когда закажете товар {nm_id}, нажмите на кнопку 'Да, заказал(а)'",
-                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+                f"Когда закажете товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
+                parse_mode="MarkdownV2"
             )
         except:
             await callback.message.edit_text(
-                f"Нужно заказать товар {nm_id}, когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
-                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+                f"Нужно заказать товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
+                parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_order)
         return
@@ -83,21 +85,24 @@ async def handle_receive_answer(
     if value == "Нет":
         try:
             await callback.message.edit_text(
-                f"Когда получите товар {nm_id}, нажмите на кнопку 'Да, получил(а)'", 
-                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
+                f"Когда получите товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, получил(а)'", 
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
+                parse_mode="MarkdownV2"
             )
         except:
             await callback.message.edit_text(
-                f"Нужно получить товар {nm_id}, после - нажмите на кнопку 'Да, получил(а)'",
-                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
+                f"Нужно получить товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), после - нажмите на кнопку 'Да, получил(а)'",
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
+                parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_order_receive)
         return
     
     # ✅ Следующий вопрос
     await callback.message.edit_text(
-        f"💬 Вы оставили отзыв на {nm_id}?", 
-        reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
+        f"💬 Вы оставили отзыв на [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+        reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
+        parse_mode="MarkdownV2"
     )
     await state.set_state(UserFlow.waiting_for_feedback)
 
@@ -130,13 +135,15 @@ async def handle_feedback_answer(
     if value == "Нет":
         try:
             await callback.message.edit_text(
-                f"Когда оставите отзыв на товар {nm_id}, нажмите на кнопку 'Да, оставил(а)'", 
-                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
+                f"Когда оставите отзыв на товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, оставил(а)'", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
+                parse_mode="MarkdownV2"
             )
         except:
             await callback.message.edit_text(
-                f"Нужно оставить отзыв 5 звезд на товар {nm_id}, затем нажмите на кнопку 'Да, оставил(а)'", 
-                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
+                f"Нужно оставить отзыв 5 звезд на товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), затем нажмите на кнопку 'Да, оставил(а)'", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
+                parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_feedback)
         return
@@ -179,13 +186,15 @@ async def handle_shk_answer(
     if value == "Нет":
         try:
             await callback.message.edit_text(
-                f"Когда разрежете ШК от {nm_id}, нажмите на кнопку 'Да, разрезал(а)'", 
-                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+                f"Когда разрежете ШК от [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, разрезал(а)'", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
+                parse_mode="MarkdownV2"
             )
         except:
             await callback.message.edit_text(
-                f"Нужно разрезать ШК товара {nm_id}, затем нажмите на кнопку 'Да, разрезал(а)'", 
-                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+                f"Нужно разрезать ШК товара [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), затем нажмите на кнопку 'Да, разрезал(а)'", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
+                parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_shk)
         return

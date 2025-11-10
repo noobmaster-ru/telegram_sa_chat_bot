@@ -134,8 +134,9 @@ async def handle_photo(
             )
             # записали фотку заказа - теперь идем дальше по сценарию - спрашиваем получили ли заказ
             await message.answer(
-                f"📬 Вы получили товар {nm_id}?", 
-                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
+                f"📬 Вы получили товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
+                parse_mode="MarkdownV2"
             )
             await state.set_state(UserFlow.waiting_for_order_receive)
         else:
@@ -167,8 +168,9 @@ async def handle_photo(
             )
             #  Следующий вопрос - разрезали ли ШК
             await message.answer(
-                f"✂️ ШК разрезали на {nm_id}?", 
-                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
+                f"✂️ ШК разрезали на [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
+                parse_mode="MarkdownV2"
             )
             await state.set_state(UserFlow.waiting_for_shk)
         else:

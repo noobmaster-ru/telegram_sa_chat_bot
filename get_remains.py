@@ -68,7 +68,6 @@ class WbApi:
             data = await resp.json()
             return data
 
-
     async def load_nm_ids_and_amounts_to_redis(
         self,
         nm_id_remains_count: dict,
@@ -84,7 +83,8 @@ class WbApi:
             pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, nm_id, data["nm_id_name"]) # nm_id: name
         await pipe.execute()
         logging.info(f"✅ upload {settings.NM_IDS_FOR_CASHBACK} nm_ids remains and names into Redis DB")
-        
+
+
 async def periodic_task():
     redis = await asyncredis.from_url(settings.REDIS_URL_TEST)
     api_client = WbApi(
@@ -116,7 +116,7 @@ async def periodic_task():
                     nm_id_remains_count=result,
                     REDIS_KEY_NM_IDS_REMAINS_HASH=settings.REDIS_KEY_NM_IDS_REMAINS_HASH,
                     REDIS_KEY_NM_IDS_TITLES_HASH=settings.REDIS_KEY_NM_IDS_TITLES_HASH
-                )
+                )            
         except Exception as e:
             logging.error(f" [ERROR] update session: {e}")
         await asyncio.sleep(settings.TIME_SLEEP_API_GET_REMAINS)

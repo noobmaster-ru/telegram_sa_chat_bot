@@ -176,7 +176,8 @@ class GoogleSheetClass:
 
         # 3️⃣ Один batch-запрос
         await sheet.batch_update(updates)
-   
+
+
     async def write_requisites_into_google_sheets_and_update_last_time_message(
         self,
         telegram_id: int,
@@ -210,12 +211,10 @@ class GoogleSheetClass:
         # Один батч-запрос к API
         await sheet.batch_update(updates)
     
-    async def load_nm_ids_and_amounts_to_redis(
+    async def load_nm_ids_ordered_list_into_redis(
         self,
         sheet_name: str,
         REDIS_KEY_NM_IDS_ORDERED_LIST: str,
-        REDIS_KEY_NM_IDS_REMAINS_HASH: str,
-        REDIS_KEY_NM_IDS_TITLES_HASH: str,  # 👈 новое хранилище для названий
     ) -> None:
         """
         Загружает пары артикул-количество из Google Sheets в Redis с префиксом nm_id_in_articles_sheet
@@ -225,25 +224,10 @@ class GoogleSheetClass:
 
         # Пропускаем заголовок
         pipe = self.redis.pipeline(transaction=True)
-        
-        
         for row in values[1:]:
-            if len(row) < 3:
-                continue  # если строка неполная, пропускаем
-            
-            article = row[0].strip() # артикул  nm_id
-            amount = int(row[1]) # количество остатков
-            title = row[2].strip() # названия товара
-            
-            # сохраняем количество в хэш: nm_id=amount 
-            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, article, amount)
-            # сохраняем название в хэш: nm_id=title 
-            pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, article, title)
-            # сохраняем порядок артикулов в список 
-            pipe.rpush(REDIS_KEY_NM_IDS_ORDERED_LIST, article)
+            article = row[0].strip() # nm_id
+            pipe.rpush(REDIS_KEY_NM_IDS_ORDERED_LIST, article) 
         await pipe.execute()
-
-
         logging.info(f"✅ Put {len(values)-1} nm_ids into {REDIS_KEY_NM_IDS_ORDERED_LIST}")
     
     async def get_instruction_template(self, sheet_instruction: str) -> str:

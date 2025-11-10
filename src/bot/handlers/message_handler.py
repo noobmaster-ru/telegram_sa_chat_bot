@@ -171,7 +171,7 @@ async def handle_first_message(
 
         if nm_id_amount and int(nm_id_amount) > 0:
             # уменьшаем на 1 количество остатков артикула
-            await redis.hincrby(REDIS_KEY_NM_IDS_REMAINS_HASH, article, -1) 
+            # await redis.hincrby(REDIS_KEY_NM_IDS_REMAINS_HASH, article, -1) 
             
             # декодируем обратно в строку артикул
             nm_id_decoded = article.decode() if isinstance(article, bytes) else article

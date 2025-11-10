@@ -34,12 +34,11 @@ async def main():
         REDIS_KEY_USER_ROW_POSITION_STRING=settings.REDIS_KEY_USER_ROW_POSITION_STRING,
         REDIS_KEY_NM_IDS_ORDERED_LIST=settings.REDIS_KEY_NM_IDS_ORDERED_LIST
     )
-    # загружаем данные по артикулам из google_sheets в redis
-    await spreadsheet.load_nm_ids_and_amounts_to_redis(
-        settings.ARTICLES_SHEET_STR,
-        settings.REDIS_KEY_NM_IDS_ORDERED_LIST,
-        settings.REDIS_KEY_NM_IDS_REMAINS_HASH,
-        settings.REDIS_KEY_NM_IDS_TITLES_HASH
+    
+    # загружаем упорядоченный список артикулов для кэшбека из google_sheets в redis
+    await spreadsheet.load_nm_ids_ordered_list_into_redis(
+        sheet_name=settings.ARTICLES_SHEET_STR,
+        REDIS_KEY_NM_IDS_ORDERED_LIST=settings.REDIS_KEY_NM_IDS_ORDERED_LIST,
     )
 
 
