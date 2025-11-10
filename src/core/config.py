@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Admins
     ADMIN_ID_LIST: list[int] = [694144143, 547299317]
 
+    # constants
+    NM_IDS_FOR_CASHBACK: list[int] =  [555620866, 552281618, 518431572]
+    TIME_SLEEP_API_GET_REMAINS: int = 21
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8",extra='allow')
 
 

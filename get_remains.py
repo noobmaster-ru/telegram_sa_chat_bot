@@ -1,14 +1,16 @@
+import logging
 import asyncio
 import aiohttp
 from redis.asyncio import Redis
 import redis.asyncio as asyncredis
-import os
 from datetime import datetime
-import logging
-from dotenv import load_dotenv
-import json 
+from src.core.config import settings
 
-
+logging.basicConfig(
+    level=logging.INFO, 
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+    
 class WbApi:
     def __init__(self, token: str, redis: Redis):
         self.token = token
@@ -17,7 +19,7 @@ class WbApi:
     async def fetch_stocks(
         self,
         session: aiohttp.ClientSession,
-        nm_ids: list
+        nm_ids: list[int]
     ):
         """
         Запрашивает остатки по заданным параметрам.
@@ -57,11 +59,11 @@ class WbApi:
         ) as resp:    
             if resp.status == 429:
                 logging.warning("[WB API] Too many requests, retrying in 20s...")
-                await asyncio.sleep(22)
+                await asyncio.sleep(settings.TIME_SLEEP_API_GET_REMAINS)
                 return await self.fetch_stocks(session, nm_ids)
             if resp.status != 200:
                 text = await resp.text()
-                raise RuntimeError(f"Ошибка API {resp.status}: {text}")
+                raise RuntimeError(f"[ERROR] API {resp.status}: {text}")
 
             data = await resp.json()
             return data
@@ -76,61 +78,53 @@ class WbApi:
         """
         Загружает пары артикул-количество из Google Sheets в Redis с префиксом nm_id_in_articles_sheet
         """
-
-        # Пропускаем заголовок
         pipe = self.redis.pipeline(transaction=True)
-
         for nm_id, data in nm_id_remains_count.items():
-            # сохраняем количество в хэш: nm_id=amount 
-            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, nm_id, data["remains"])
-            # сохраняем название в хэш: nm_id=title 
-            pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, nm_id, data["nm_id_name"])
+            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, nm_id, data["remains"]) # nm_id: remains 
+            pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, nm_id, data["nm_id_name"]) # nm_id: name
         await pipe.execute()
-        logging.info(f"✅ Put {len(nm_id_remains_count)-1} nm_ids into Redis DB")
+        logging.info(f"✅ upload {settings.NM_IDS_FOR_CASHBACK} nm_ids remains and names into Redis DB")
         
-async def main():
-    load_dotenv()
-    WB_TOKEN_STR = os.getenv("WB_TOKEN_STR")
-    REDIS_URL = os.getenv("REDIS_URL_TEST")
-    REDIS_KEY_NM_IDS_REMAINS_HASH = os.getenv("REDIS_KEY_NM_IDS_REMAINS_HASH")
-    REDIS_KEY_NM_IDS_TITLES_HASH = os.getenv("REDIS_KEY_NM_IDS_TITLES_HASH")
-    
-    nm_ids = [508040605, 555620866, 518431572]  # ← подставьте ваши nmIDs
-    redis = await asyncredis.from_url(REDIS_URL)
+async def periodic_task():
+    redis = await asyncredis.from_url(settings.REDIS_URL_TEST)
     api_client = WbApi(
-        token=WB_TOKEN_STR,
+        token=settings.WB_TOKEN_STR,
         redis=redis
     ) 
 
-    
-    result = {}
-    async with aiohttp.ClientSession() as session:
+    while True:
+        logging.info(f"start remains update...")
+        result = {}
         try:
-            api_response = await api_client.fetch_stocks(
-                session=session,
-                nm_ids=nm_ids
-            )
-            data = api_response["data"]
-            items = data["items"]
-            for item in items:
-                nm_id = item.get("nmID")
-                name = item.get("name")
-                stock_count = item.get("metrics").get("stockCount")
+            async with aiohttp.ClientSession() as session:
+                api_response = await api_client.fetch_stocks(
+                    session=session,
+                    nm_ids=settings.NM_IDS_FOR_CASHBACK
+                )
+                data = api_response["data"]
+                items = data["items"]
+                for item in items:
+                    nm_id = item.get("nmID")
+                    name = item.get("name")
+                    stock_count = item.get("metrics").get("stockCount")
 
-                result[str(nm_id)] = {  # приводим ключ к строке!
-                    "remains": stock_count,
-                    "nm_id_name": name
-                }
-            # print(result)
-            await api_client.load_nm_ids_and_amounts_to_redis(
-                nm_id_remains_count=result,
-                REDIS_KEY_NM_IDS_REMAINS_HASH=REDIS_KEY_NM_IDS_REMAINS_HASH,
-                REDIS_KEY_NM_IDS_TITLES_HASH=REDIS_KEY_NM_IDS_TITLES_HASH
-            )
-            with open("data_statistics_per_nm_id.json", mode="w",encoding="utf-8") as f:
-                json.dump(result, f, indent=4, ensure_ascii=False)
+                    result[str(nm_id)] = {  
+                        "remains": stock_count,
+                        "nm_id_name": name
+                    }
+                await api_client.load_nm_ids_and_amounts_to_redis(
+                    nm_id_remains_count=result,
+                    REDIS_KEY_NM_IDS_REMAINS_HASH=settings.REDIS_KEY_NM_IDS_REMAINS_HASH,
+                    REDIS_KEY_NM_IDS_TITLES_HASH=settings.REDIS_KEY_NM_IDS_TITLES_HASH
+                )
         except Exception as e:
-            print("Произошла ошибка:", e)
+            logging.error(f" [ERROR] update session: {e}")
+        await asyncio.sleep(settings.TIME_SLEEP_API_GET_REMAINS)
 
+
+
+async def main():
+    await periodic_task()
+    
 if __name__ == "__main__":
     asyncio.run(main())
