@@ -5,7 +5,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as asyncredis
 
 from src.bot import (
-    message_router, 
+    text_router, 
     agreement_router, 
     subscribtion_router, 
     photo_router , 
@@ -79,7 +79,7 @@ async def main():
         }
     )
     #роутер, который ловит все текстовые сообщения
-    dp.include_router(message_router)
+    dp.include_router(text_router)
     # первые роутеры - с вопросами да/нет
     dp.include_router(photo_router)
     dp.include_router(unexpected_text_router)

@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # constants
     NM_IDS_FOR_CASHBACK: list[int] =  [555620866, 552281618, 518431572]
     TIME_SLEEP_API_GET_REMAINS: int = 21
+    OK_WORDS: list[str] = [
+        "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!", "хорошо", 
+        "Хорошо", "ладно", "окей", "да", "ок.", "ок!", "окей!", "хорошо,сейчас",
+        "понял"
+    ]
+    MIN_LEN_TEXT: int = 12
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8",extra='allow')
 
 

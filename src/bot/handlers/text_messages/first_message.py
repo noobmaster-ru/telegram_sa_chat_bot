@@ -1,6 +1,5 @@
 import logging
 from redis.asyncio import Redis
-from aiogram import Router,  types
 from aiogram.types import Message
 from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
@@ -10,52 +9,12 @@ from aiogram.methods import ReadBusinessMessage
 from aiogram import Bot
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
-from src.services.open_ai_requests_class import OpenAiRequestClass
+
 from src.services.google_sheets_class import GoogleSheetClass
 import asyncio
 
+from .router import router
 
-router = Router()
-
-# Настраиваем логирование
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("logs/bot.log", encoding="utf-8"),  # сохраняем в файл
-        logging.StreamHandler(),  # выводим в консоль
-    ],
-)
-
-
-# список "добрых" слов
-OK_WORDS = {"ок","Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!", "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!", "окей!", "хорошо,сейчас", "понял"}
-
-# перезапуск бота для админов
-@router.business_message(Command('reset'))
-async def reset_admin(
-    message: types.Message,
-    spreadsheet: GoogleSheetClass,
-    ADMIN_ID_LIST: list,
-    state: FSMContext
-):
-    telegram_id = message.from_user.id
-    if telegram_id in ADMIN_ID_LIST:
-        await spreadsheet.delete_row(telegram_id)
-        await state.clear()
-        await message.answer("bot reseted!")
-
-@router.business_message(StateFilter("generating"))
-async def wait_response(message: Message, bot: Bot):
-    business_connection_id = message.business_connection_id
-    await message.bot(
-        ReadBusinessMessage(
-            business_connection_id=business_connection_id,
-            chat_id=message.chat.id,
-            message_id=message.message_id
-        )
-    )
-    await message.answer("Ожидайте ответа, пожалуйста ...")
 
 @router.business_message(StateFilter("first_messages_state"))
 async def wait_response(message: Message, bot: Bot):
@@ -76,65 +35,7 @@ async def wait_response(message: Message, bot: Bot):
     return
 
 
-@router.business_message(StateFilter(UserFlow.continue_dialog))
-async def handle_other_message(
-    message: Message, 
-    state: FSMContext, 
-    spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass
-):
-    telegram_id = message.from_user.id
-    text = message.text if message.text else "(без текста)"
-
-    user_data = await state.get_data()
-    nm_id = user_data.get("nm_id")
-    nm_id_amount = user_data.get("nm_id_amount")
-    
-    # обновляем время последнего сообщения
-    await spreadsheet.update_buyer_last_time_message(
-        telegram_id=telegram_id,
-        is_tap_to_keyboard=False
-    )
-    business_connection_id = message.business_connection_id
-    await message.bot(
-        ReadBusinessMessage(
-            business_connection_id=business_connection_id,
-            chat_id=message.chat.id,
-            message_id=message.message_id
-        )
-    )
-    await message.bot.send_chat_action(
-        chat_id=message.chat.id,
-        action=ChatAction.TYPING,
-        business_connection_id = business_connection_id
-    )
-    if "?" in text: 
-        # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
-        await state.set_state('generating')   
-        gpt5_response_text = await client_gpt_5.create_gpt_5_response(
-            new_prompt=text,
-            nm_id=nm_id,
-            count=nm_id_amount
-        )
-        await state.set_state(UserFlow.continue_dialog)
-        await message.answer(gpt5_response_text)
-    else:
-        if len(text) > 10:
-            await state.set_state('generating')
-            gpt5_response_text = await client_gpt_5.create_gpt_5_response(
-                new_prompt=text,
-                nm_id=nm_id,
-                count=nm_id_amount
-            )
-            await state.set_state(UserFlow.continue_dialog)
-            await message.answer(gpt5_response_text)    
-        elif text in OK_WORDS:
-            await message.answer("👍")
-        else:
-            await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")
-
-# здесь надо было business_message указать!!!!!
-# первое сообщений пользователя ловит - просто текст
+# business_message - only for bussines account, handler for first message from clients
 @router.business_message(StateFilter(None))
 async def handle_first_message(
     message: Message, 

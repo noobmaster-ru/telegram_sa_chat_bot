@@ -112,6 +112,7 @@ async def handle_photo(
     )
     if photo_type == "order":
         # отправляем в OpenAI для классификации
+        await state.set_state("generating")
         model_response = await client_gpt_5.classify_photo_order(
             reference_bytes=reference_bytes,
             user_bytes=user_bytes,
@@ -140,11 +141,13 @@ async def handle_photo(
             )
             await state.set_state(UserFlow.waiting_for_order_receive)
         else:
+            await state.set_state(UserFlow.waiting_for_photo_order)
             await message.answer("❌ Фото заказа не принято. Попробуйте прислать корректное фото заказа.")
 
     elif photo_type == "feedback":
         
         # отправляем в OpenAI для классификации
+        await state.set_state("generating")
         model_response = await client_gpt_5.classify_photo_feedback(
             reference_bytes=reference_bytes,
             user_bytes=user_bytes,
@@ -174,10 +177,12 @@ async def handle_photo(
             )
             await state.set_state(UserFlow.waiting_for_shk)
         else:
+            await state.set_state(UserFlow.waiting_for_photo_feedback)
             await message.answer("❌ Фото отзыва не принято. Попробуйте прислать корректное фото отзыва.")
 
     elif photo_type == "shk":
         # отправляем в OpenAI для классификации
+        await state.set_state("generating")
         model_response = await client_gpt_5.classify_photo_shk(
             reference_bytes=reference_bytes,
             user_bytes=user_bytes,
@@ -206,6 +211,7 @@ async def handle_photo(
             )
             await state.set_state(UserFlow.waiting_for_requisites)
         else:
+            await state.set_state(UserFlow.waiting_for_photo_shk)
             await message.answer("❌ Фото разрезанных штрихкодов не принято. Попробуйте прислать корректное фото разрезанных штрихкодов")
 
     # photo_type == "other_type" ,юзер тупой и продолжает отправлять ненужные фотографии
