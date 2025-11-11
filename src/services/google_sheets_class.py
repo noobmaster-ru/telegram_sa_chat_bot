@@ -100,6 +100,12 @@ class GoogleSheetClass:
   
     # === Основные операции ===
     async def add_new_buyer(self, username: str, full_name: str, telegram_id: int, nm_id: int) -> None:
+        """Возвращает индекс строки из Redis или ищет в таблице, если в кэше нет."""
+        key = f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{telegram_id}"
+        row_index = await self.redis.get(key)
+        if row_index:
+            return # if user already in google sheets - dont add him, skip
+        
         sheet = self.sheet or await self.get_sheet()
         new_row = [''] * len(self._header_cache)
         

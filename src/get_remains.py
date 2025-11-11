@@ -82,7 +82,7 @@ class WbApi:
             pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, nm_id, data["remains"]) # nm_id: remains 
             pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, nm_id, data["nm_id_name"]) # nm_id: name
         await pipe.execute()
-        logging.info(f"✅ upload {constants.NM_IDS_FOR_CASHBACK} nm_ids remains and names into Redis DB")
+        logging.info(f"✅ upload {constants.NM_IDS_FOR_CASHBACK} remains, names into Redis")
 
 
 async def periodic_task():
@@ -91,9 +91,7 @@ async def periodic_task():
         token=settings.WB_TOKEN,
         redis=redis
     ) 
-
     while True:
-        logging.info(f"start remains update...")
         result = {}
         try:
             async with aiohttp.ClientSession() as session:
@@ -127,4 +125,5 @@ async def main():
     await periodic_task()
     
 if __name__ == "__main__":
+    logging.info(f" Start get_remains.py")
     asyncio.run(main())

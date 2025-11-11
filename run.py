@@ -38,11 +38,14 @@ async def main():
     instruction_template = await spreadsheet.get_instruction_template(constants.INSTRUCTION_SHEET_NAME_STR)
     client_gpt_5 = OpenAiRequestClass(
         OPENAI_API_KEY=settings.OPENAI_TOKEN, 
-        GPT_MODEL_NAME_STR=constants.GPT_MODEL_NAME, 
+        GPT_MODEL_NAME=constants.GPT_MODEL_NAME, 
+        GPT_MODEL_NAME_PHOTO_ANALYSIS=constants.GPT_MODEL_NAME_PHOTO_ANALYSIS,
         PROXY=settings.PROXY,
         instruction_template=instruction_template,
         max_tokens=constants.GPT_MAX_TOKENS,
-        temperature=constants.GPT_TEMPERATURE
+        max_output_tokens_photo_analysis= constants.GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+        temperature=constants.GPT_TEMPERATURE,
+        reasoning=constants.GPT_REASONING
     )
 
     # ============ START =============

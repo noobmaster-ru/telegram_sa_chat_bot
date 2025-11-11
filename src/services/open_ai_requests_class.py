@@ -1,6 +1,5 @@
 import re
 import httpx
-import base64
 import logging
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
@@ -11,11 +10,14 @@ class OpenAiRequestClass:
     def __init__(
         self, 
         OPENAI_API_KEY: str,
-        GPT_MODEL_NAME_STR: str,
+        GPT_MODEL_NAME: str,
+        GPT_MODEL_NAME_PHOTO_ANALYSIS: str,
         PROXY: str,
         instruction_template: str,
         max_tokens: int,
-        temperature: float
+        max_output_tokens_photo_analysis: int,
+        temperature: float,
+        reasoning: str
     ):
         # Подгружаем переменные окружения
         load_dotenv()
@@ -27,18 +29,21 @@ class OpenAiRequestClass:
                 transport=httpx.HTTPTransport(local_address="0.0.0.0")
             )
         )
-        self.model_name = GPT_MODEL_NAME_STR
+        self.model_name = GPT_MODEL_NAME
+        self.model_name_for_photo_analysis = GPT_MODEL_NAME_PHOTO_ANALYSIS
         self.instruction_template = instruction_template
         self.max_tokens = max_tokens 
+        self.max_output_tokens_photo_analysis = max_output_tokens_photo_analysis
         self.temperature = temperature
+        self.reasoning = reasoning
         # logging
         self.logger = logging.getLogger(__name__)
 
     async def _classify_photo(
         self,
         prefix_message: str,
-        reference_bytes: bytes,
-        user_bytes: bytes,
+        ref_image_url: str,
+        user_image_url: str,
         nm_id: str,
         nm_id_name: str
     ) -> str:
@@ -46,55 +51,73 @@ class OpenAiRequestClass:
         Сравнивает две фотографии: эталон (reference) и присланную пользователем.
         Возвращает: 'Да' или 'Нет'
         """
-        # конвертируем байты фото в base64
-
-        ref_b64 = base64.b64encode(reference_bytes).decode("utf-8")
-        user_b64 = base64.b64encode(user_bytes).decode("utf-8")
 
         # формируем сообщение
-        response = await self.client.chat.completions.create(
-            model=self.model_name,  
-            messages=[
+        response = await self.client.responses.create(
+            model=self.model_name_for_photo_analysis,  
+            reasoning={
+                "effort": self.reasoning
+            },
+            tools=[
+                {
+                    "type": "web_search"
+                }
+            ],
+            input=[
                 {
                     "role": "user",
                     "content": [
                         {
-                            "type": "text", 
+                            "type": "input_text", 
                             "text": (
-                                "Сравни две фотографии.\n"
-                                "1️⃣ Первая — это фотография нашего товара.\n"
-                                "2️⃣ Вторая — скриншот, присланный пользователем.\n\n"
-                                f"{prefix_message} {nm_id}, название товара: ({nm_id_name}).\n"
+                                "Ты — эксперт по визуальному сравнению изображений.\n"
+                                f"Первая фотография — это наш товар (артикул `{nm_id}`; название `{nm_id_name}` должно быть на скриншоте).\n"
+                                "Вторая — фото(или скриншот) пользователя.\n\n"
+                                f"{prefix_message}\n\n"
+                                "Если не можешь определить по скриншоту , можно использовать веб-поиск, чтобы сверить внешний вид товара на сайте Wildberries.\n"
                                 "Ответь строго одним словом: Да или Нет"
                             ),
                         },
                         {
-                            "type": "image_url", 
-                            "image_url": {"url": f"data:image/jpeg;base64,{ref_b64}"}
+                            "type": "input_image", 
+                            "image_url": ref_image_url
                         },
                         {
-                            "type": "image_url", 
-                            "image_url": {"url": f"data:image/jpeg;base64,{user_b64}"}
+                            "type": "input_image", 
+                            "image_url": user_image_url
                         },
                     ]
                 }
             ],
-            max_tokens=5,
-            temperature=0  # детерминированный ответ
+            max_output_tokens=self.max_output_tokens_photo_analysis
         )
+        self.logger.info(response)
+        result = None
+        for item in response.output:
+            if getattr(item, "content", None):
+                for block in item.content:
+                    text = getattr(block, "text", None)
+                    if text:
+                        result = text.strip()
+                        break
+            if result:
+                break
 
-        result = response.choices[0].message.content.strip()
-        # logging usage of tokens per prompt
+        if not result:
+            self.logger.error("❌ Не удалось извлечь текст из ответа GPT")
+            result = "Не удалось определить"
         usage = response.usage
         self.logger.info(
-            f"  GPT usage — input tokens: {usage.prompt_tokens}, output tokens: {usage.completion_tokens}, total tokens: {usage.total_tokens}"
+            f"  GPT usage — input: {usage.input_tokens}, "
+            f"output: {usage.output_tokens}, "
+            f"total: {usage.total_tokens}"
         )
         return result
     
     async def classify_photo_order(
         self, 
-        reference_bytes: bytes,
-        user_bytes: bytes,
+        ref_image_url: str,
+        user_image_url: str,
         nm_id: str,
         nm_id_name: str
     ) -> str:
@@ -102,17 +125,17 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message="Определи есть ли на скриншоте заказ с сайта Wildberries товара",
-            reference_bytes=reference_bytes,
-            user_bytes=user_bytes,
+            prefix_message="Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries.",
+            ref_image_url=ref_image_url,
+            user_image_url=user_image_url,
             nm_id=nm_id,
             nm_id_name=nm_id_name
         )
     
     async def classify_photo_feedback(
         self, 
-        reference_bytes: bytes,
-        user_bytes: bytes,
+        ref_image_url: str,
+        user_image_url: str,
         nm_id: str,
         nm_id_name: str
     ) -> str:
@@ -120,17 +143,17 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message="Определи есть ли на скриншоте отзыв с сайта Wildberries товара",
-            reference_bytes=reference_bytes,
-            user_bytes=user_bytes,
+            prefix_message="Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries.",
+            ref_image_url=ref_image_url,
+            user_image_url=user_image_url,
             nm_id=nm_id,
             nm_id_name=nm_id_name
         )
         
     async def classify_photo_shk(
         self, 
-        reference_bytes: bytes,
-        user_bytes: bytes,
+        ref_image_url: str,
+        user_image_url: str,
         nm_id: str,
         nm_id_name: str 
     ) -> str:
@@ -138,9 +161,9 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message="Определи есть ли на фотографии разрезанные этикетки(ШК) товара",
-            reference_bytes=reference_bytes,
-            user_bytes=user_bytes,
+            prefix_message="Подумай и скажи есть ли на фотографии разрезанные этикетки (Штрихкода) Wildberries нашего товара.",
+            ref_image_url=ref_image_url,
+            user_image_url=user_image_url,
             nm_id=nm_id,
             nm_id_name=nm_id_name
         )

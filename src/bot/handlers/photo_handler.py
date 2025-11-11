@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import filetype
 from pathlib import Path
 from aiogram import Router, F
 from aiogram.types import Message
@@ -15,6 +17,11 @@ from aiogram.methods import ReadBusinessMessage
 from aiogram.enums import ChatAction
 
 router = Router()
+
+# Function to encode the image
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
 
 
 # ловим любой текст в состояних waiting_for_photo_order, waiting_for_photo_feedback , waiting_for_photo_shk и просим отправить фото!
@@ -95,7 +102,11 @@ async def handle_photo(
     file = await message.bot.get_file(photo.file_id)
     file_bytes = await message.bot.download_file(file.file_path)
     user_bytes = file_bytes.read()
-    
+    # 🔹 Конвертируем байты в base64-строку
+    base64_image_user = base64.b64encode(user_bytes).decode("utf-8")
+    reference_image_extension = filetype.guess(user_bytes).extension
+    user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
+
     # обновляем время последнего сообщения юзера
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -103,16 +114,18 @@ async def handle_photo(
     )
     
     # Читаем байты изображения эталона
-    # 2. Загружаем эталонное изображение (например, из файла)
+    # 4. Загружаем эталонное изображение (например, из файла)
     reference_path = Path(__file__).resolve().parent.parent.parent / "resources" / "flashlight.png"
-    reference_bytes = reference_path.read_bytes()
-
+    reference_image_extension = filetype.guess(reference_path).extension
+    base64_image_ref = encode_image(reference_path)
+    ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"
+    
     if photo_type == "order":
         # отправляем в OpenAI для классификации
         await state.set_state("generating")
         model_response = await client_gpt_5.classify_photo_order(
-            reference_bytes=reference_bytes,
-            user_bytes=user_bytes,
+            ref_image_url=ref_image_url,
+            user_image_url=user_image_url,
             nm_id=nm_id,
             nm_id_name=nm_id_name
         )
@@ -152,8 +165,8 @@ async def handle_photo(
         # отправляем в OpenAI для классификации
         await state.set_state("generating")
         model_response = await client_gpt_5.classify_photo_feedback(
-            reference_bytes=reference_bytes,
-            user_bytes=user_bytes,
+            ref_image_url=ref_image_url,
+            user_image_url=user_image_url,
             nm_id=nm_id,
             nm_id_name=nm_id_name
         )
@@ -193,8 +206,8 @@ async def handle_photo(
         # отправляем в OpenAI для классификации
         await state.set_state("generating")
         model_response = await client_gpt_5.classify_photo_shk(
-            reference_bytes=reference_bytes,
-            user_bytes=user_bytes,
+            ref_image_url=ref_image_url,
+            user_image_url=user_image_url,
             nm_id=nm_id,
             nm_id_name=nm_id_name
         )
