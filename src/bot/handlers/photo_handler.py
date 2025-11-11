@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from aiogram import Router, F
 from aiogram.types import Message
@@ -105,11 +106,7 @@ async def handle_photo(
     # 2. Загружаем эталонное изображение (например, из файла)
     reference_path = Path(__file__).resolve().parent.parent.parent / "resources" / "flashlight.png"
     reference_bytes = reference_path.read_bytes()
-    await message.bot.send_chat_action(
-        chat_id=message.chat.id,
-        action=ChatAction.TYPING,
-        business_connection_id = message.business_connection_id
-    )
+
     if photo_type == "order":
         # отправляем в OpenAI для классификации
         await state.set_state("generating")
@@ -126,6 +123,12 @@ async def handle_photo(
             value=model_response,
             is_tap_to_keyboard=False
         )
+        await message.bot.send_chat_action(
+            chat_id=message.chat.id,
+            action=ChatAction.TYPING,
+            business_connection_id = message.business_connection_id
+        )
+        await asyncio.sleep(3)
         if model_response == "Да":
             # теперь ждём скрин отзыва
             await state.update_data(photo_type="feedback")
@@ -161,6 +164,12 @@ async def handle_photo(
             value=model_response,
             is_tap_to_keyboard=False
         )
+        await message.bot.send_chat_action(
+            chat_id=message.chat.id,
+            action=ChatAction.TYPING,
+            business_connection_id = message.business_connection_id
+        )
+        await asyncio.sleep(3)
         if model_response == "Да":
             # теперь ждём скрин отзыва
             await state.update_data(photo_type="shk")
@@ -196,6 +205,12 @@ async def handle_photo(
             value=model_response,
             is_tap_to_keyboard=False
         )
+        await message.bot.send_chat_action(
+            chat_id=message.chat.id,
+            action=ChatAction.TYPING,
+            business_connection_id = message.business_connection_id
+        )
+        await asyncio.sleep(3)
         if model_response == "Да":
             # получили все фотки: заказ, отзыв, ШК
             await state.update_data(photo_type="other_type")
@@ -216,6 +231,12 @@ async def handle_photo(
 
     # photo_type == "other_type" ,юзер тупой и продолжает отправлять ненужные фотографии
     else:
+        await message.bot.send_chat_action(
+            chat_id=message.chat.id,
+            action=ChatAction.TYPING,
+            business_connection_id = message.business_connection_id
+        )
+        await asyncio.sleep(3)
         current_state = await state.get_state() 
         if current_state == UserFlow.waiting_for_requisites:
             await message.answer(

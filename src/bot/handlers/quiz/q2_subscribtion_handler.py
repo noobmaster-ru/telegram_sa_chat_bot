@@ -1,15 +1,70 @@
-from aiogram import Router, F
+from aiogram import  F, types,  Bot
 from aiogram.types import CallbackQuery
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
+from aiogram.enums import ChatAction
+from aiogram.methods import ReadBusinessMessage
 
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
+from src.services.open_ai_requests_class import OpenAiRequestClass
 
-router = Router()
+from .router import router
 
-@router.callback_query(F.data.startswith("subscribe_"))
+# ------ 2. catch all text from user in state "waiting_for_subcription_to_channel" and send it to gpt
+@router.business_message(StateFilter(UserFlow.waiting_for_subcription_to_channel))
+async def handle_unexpected_text_waiting_for_subcription_to_channel(
+    message: types.Message,
+    spreadsheet: GoogleSheetClass,
+    CHANNEL_USERNAME: str,
+    client_gpt_5: OpenAiRequestClass,
+    state: FSMContext,
+    bot: Bot
+):
+    telegram_id = message.from_user.id
+    text = message.text
+    
+    user_data = await state.get_data()
+    nm_id = user_data.get("nm_id")
+    nm_id_amount = user_data.get("nm_id_amount")
+    
+    # обновляем время последнего сообщения
+    await spreadsheet.update_buyer_last_time_message(
+        telegram_id=telegram_id,
+        is_tap_to_keyboard=False
+    )
+    
+    await state.set_state('generating')
+    # помечаем сообщение как прочитанное
+    business_connection_id = message.business_connection_id
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
+    )
+    await bot.send_chat_action(
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+        business_connection_id = business_connection_id
+    )
+    gpt_5_response = await client_gpt_5.get_gpt_5_response_after_agreement_and_before_subscription_point(
+        new_prompt=text,
+        CHANNEL_NAME=CHANNEL_USERNAME,
+        nm_id=nm_id,
+        count=nm_id_amount
+    )
+    await state.set_state(UserFlow.waiting_for_subcription_to_channel)
+    await message.answer(
+        f'{gpt_5_response}\nПока вы не подпишетесь на канал — раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:',
+        reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
+    )
+
+# ------ 2. wait until user tap to button "Yes, sub to channel"
+@router.callback_query(StateFilter(UserFlow.waiting_for_subcription_to_channel), F.data.startswith("subscribe_"))
 async def handle_subscription(
     callback: CallbackQuery,
     state: FSMContext,

@@ -6,12 +6,9 @@ import redis.asyncio as asyncredis
 
 from src.bot import (
     text_router, 
-    agreement_router, 
-    subscribtion_router, 
-    photo_router , 
-    requisites_router, 
-    unexpected_text_router,
-    order_router
+    quiz_router,
+    photo_router, 
+    requisites_router
 )
 
 from src.services.google_sheets_class import GoogleSheetClass
@@ -21,8 +18,6 @@ from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.core.config import settings, constants
 
 async def main():
-
-
     redis = await asyncredis.from_url(settings.REDIS_URL)
     storage = RedisStorage(redis) 
     
@@ -40,10 +35,7 @@ async def main():
         sheet_name=constants.ARTICLES_SHEET_STR,
         REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST,
     )
-
-
     instruction_template = await spreadsheet.get_instruction_template(constants.INSTRUCTION_SHEET_NAME_STR)
-    
     client_gpt_5 = OpenAiRequestClass(
         OPENAI_API_KEY=settings.OPENAI_TOKEN, 
         GPT_MODEL_NAME_STR=constants.GPT_MODEL_NAME, 
@@ -78,20 +70,10 @@ async def main():
             "REDIS_KEY_NM_IDS_TITLES_HASH": constants.REDIS_KEY_NM_IDS_TITLES_HASH
         }
     )
-    #роутер, который ловит все текстовые сообщения
-    dp.include_router(text_router)
-    # первые роутеры - с вопросами да/нет
-    dp.include_router(photo_router)
-    dp.include_router(unexpected_text_router)
-    dp.include_router(order_router)
-
-    
-    #роутер, который ловит текстовые сообщения-реквизиты
-    dp.include_router(requisites_router)
-    
-    
-    dp.include_router(agreement_router)
-    dp.include_router(subscribtion_router)
+    dp.include_router(text_router) # catch first and last text messages and get it to gpt
+    dp.include_router(quiz_router) #  quiz - Yes/No questions
+    dp.include_router(photo_router) # catch photos
+    dp.include_router(requisites_router) # catch requisites
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
