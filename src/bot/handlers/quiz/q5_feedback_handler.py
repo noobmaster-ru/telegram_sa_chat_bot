@@ -9,7 +9,7 @@ from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
-
+from src.bot.utils.last_activity import update_last_activity
 
 from .router import router
 
@@ -22,6 +22,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     state: FSMContext,
     bot: Bot
 ):
+    await update_last_activity(state)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -68,6 +69,7 @@ async def handle_feedback_answer(
     state: FSMContext,
 ):
     await callback.answer()
+    await update_last_activity(state)
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data

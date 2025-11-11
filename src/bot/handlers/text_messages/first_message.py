@@ -1,17 +1,19 @@
+import asyncio
 import logging
-from redis.asyncio import Redis
+import datetime
+from aiogram import Bot
 from aiogram.types import Message
 from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
+from redis.asyncio import Redis
 
-from aiogram import Bot
+
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
-
 from src.services.google_sheets_class import GoogleSheetClass
-import asyncio
+from src.bot.utils.last_activity import update_last_activity
 
 from .router import router
 
@@ -52,7 +54,12 @@ async def handle_first_message(
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
     text = message.text if message.text else "-"
-
+    
+    await update_last_activity(state)
+    await state.update_data(
+        business_connection_id=message.business_connection_id,
+        telegram_id=telegram_id
+    )
     
     # first message from user
     logging.info(

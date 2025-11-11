@@ -3,7 +3,7 @@ from aiogram import Bot, Dispatcher
 
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as asyncredis
-
+from src.bot.utils.inactivity_checker import inactivity_checker
 from src.bot import (
     text_router, 
     quiz_router,
@@ -73,6 +73,8 @@ async def main():
             "REDIS_KEY_NM_IDS_TITLES_HASH": constants.REDIS_KEY_NM_IDS_TITLES_HASH
         }
     )
+    # check last time activity and send reminder message if user too late inactive
+    asyncio.create_task(inactivity_checker(bot, dp.storage))
     dp.include_router(text_router) # catch first and last text messages and get it to gpt
     dp.include_router(quiz_router) #  quiz - Yes/No questions
     dp.include_router(photo_router) # catch photos

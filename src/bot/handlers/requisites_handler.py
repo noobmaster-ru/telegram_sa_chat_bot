@@ -13,6 +13,7 @@ from src.bot.states.user_flow import UserFlow
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.utils.last_activity import update_last_activity
 
 router = Router()
 
@@ -54,6 +55,7 @@ async def handle_requisites_message(
     — если чего-то не хватает — просит дополнить
     — если всё найдено — предлагает подтвердить
     """
+    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -319,6 +321,7 @@ async def handle_amount(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -405,6 +408,7 @@ async def handle_card_or_phone_number(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    await update_last_activity(state)
     text = message.text.strip()
     telegram_id = message.from_user.id
     # обновляем время последнего сообщения
@@ -487,6 +491,7 @@ async def handle_bank_name(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -572,12 +577,12 @@ async def handle_bank_name(
 @router.callback_query(StateFilter(UserFlow.confirming_requisites), F.data == "confirm_requisites_no")
 async def confirm_requisites_no(
     callback: CallbackQuery, 
-    state: FSMContext,
-    spreadsheet: GoogleSheetClass
+    state: FSMContext
 ):
     """
     Пользователь указал, что реквизиты неверные — начинаем ввод заново.
     """
+    await update_last_activity(state)
     await callback.message.bot(
         ReadBusinessMessage(
             business_connection_id=callback.message.business_connection_id,
@@ -615,8 +620,8 @@ async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    BUYERS_SHEET_NAME: str,
 ):
+    await update_last_activity(state)
     await callback.answer()
     """
     Пользователь указал, что реквизиты верные — сохраняем их в гугл таблицу и очищаем состояние.
@@ -631,11 +636,7 @@ async def confirm_requisites_yes(
     data = await state.get_data()
     telegram_id = callback.from_user.id
 
-    # # обновляем время последнего нажатия на кнопку
-    # await spreadsheet.update_buyer_last_time_message(
-    #     telegram_id=telegram_id,
-    #     is_tap_to_keyboard=True
-    # )
+
     # записываем данные в гугл-таблицу и однвременно обновим последнее время записи
     await spreadsheet.write_requisites_into_google_sheets_and_update_last_time_message(
         telegram_id=telegram_id,
