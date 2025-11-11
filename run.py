@@ -18,7 +18,7 @@ from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.core.config import settings, constants
 
 async def main():
-    redis = await asyncredis.from_url(settings.REDIS_URL)
+    redis = await asyncredis.from_url(settings.REDIS_URL_TEST)
     storage = RedisStorage(redis) 
     
     spreadsheet = GoogleSheetClass(
