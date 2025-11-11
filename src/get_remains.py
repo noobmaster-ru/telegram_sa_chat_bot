@@ -86,7 +86,7 @@ class WbApi:
 
 
 async def periodic_task():
-    redis = await asyncredis.from_url(settings.REDIS_URL_TEST)
+    redis = await asyncredis.from_url(settings.REDIS_URL)
     api_client = WbApi(
         token=settings.WB_TOKEN,
         redis=redis

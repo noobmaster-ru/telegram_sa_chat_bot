@@ -25,7 +25,6 @@ class EnvSettings(BaseSettings):
 
     # Redis
     REDIS_URL: str
-    REDIS_URL_TEST: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
