@@ -1,0 +1,34 @@
+# Wildberries
+TIME_SLEEP_API_GET_REMAINS = 21
+
+
+# Telegram
+MIN_LEN_TEXT = 12
+CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
+OK_WORDS = [
+    "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
+    "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!",
+    "окей!", "хорошо,сейчас", "понял"
+]
+ADMIN_ID_LIST = [694144143, 547299317]
+
+
+
+# Open AI
+GPT_MODEL_NAME='chatgpt-4o-latest'
+GPT_MAX_TOKENS=150
+GPT_TEMPERATURE=0.55
+
+
+# Google Sheets
+ARTICLES_SHEET_STR="Артикулы"
+INSTRUCTION_SHEET_NAME_STR="Инструкция"
+BUYERS_SHEET_NAME_STR="Покупатели"
+
+# Redis
+NM_IDS_FOR_CASHBACK = [555620866, 552281618, 518431572]
+REDIS_KEY_SET_TELEGRAM_IDS="telegram_users_ids" # нужен для проверки новых/старых юзеров, кто писал акку
+REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
+REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"
+REDIS_KEY_NM_IDS_ORDERED_LIST="NM_IDS_ORDERED_LIST_FOR_CASHBACK" # упорядоченный список артикулов из листа "Артикулы"
+REDIS_KEY_NM_IDS_TITLES_HASH="NM_IDS_NAMES_HASH"
