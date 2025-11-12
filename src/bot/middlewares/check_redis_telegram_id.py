@@ -22,7 +22,7 @@ class CheckRedisUserMiddleware(BaseMiddleware):
 
         # Проверяем наличие ID в Redis
         if await self.redis.sismember(self.redis_key, str(telegram_id)):
-            logging.info(f"user_id {telegram_id} in Redis, skip him")
+            logging.info(f" user_id {telegram_id} in Redis, skip him")
             return  # Прерываем выполнение — хэндлеры не вызываются
 
         # новый пользователь - начинаем обработку

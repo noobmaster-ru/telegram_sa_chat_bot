@@ -15,6 +15,7 @@ from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 
 from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
+from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.core.config import settings, constants
 
 async def main():
@@ -52,11 +53,16 @@ async def main():
     bot = Bot(token=settings.TG_BOT_TOKEN)
     dp = Dispatcher(storage=storage)
     
-    # Подключаем middleware и передаём готовое подключение
+    # middlerware to check is user in redis store
     middleware_check_redis = CheckRedisUserMiddleware(redis, constants.REDIS_KEY_SET_TELEGRAM_IDS)
     dp.business_message.middleware(middleware_check_redis)
     dp.callback_query.middleware(middleware_check_redis)
-
+    
+    # middleware to ignore messages from us(manager) from bussiness account (BUSSINESS_ACCOUNTS_IDS)
+    middleware_ignore_bussiness_messages = IgnoreBusinessMessagesMiddleware()
+    dp.business_message.middleware(middleware_ignore_bussiness_messages)
+    dp.callback_query.middleware(middleware_ignore_bussiness_messages)
+    
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {

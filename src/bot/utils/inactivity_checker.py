@@ -7,19 +7,18 @@ from aiogram.fsm.storage.redis import RedisStorage
 from src.bot.states.user_flow import UserFlow
 from src.core.config import constants
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-
+from src.core.config import constants
 # 60 - 1 min
 # 3600 - 1 hour
 # 21600 - 6 hour
 TIME_DURATION = constants.TIME_DURATION_BEETWEEN_REMINDER # 20
-TIME_CHECKING_LAST_USERS_ACTIVITYS = constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS # 10
 REMINDER_TIMEOUTS = {
     UserFlow.waiting_for_agreement.state: TIME_DURATION, 
     UserFlow.waiting_for_subcription_to_channel.state: TIME_DURATION, 
     UserFlow.waiting_for_order.state: TIME_DURATION, 
     
     UserFlow.waiting_for_photo_order.state: TIME_DURATION, 
-    UserFlow.waiting_for_order_receive.state: TIME_DURATION, 
+    UserFlow.waiting_for_order_receive.state: constants.TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE, # 1 day
     UserFlow.waiting_for_feedback.state: TIME_DURATION, 
     
     
@@ -157,4 +156,4 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                     logging.info(f"  user {telegram_id} in state {state}, elapsed = {elapsed}")
         except Exception as e:
             logging.info(f"[InactivityChecker] Ошибка: {e}")
-        await asyncio.sleep(TIME_DURATION)  
+        await asyncio.sleep(constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS)  

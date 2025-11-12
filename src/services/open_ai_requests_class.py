@@ -91,7 +91,7 @@ class OpenAiRequestClass:
             ],
             max_output_tokens=self.max_output_tokens_photo_analysis
         )
-        self.logger.info(response)
+        # self.logger.info(response)
         result = None
         for item in response.output:
             if getattr(item, "content", None):
