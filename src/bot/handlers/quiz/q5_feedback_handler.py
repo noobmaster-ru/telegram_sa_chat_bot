@@ -90,13 +90,13 @@ async def handle_feedback_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда оставите отзыв на товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, оставил(а)'", 
+                f"Когда оставите отзыв на товар `{nm_id}`, нажмите на кнопку 'Да, оставил(а)'", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
                 parse_mode="MarkdownV2"
             )
         except:
             msg = await callback.message.edit_text(
-                f"Нужно оставить отзыв 5 звезд на товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), затем нажмите на кнопку 'Да, оставил(а)'", 
+                f"Нужно оставить отзыв 5 звезд на товар `{nm_id}`, затем нажмите на кнопку 'Да, оставил(а)'", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
                 parse_mode="MarkdownV2"
             )

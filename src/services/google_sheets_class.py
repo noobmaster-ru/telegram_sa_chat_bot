@@ -265,7 +265,7 @@ class GoogleSheetClass:
         today_date = f"{today.day}_{months[today.month]}"
         
         # ссылка на товар на вб
-        safe_url = f"https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP"
+        # safe_url = f"https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP"
         
         instruction_str = (
             instruction_str.replace("{", "{{").replace("}", "}}")
@@ -296,9 +296,9 @@ class GoogleSheetClass:
 
         safe_text = escape_md_except_links(filled)
         
-        # 4️⃣ Подставляем безопасную ссылку
-        safe_text = safe_text.replace(
-            f"[{nm_id}](https://www.wildberries.ru/catalog/{nm_id}/detail.aspx?targetUrl=SP)",
-            f"[{nm_id}]({safe_url})"
-        )
+        # # 4️⃣ Подставляем безопасную ссылку
+        # safe_text = safe_text.replace(
+        #     f"[{nm_id}](https://www.wildberries.ru/catalog/{nm_id}/detail.aspx?targetUrl=SP)",
+        #     f"[{nm_id}]({safe_url})"
+        # )
         return safe_text

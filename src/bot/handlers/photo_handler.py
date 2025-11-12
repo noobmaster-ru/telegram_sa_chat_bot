@@ -156,7 +156,7 @@ async def handle_photo(
             )
             # записали фотку заказа - теперь идем дальше по сценарию - спрашиваем получили ли заказ
             msg = await message.answer(
-                f"📬 Вы получили товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+                f"📬 Вы получили товар `{nm_id}`?", 
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
                 parse_mode="MarkdownV2"
             )
@@ -200,7 +200,7 @@ async def handle_photo(
             )
             #  Следующий вопрос - разрезали ли ШК
             msg = await message.answer(
-                f"✂️ ШК разрезали на [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+                f"✂️ Этикетки разрезали на `{nm_id}`?", 
                 reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
                 parse_mode="MarkdownV2"
             )

@@ -92,13 +92,13 @@ async def handle_receive_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда получите товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, получил(а)'", 
+                f"Когда получите товар `{nm_id}`", 
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
                 parse_mode="MarkdownV2"
             )
         except:
             msg = await callback.message.edit_text(
-                f"Нужно получить товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), после - нажмите на кнопку 'Да, получил(а)'",
+                f"Нужно получить товар `{nm_id}`, после - нажмите на кнопку 'Да, получил(а)'",
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
                 parse_mode="MarkdownV2"
             )
@@ -108,7 +108,7 @@ async def handle_receive_answer(
     
     # ✅ Следующий вопрос
     msg = await callback.message.edit_text(
-        f"💬 Вы оставили отзыв на [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+        f"💬 Вы оставили отзыв на `{nm_id}`?", 
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
         parse_mode="MarkdownV2"
     )

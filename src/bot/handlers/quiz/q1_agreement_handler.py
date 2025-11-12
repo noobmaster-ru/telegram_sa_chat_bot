@@ -108,7 +108,7 @@ async def handle_agreement(
                 # 👉 start quiz_handlers
                 await state.set_state(UserFlow.waiting_for_order)
                 msg = await callback.message.edit_text(
-                    f"📦 Вы заказали товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
+                    f"📦 Вы заказали товар `{nm_id}`?", 
                     reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
                     parse_mode="MarkdownV2"
                 )

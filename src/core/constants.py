@@ -1,5 +1,5 @@
 # Wildberries
-TIME_SLEEP_API_GET_REMAINS = 22
+TIME_SLEEP_API_GET_REMAINS = 3600*23 # 3600s = 1 hour * 23 = 23 hours
 
 
 # Telegram
@@ -12,8 +12,8 @@ OK_WORDS = [
 ]
 ADMIN_ID_LIST = [694144143, 547299317]
 TIME_DURATION_BEETWEEN_REMINDER = 3600 # 3600s = 1 hour  
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 21600*4 # 21600s = 6 hours * 4 = 1 day
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 600 # 600s = 10 min - every 10 min check users last time activitys
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # 3600s = 1 hour * 23 = 23 hours
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  # 3600s = 1 hour  - every hour check users last time activitys
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks

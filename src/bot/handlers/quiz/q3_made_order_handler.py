@@ -92,13 +92,13 @@ async def handle_order_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда закажете товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, заказал(а)'",
+                f"Когда закажете товар `{nm_id}`, нажмите на кнопку 'Да, заказал(а)'",
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
                 parse_mode="MarkdownV2"
             )
         except:
             msg = await callback.message.edit_text(
-                f"Нужно заказать товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
+                f"Нужно заказать товар `{nm_id}`, когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
                 parse_mode="MarkdownV2"
             )
