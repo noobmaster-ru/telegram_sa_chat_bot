@@ -1,5 +1,5 @@
 # Wildberries
-TIME_SLEEP_API_GET_REMAINS = 21
+TIME_SLEEP_API_GET_REMAINS = 22
 
 
 # Telegram
@@ -24,7 +24,7 @@ BUSINESS_ACCOUNTS_IDS={
 GPT_MODEL_NAME='chatgpt-4o-latest'
 GPT_MODEL_NAME_PHOTO_ANALYSIS="gpt-5"
 GPT_MAX_TOKENS=150
-GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=500
+GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=550
 GPT_TEMPERATURE=0.6
 GPT_REASONING="low" # "low" | "medium" | "high"
 
@@ -35,7 +35,7 @@ BUYERS_SHEET_NAME_STR="Покупатели"
 
 # Redis
 NM_IDS_FOR_CASHBACK = [555620866, 552281618, 518431572]
-REDIS_KEY_SET_TELEGRAM_IDS="telegram_users_ids" # нужен для проверки новых/старых юзеров, кто писал акку
+REDIS_KEY_SET_TELEGRAM_IDS="TELEGRAM_USERS_IDS" # нужен для проверки новых/старых юзеров, кто писал акку
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
 REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"
 REDIS_KEY_NM_IDS_ORDERED_LIST="NM_IDS_ORDERED_LIST_FOR_CASHBACK" # упорядоченный список артикулов из листа "Артикулы"

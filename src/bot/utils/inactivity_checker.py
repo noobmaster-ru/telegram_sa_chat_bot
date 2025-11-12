@@ -8,10 +8,12 @@ from src.bot.states.user_flow import UserFlow
 from src.core.config import constants
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.core.config import constants
+
 # 60 - 1 min
 # 3600 - 1 hour
 # 21600 - 6 hour
-TIME_DURATION = constants.TIME_DURATION_BEETWEEN_REMINDER # 20
+
+TIME_DURATION = constants.TIME_DURATION_BEETWEEN_REMINDER # 1 hour
 REMINDER_TIMEOUTS = {
     UserFlow.waiting_for_agreement.state: TIME_DURATION, 
     UserFlow.waiting_for_subcription_to_channel.state: TIME_DURATION, 
@@ -37,12 +39,12 @@ REMINDER_TIMEOUTS = {
 
 REMINDER_TEXTS = {
     UserFlow.waiting_for_agreement.state: "Вы в итоге согласны с условиями? нажмите на кнопку", 
-    UserFlow.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем. нажмите на кнопку", 
+    UserFlow.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем. нажмите на кнопку, что подписались", 
     UserFlow.waiting_for_order.state: "Вы заказали товар? нажмите на кнопку", 
      
     UserFlow.waiting_for_photo_order.state: "Напоминаю, что ждём скриншот вашего заказа",
     UserFlow.waiting_for_order_receive.state: "Товар получили? нажмите на кнопку",
-    UserFlow.waiting_for_feedback.state: "Здравствуйте! Вы отзыв оставили 5 звёзд? на кнопку нажмите", # 1 мин
+    UserFlow.waiting_for_feedback.state: "Вы отзыв оставили 5 звёзд? на кнопку нажмите", # 1 мин
     
     
     UserFlow.waiting_for_photo_feedback.state: "Скриншот отзыва отправьте",
@@ -85,7 +87,7 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                 last_time_activity = user_data["last_time_activity"]
                 business_connection_id = user_data["business_connection_id"]
                 telegram_id = user_data["telegram_id"] # chat_id == telegram_id
-                last_message_id = user_data["last_message_id"]
+                last_messages_ids = user_data["last_messages_ids"]
 
                 # теперь читаем состояние
                 state_key = f"fsm:{telegram_id}:{telegram_id}:state"
@@ -96,17 +98,16 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                 else:
                     state = None
                 
-                elapsed = time.time() - last_time_activity
-                logging.info(f" user state {state}")
-                if state in REMINDER_TIMEOUTS and elapsed > REMINDER_TIMEOUTS[state]:
+                delta = time.time() - last_time_activity
+                if state in REMINDER_TIMEOUTS and delta > REMINDER_TIMEOUTS[state]:
                     # отправляем напоминание
                     text = REMINDER_TEXTS.get(state)
                     msg = None
                     if text:
-                        logging.info(f"bot del message_id {last_message_id} ,user:{telegram_id} in state {state}")
+                        logging.info(f"bot delete messages_ids {last_messages_ids} in dialog with user: {telegram_id}, user state: {state}")
                         await bot.delete_business_messages(
                             business_connection_id=business_connection_id,
-                            message_ids=[last_message_id]
+                            message_ids=last_messages_ids
                         )
                         if state in REPLY_MARKUP_REMIND:
                             callback_prefix = None
@@ -150,10 +151,10 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                         # обновляем таймер, чтобы не спамить
                         new_data = user_data.copy()
                         new_data["last_time_activity"] = time.time()
-                        new_data["last_message_id"] = msg.message_id
+                        new_data["last_messages_ids"] = [msg.message_id]
                         await redis.set(redis_key, json.dumps(new_data))
                 else:
-                    logging.info(f"  user {telegram_id} in state {state}, elapsed = {elapsed}")
+                    logging.info(f"  user {telegram_id} in state {state}, time_delta_last_msg_time_now = {delta}")
         except Exception as e:
             logging.info(f"[InactivityChecker] Ошибка: {e}")
         await asyncio.sleep(constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS)  

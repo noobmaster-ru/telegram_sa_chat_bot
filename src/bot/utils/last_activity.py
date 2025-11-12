@@ -9,7 +9,5 @@ async def update_last_activity(
     """Сохраняет timestamp последнего действия пользователя"""
     data = await state.get_data()
     data["last_time_activity"] = time.time()
-    data["last_message_id"] = message.message_id
-    # data["business_connection_id"]=message.business_connection_id[0],
-    # data["telegram_id"]=message.from_user.id
+    data["last_messages_ids"].append(message.message_id)
     await state.set_data(data)

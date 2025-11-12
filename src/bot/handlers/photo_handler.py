@@ -120,7 +120,7 @@ async def handle_photo(
     
     # Читаем байты изображения эталона
     # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent / "resources" / "flashlight.png"
+    reference_path = Path(__file__).resolve().parent.parent.parent / "resources" / f"{nm_id}.png"
     reference_image_extension = filetype.guess(reference_path).extension
     base64_image_ref = encode_image(reference_path)
     ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"

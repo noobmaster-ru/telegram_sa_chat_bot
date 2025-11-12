@@ -202,6 +202,7 @@ async def handle_first_message(
     await state.set_state(UserFlow.waiting_for_agreement)
     await state.update_data(
         telegram_id=telegram_id,
-        business_connection_id=business_connection_id
+        business_connection_id=business_connection_id,
+        last_messages_ids=[]
     )
     await update_last_activity(state, msg)
