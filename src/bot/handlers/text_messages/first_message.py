@@ -55,11 +55,6 @@ async def handle_first_message(
     full_name = message.from_user.full_name or "-"
     text = message.text if message.text else "-"
     
-    await update_last_activity(state)
-    await state.update_data(
-        business_connection_id=message.business_connection_id,
-        telegram_id=telegram_id
-    )
     
     # first message from user
     logging.info(
@@ -199,10 +194,14 @@ async def handle_first_message(
     
     await asyncio.sleep(4)
     # Отправляем бота! и отправляем кнопки "Согласны на условия?"
-    await message.answer(
+    msg = await message.answer(
         "Здравствуйте!\nЯ - 🤖-помощник Виктории.\nВы согласны на наши условия кэшбека?",
         reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
     )
-    
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
     await state.set_state(UserFlow.waiting_for_agreement)
+    await state.update_data(
+        telegram_id=telegram_id,
+        business_connection_id=business_connection_id
+    )
+    await update_last_activity(state, msg)

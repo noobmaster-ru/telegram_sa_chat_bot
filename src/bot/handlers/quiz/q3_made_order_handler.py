@@ -23,7 +23,6 @@ async def handle_unexpected_text_waiting_for_order(
     state: FSMContext,
     bot: Bot
 ):
-    await update_last_activity(state)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -58,10 +57,11 @@ async def handle_unexpected_text_waiting_for_order(
         count=nm_id_amount
     )
     await state.set_state(UserFlow.waiting_for_order)
-    await message.answer(
+    msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("order", "заказал(а)")
     )
+    await update_last_activity(state, msg)
 
 # ------ 3. wait until user tap to button "Yes, ordered" and go to state "waiting_for_photo_order"
 @router.callback_query(StateFilter(UserFlow.waiting_for_order), F.data.startswith("order_"))
@@ -71,7 +71,6 @@ async def handle_order_answer(
     state: FSMContext,
 ):
     await callback.answer()
-    await update_last_activity(state)
     telegram_id = callback.from_user.id
     data = callback.data
 
@@ -89,24 +88,27 @@ async def handle_order_answer(
         is_tap_to_keyboard=True
     )
     # если ответ "Нет" → задаём тот же вопрос ещё раз
+    msg = None
     if value == "Нет":
         try:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Когда закажете товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, заказал(а)'",
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
                 parse_mode="MarkdownV2"
             )
         except:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Нужно заказать товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
                 parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_order)
+        await update_last_activity(state, msg)
         return
     
     # дальше переходим в состояние waiting_for_photo_order - ждем фотки заказа от юзера
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         f"Отправьте, пожалуйста фотографию сделанного заказа."
     )
     await state.set_state(UserFlow.waiting_for_photo_order)
+    await update_last_activity(state, msg)

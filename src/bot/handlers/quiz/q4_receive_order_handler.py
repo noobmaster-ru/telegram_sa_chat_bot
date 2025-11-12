@@ -23,7 +23,6 @@ async def handle_unexpected_text_waiting_for_order_receive(
     state: FSMContext,
     bot: Bot
 ):
-    await update_last_activity(state)
     telegram_id = message.from_user.id
     text = message.text
     user_data = await state.get_data()
@@ -57,10 +56,11 @@ async def handle_unexpected_text_waiting_for_order_receive(
         count=nm_id_amount
     )
     await state.set_state(UserFlow.waiting_for_order_receive)
-    await message.answer(
+    msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("receive", "получил(а)")
     )
+    await update_last_activity(state, msg)
 
 # ------ 4. wait until user tap to button "Yes, receive order"
 @router.callback_query(StateFilter(UserFlow.waiting_for_order_receive), F.data.startswith("receive_"))
@@ -70,7 +70,6 @@ async def handle_receive_answer(
     state: FSMContext,
 ):
     await callback.answer()
-    await update_last_activity(state)
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
@@ -87,27 +86,31 @@ async def handle_receive_answer(
         value=value,
         is_tap_to_keyboard=True
     )
+    
     # если ответ "Нет" → задаём тот же вопрос ещё раз
+    msg = None
     if value == "Нет":
         try:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Когда получите товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, получил(а)'", 
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
                 parse_mode="MarkdownV2"
             )
         except:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Нужно получить товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), после - нажмите на кнопку 'Да, получил(а)'",
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
                 parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_order_receive)
+        await update_last_activity(state, msg)
         return
     
     # ✅ Следующий вопрос
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         f"💬 Вы оставили отзыв на [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
         parse_mode="MarkdownV2"
     )
     await state.set_state(UserFlow.waiting_for_feedback)
+    await update_last_activity(state, msg)

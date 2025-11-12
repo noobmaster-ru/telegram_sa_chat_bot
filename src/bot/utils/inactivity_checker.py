@@ -6,13 +6,13 @@ from aiogram import Bot
 from aiogram.fsm.storage.redis import RedisStorage
 from src.bot.states.user_flow import UserFlow
 from src.core.config import constants
-
+from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 
 # 60 - 1 min
 # 3600 - 1 hour
 # 21600 - 6 hour
-TIME_DURATION = constants.TIME_DURATION_BEETWEEN_REMINDER # 21600 
-TIME_CHECKING_LAST_USERS_ACTIVITYS = constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS
+TIME_DURATION = constants.TIME_DURATION_BEETWEEN_REMINDER # 20
+TIME_CHECKING_LAST_USERS_ACTIVITYS = constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS # 10
 REMINDER_TIMEOUTS = {
     UserFlow.waiting_for_agreement.state: TIME_DURATION, 
     UserFlow.waiting_for_subcription_to_channel.state: TIME_DURATION, 
@@ -37,27 +37,35 @@ REMINDER_TIMEOUTS = {
 }
 
 REMINDER_TEXTS = {
-    UserFlow.waiting_for_agreement.state: "Вы в итоге согласны с условиями? нажмите на кнопку выше", 
-    UserFlow.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем", 
-    UserFlow.waiting_for_order.state: "Вы заказали товар? нажмите на кнопку выше", 
+    UserFlow.waiting_for_agreement.state: "Вы в итоге согласны с условиями? нажмите на кнопку", 
+    UserFlow.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем. нажмите на кнопку", 
+    UserFlow.waiting_for_order.state: "Вы заказали товар? нажмите на кнопку", 
      
-    UserFlow.waiting_for_photo_order.state: "Напоминаю, что ждём фото вашего заказа",
-    UserFlow.waiting_for_order_receive.state: "Товар получили? нажмите на кнопку выше",
-    UserFlow.waiting_for_feedback.state: "Здравствуйте! Вы отзыв оставили 5 звёзд?", # 1 мин
+    UserFlow.waiting_for_photo_order.state: "Напоминаю, что ждём скриншот вашего заказа",
+    UserFlow.waiting_for_order_receive.state: "Товар получили? нажмите на кнопку",
+    UserFlow.waiting_for_feedback.state: "Здравствуйте! Вы отзыв оставили 5 звёзд? на кнопку нажмите", # 1 мин
     
     
     UserFlow.waiting_for_photo_feedback.state: "Скриншот отзыва отправьте",
-    UserFlow.waiting_for_shk.state: "Этикетки разрезали? нажмите на кнопку выше",   
+    UserFlow.waiting_for_shk.state: "Этикетки разрезали? нажмите на кнопку",   
     
     UserFlow.waiting_for_photo_shk.state: "Отправьте фото разрезанных этикеток!!!",
-    UserFlow.waiting_for_requisites.state: "Пожалуйста, отправьте реквизиты, чтобы мы могли сделать выплату 💰",
+    UserFlow.waiting_for_requisites.state: "Пожалуйста, отправьте реквизиты, чтобы мы могли сделать выплату",
     
     UserFlow.waiting_for_bank.state: "Отправьте название банка!",  
     UserFlow.waiting_for_amount.state: "Отправьте cумму перевода!",  
     UserFlow.waiting_for_card_or_phone_number.state: "Номер карты или номер телефона отправьте",  
-    UserFlow.confirming_requisites.state: "Подтвердите реквизиты ваши, на кнопку нажмите выше"
+    UserFlow.confirming_requisites.state: "Подтвердите реквизиты ваши, на кнопку нажмите"
 }
-
+REPLY_MARKUP_REMIND = [
+    UserFlow.waiting_for_agreement.state,
+    UserFlow.waiting_for_subcription_to_channel.state,
+    UserFlow.waiting_for_order.state,
+    UserFlow.waiting_for_order_receive.state,
+    UserFlow.waiting_for_feedback.state,
+    UserFlow.waiting_for_shk.state,
+    UserFlow.confirming_requisites.state # сообщение с подтверждением реквизитов не надо удалять!!! там сами реквизиты записаны!!1
+]
 async def inactivity_checker(bot: Bot, storage: RedisStorage):
     """Периодически проверяет всех пользователей и шлёт напоминания"""
     while True:
@@ -78,30 +86,72 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                 last_time_activity = user_data["last_time_activity"]
                 business_connection_id = user_data["business_connection_id"]
                 telegram_id = user_data["telegram_id"] # chat_id == telegram_id
-
+                last_message_id = user_data["last_message_id"]
 
                 # теперь читаем состояние
                 state_key = f"fsm:{telegram_id}:{telegram_id}:state"
                 raw_state = await redis.get(state_key)
+                state = None
                 if raw_state:
                     state = raw_state.decode() if isinstance(raw_state, bytes) else raw_state
                 else:
                     state = None
                 
                 elapsed = time.time() - last_time_activity
+                logging.info(f" user state {state}")
                 if state in REMINDER_TIMEOUTS and elapsed > REMINDER_TIMEOUTS[state]:
                     # отправляем напоминание
                     text = REMINDER_TEXTS.get(state)
+                    msg = None
                     if text:
-                        logging.info(f"bot send message {telegram_id} in state {state}")
-                        await bot.send_message(
-                            chat_id=telegram_id,
-                            text=text,
-                            business_connection_id=business_connection_id
+                        logging.info(f"bot del message_id {last_message_id} ,user:{telegram_id} in state {state}")
+                        await bot.delete_business_messages(
+                            business_connection_id=business_connection_id,
+                            message_ids=[last_message_id]
                         )
+                        if state in REPLY_MARKUP_REMIND:
+                            callback_prefix = None
+                            statement = None
+                            if state == REPLY_MARKUP_REMIND[0]:
+                                callback_prefix = "agree"
+                                statement = "согласен(на)"
+                            elif state == REPLY_MARKUP_REMIND[1]:
+                                callback_prefix = "subscribe"
+                                statement = "подписался(лась)" 
+                            elif state == REPLY_MARKUP_REMIND[2]:
+                                callback_prefix = "order"
+                                statement = "заказал(а)"
+                            elif state == REPLY_MARKUP_REMIND[3]:
+                                callback_prefix = "receive"  
+                                statement = "получил(а)"
+                            elif state == REPLY_MARKUP_REMIND[4]:    
+                                callback_prefix = "feedback"
+                                statement = "оставил(а) отзыв" 
+                            elif state == REPLY_MARKUP_REMIND[5]:    
+                                callback_prefix = "shk"
+                                statement = "разрезал(а) ШК"
+                            else: # UserFlow.confirming_requisites.state
+                                callback_prefix = "confirm_requisites"
+                                statement = "верно"  
+                            msg = await bot.send_message(
+                                chat_id=telegram_id,
+                                text=text,
+                                business_connection_id=business_connection_id,
+                                reply_markup=get_yes_no_keyboard(
+                                    callback_prefix=callback_prefix,
+                                    statement=statement
+                                )
+                            )
+                        else: # only text need
+                            msg = await bot.send_message(
+                                chat_id=telegram_id,
+                                text=text,
+                                business_connection_id=business_connection_id
+                            )
                         # обновляем таймер, чтобы не спамить
                         new_data = user_data.copy()
                         new_data["last_time_activity"] = time.time()
+                        new_data["last_message_id"] = msg.message_id
                         await redis.set(redis_key, json.dumps(new_data))
                 else:
                     logging.info(f"  user {telegram_id} in state {state}, elapsed = {elapsed}")

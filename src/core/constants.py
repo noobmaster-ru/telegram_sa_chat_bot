@@ -11,8 +11,8 @@ OK_WORDS = [
     "окей!", "хорошо,сейчас", "понял"
 ]
 ADMIN_ID_LIST = [694144143, 547299317]
-TIME_DURATION_BEETWEEN_REMINDER = 20 # 6 hours 
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 10 # 10 min - every 10 min check users last time activitys
+TIME_DURATION_BEETWEEN_REMINDER = 20 # 21600 = 6 hours  
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 10 # 600 = 10 min - every 10 min check users last time activitys
 
 # Open AI
 GPT_MODEL_NAME='chatgpt-4o-latest'

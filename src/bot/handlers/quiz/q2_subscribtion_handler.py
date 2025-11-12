@@ -24,7 +24,6 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     state: FSMContext,
     bot: Bot
 ):
-    await update_last_activity(state)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -60,10 +59,11 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
         count=nm_id_amount
     )
     await state.set_state(UserFlow.waiting_for_subcription_to_channel)
-    await message.answer(
+    msg = await message.answer(
         f'{gpt_5_response}\nПока вы не подпишетесь на канал — раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:',
         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
     )
+    await update_last_activity(state, msg)
 
 # ------ 2. wait until user tap to button "Yes, sub to channel"
 @router.callback_query(StateFilter(UserFlow.waiting_for_subcription_to_channel), F.data.startswith("subscribe_"))
@@ -74,7 +74,6 @@ async def handle_subscription(
     CHANNEL_USERNAME: str
 ):
     await callback.answer()
-    await update_last_activity(state)
     telegram_id = callback.from_user.id
     value = "Да" if callback.data == "subscribe_yes" else "Нет"
 
@@ -87,6 +86,7 @@ async def handle_subscription(
         value=value,
         is_tap_to_keyboard=True
     )
+    msg = None
     if callback.data == "subscribe_yes":
         # Проверяем подписку
         try:
@@ -100,41 +100,45 @@ async def handle_subscription(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
                 # 👉 Начинаем пошаговый диалог
-                await callback.message.answer(
+                msg = await callback.message.answer(
                     f"📦 Вы заказали товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?",  
                     reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
                     parse_mode="MarkdownV2"
                 )
                 await state.set_state(UserFlow.waiting_for_order)
+                await update_last_activity(state, msg)
                 return
             else:
                 try:
                     # Не подписан
-                    await callback.message.edit_text(
+                    msg = await callback.message.edit_text(
                         "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
                         f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
                 except:
-                    await callback.message.edit_text(
+                    msg = await callback.message.edit_text(
                         f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
+                await update_last_activity(state, msg)
         except TelegramBadRequest:
-            await callback.message.answer(
+            msg = await callback.message.answer(
                 "⚠️ Не удалось проверить подписку. Проверьте, что бот — администратор канала."
             )
+            await update_last_activity(state, msg)
     else:
         # Не подписан
         try:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
                 f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                 reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
             )
         except:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                 reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
             )
         await state.set_state(UserFlow.waiting_for_subcription_to_channel)
+        await update_last_activity(state, msg)

@@ -55,7 +55,6 @@ async def handle_requisites_message(
     — если чего-то не хватает — просит дополнить
     — если всё найдено — предлагает подтвердить
     """
-    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -114,7 +113,7 @@ async def handle_requisites_message(
     
     # если банк, карта, телефон и сумма
     if bank_name and card_number and  phone_number and amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер карты: `{card_number}`\n"
             f"Номер телефона: `{phone}`\n"
@@ -125,55 +124,60 @@ async def handle_requisites_message(
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
         await state.set_state(UserFlow.confirming_requisites)
+        await update_last_activity(state, msg)
         return
     
     # если только номер телефона
     if not bank_name and not card_number and phone_number and not amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{phone}`\n\n"
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
         await state.set_state(UserFlow.waiting_for_amount)
+        await update_last_activity(state, msg)
         return
     
     # если только банк
     if bank_name and not card_number and not phone_number and not amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Банк: `{bank}`\n\n"
             f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
             parse_mode="Markdown"
         )
         await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        await update_last_activity(state, msg)
         return
     
     # если только номер карты
     if not bank_name and card_number and not phone_number and not amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер карты: `{card_number}`\n\n"
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
         await state.set_state(UserFlow.waiting_for_amount)
+        await update_last_activity(state, msg)
         return
     
     # если только сумма
     if not bank_name and not card_number and not phone_number and amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Сумма: `{amt}`\n\n"
             f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
             parse_mode="Markdown"
         )
         await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        await update_last_activity(state, msg)
         return
     
     # если карта , номер телефона и банк, но нет суммы оплаты
     if phone and card_number and bank_name and not amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{phone}`\n"
             f"Номер карты: `{card_number}`\n"
@@ -182,31 +186,34 @@ async def handle_requisites_message(
             parse_mode="Markdown"
         )
         await state.set_state(UserFlow.waiting_for_amount)
+        await update_last_activity(state, msg)
         return
     
     # если только номер карты или телефона
     if (phone or card_number) and not bank_name and not amt:
+        msg = None
         if phone:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n\n"
                 f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
         if card_number:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n\n"
                 f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )  
         await state.set_state(UserFlow.waiting_for_amount)
+        await update_last_activity(state, msg)
         return
     
 
     # если только cумма и банк
     if not phone and not card_number and bank_name and amt:
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Банк: `{bank}`\n"
             f"Сумма: `{amt}`\n\n"
@@ -214,12 +221,14 @@ async def handle_requisites_message(
             parse_mode="Markdown"
         )  
         await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        await update_last_activity(state, msg)
         return
     
     # если нет суммы платежа
     if bank_name and (phone or card_number) and not amt:
+        msg = None
         if phone and card_number:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n"
                 f"Номер телефона: `{phone}`\n"
@@ -228,7 +237,7 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             )
         elif card_number:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n"
                 f"Банк: `{bank}`\n\n"
@@ -236,7 +245,7 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             ) 
         else:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Банк: `{bank}`\n\n"
@@ -244,12 +253,14 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             )
         await state.set_state(UserFlow.waiting_for_amount)
+        await update_last_activity(state, msg)
         return
     
     # если нет банка 
     if not bank_name and (phone or card_number) and amt:
+        msg = None
         if phone and card_number:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Номер карты: `{card_number}`\n"
@@ -258,7 +269,7 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             )
         elif card_number:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number or ''}`\n"
                 f"Сумма: `{amt or ''}`\n\n"
@@ -266,7 +277,7 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             ) 
         else:
-            await message.answer(
+            msg = await message.answer(
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Сумма: `{amt}`\n\n"
@@ -274,11 +285,12 @@ async def handle_requisites_message(
                 parse_mode="Markdown"
             ) 
         await state.set_state(UserFlow.waiting_for_bank)
+        await update_last_activity(state, msg)
         return
     
     # --- Если всё есть(телефон, банк , сумма), показываем кнопки подтверждения ---
     if all(k in data for k in ("phone_number", "amount", "bank")):
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{data['phone_number']}`\n"
             f"Банк: {data['bank']}\n"
@@ -288,11 +300,12 @@ async def handle_requisites_message(
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
         await state.set_state(UserFlow.confirming_requisites)
+        await update_last_activity(state, msg)
         return 
     
     # --- Если всё есть(карта, банк , сумма), показываем кнопки подтверждения ---
     if all(k in data for k in ("card_number", "amount", "bank")):
-        await message.answer(
+        msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер карты: {data['card_number']}\n"
             f"Банк: {data['bank']}\n"
@@ -302,6 +315,7 @@ async def handle_requisites_message(
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
         await state.set_state(UserFlow.confirming_requisites)
+        await update_last_activity(state, msg)
         return 
     
     # если юзер мега тупой и ввел какой-то текст, то загоняем текст в модель
@@ -321,7 +335,6 @@ async def handle_amount(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
-    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -341,10 +354,11 @@ async def handle_amount(
         is_tap_to_keyboard=False
     )  
     data = await state.get_data()
+    msg = None
     if data.get('bank'):
         if data.get('card_number'):
             if data.get('phone_number'):
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number')}`\n"
                     f"Номер карты: `{data.get('card_number')}`\n"
@@ -355,9 +369,10 @@ async def handle_amount(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
             else:
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер карты: `{data.get('card_number')}`\n"
                     f"Банк: {data.get('bank')}\n"
@@ -367,10 +382,11 @@ async def handle_amount(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
         elif data.get('phone_number'):
             if data.get('card_number'):
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number')}`\n"
                     f"Номер карты: `{data.get('card_number')}`\n"
@@ -381,9 +397,10 @@ async def handle_amount(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
             else:
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number')}`\n"
                     f"Банк: {data.get('bank')}\n"
@@ -393,13 +410,15 @@ async def handle_amount(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
     else:
-        await message.answer(
+        msg = await message.answer(
             f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
             parse_mode="Markdown"
         )  
         await state.set_state(UserFlow.waiting_for_bank)
+        await update_last_activity(state, msg)
 
 
 @router.business_message(StateFilter(UserFlow.waiting_for_card_or_phone_number))
@@ -408,7 +427,6 @@ async def handle_card_or_phone_number(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
-    await update_last_activity(state)
     text = message.text.strip()
     telegram_id = message.from_user.id
     # обновляем время последнего сообщения
@@ -436,10 +454,11 @@ async def handle_card_or_phone_number(
     
 
     data = await state.get_data()
+    msg = None
     if data.get('bank'):
         if data.get('card_number'):
             if data.get('amount'):
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер карты: `{data.get('card_number', '')}`\n"
                     f"Банк: {data.get('bank', '')}\n"
@@ -449,17 +468,19 @@ async def handle_card_or_phone_number(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return 
             else:
-                await message.answer(
+                msg = await message.answer(
                     f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                     parse_mode="Markdown"
                 )  
                 await state.set_state(UserFlow.waiting_for_amount)
+                await update_last_activity(state, msg)
                 return 
         if data.get('phone_number'):
             if data.get('amount'):
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number', '')}`\n"
                     f"Банк: {data.get('bank', '')}\n"
@@ -469,20 +490,23 @@ async def handle_card_or_phone_number(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return 
             else:
-                await message.answer(
+                msg = await message.answer(
                     f"💬 Пожалуйста, отправьте  сумму перевода, например: 500 рублей",
                     parse_mode="Markdown"
                 )  
                 await state.set_state(UserFlow.waiting_for_amount)
+                await update_last_activity(state, msg)
                 return 
     else:
-        await message.answer(
+        msg = await message.answer(
             f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
             parse_mode="Markdown"
         )  
         await state.set_state(UserFlow.waiting_for_bank)
+        await update_last_activity(state, msg)
         return
 
 @router.business_message(StateFilter(UserFlow.waiting_for_bank))
@@ -491,7 +515,6 @@ async def handle_bank_name(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
-    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -511,10 +534,11 @@ async def handle_bank_name(
     await state.update_data(bank=bank)
 
     data = await state.get_data()
+    msg = None
     if data.get("amount"):
         if data.get('card_number'):
             if data.get('phone_number'):
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number')}`\n"
                     f"Номер карты: `{data.get('card_number')}`\n"
@@ -525,9 +549,10 @@ async def handle_bank_name(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
             else:
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер карты: `{data.get('card_number')}`\n"
                     f"Банк: {data.get('bank')}\n"
@@ -537,10 +562,11 @@ async def handle_bank_name(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
         if data.get('phone_number'):
             if data.get('card_number'):
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number')}`\n"
                     f"Номер карты: `{data.get('card_number')}`\n"
@@ -551,9 +577,10 @@ async def handle_bank_name(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return 
             else:
-                await message.answer(
+                msg = await message.answer(
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number')}`\n"
                     f"Банк: {data.get('bank')}\n"
@@ -563,13 +590,15 @@ async def handle_bank_name(
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
                 await state.set_state(UserFlow.confirming_requisites)
+                await update_last_activity(state, msg)
                 return
     else:
-        await message.answer(
+        msg = await message.answer(
                 f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
         await state.set_state(UserFlow.waiting_for_amount)
+        await update_last_activity(state, msg)
         return
 
 
@@ -582,7 +611,6 @@ async def confirm_requisites_no(
     """
     Пользователь указал, что реквизиты неверные — начинаем ввод заново.
     """
-    await update_last_activity(state)
     await callback.message.bot(
         ReadBusinessMessage(
             business_connection_id=callback.message.business_connection_id,
@@ -609,11 +637,12 @@ async def confirm_requisites_no(
     await state.set_data(user_data)
     
     # ставим новое состояние
-    await state.set_state(UserFlow.waiting_for_requisites)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         "❌ Хорошо, давайте попробуем ещё раз.\n"
         "Отправьте номер телефона, сумму для оплаты , название банка и (если есть) номер карты одним сообщением."
     )
+    await state.set_state(UserFlow.waiting_for_requisites)
+    await update_last_activity(state, msg)
 
 @router.callback_query(StateFilter(UserFlow.confirming_requisites), F.data == "confirm_requisites_yes")
 async def confirm_requisites_yes(
@@ -621,7 +650,6 @@ async def confirm_requisites_yes(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
 ):
-    await update_last_activity(state)
     await callback.answer()
     """
     Пользователь указал, что реквизиты верные — сохраняем их в гугл таблицу и очищаем состояние.
@@ -647,7 +675,7 @@ async def confirm_requisites_yes(
     )
 
     await state.set_state(UserFlow.continue_dialog)
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
         f"Номер карты: `{data.get('card_number', '-')}`\n"
         f"Номер телефона: `{data.get('phone_number', '-')}`\n"
@@ -656,5 +684,6 @@ async def confirm_requisites_yes(
         f"Ожидайте выплату в ближайшее время, спасибо ☺️",
         parse_mode="Markdown"
     )
+    await update_last_activity(state, msg)
     # удаляем данные из состояния и из redis (но можно и оставить так-то)
     # await state.set_data({})

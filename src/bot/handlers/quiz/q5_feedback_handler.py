@@ -22,7 +22,6 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     state: FSMContext,
     bot: Bot
 ):
-    await update_last_activity(state)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -56,10 +55,11 @@ async def handle_unexpected_text_waiting_for_feedback_done(
         count=nm_id_amount
     )
     await state.set_state(UserFlow.waiting_for_feedback)
-    await message.answer(
+    msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а) отзыв")
     )
+    await update_last_activity(state, msg)
 
 # ------ 5. wait until user tap to button "Yes, made feedback" and go to the state "waiting_for_photo_feedback"
 @router.callback_query(StateFilter(UserFlow.waiting_for_feedback), F.data.startswith("feedback_"))
@@ -69,7 +69,6 @@ async def handle_feedback_answer(
     state: FSMContext,
 ):
     await callback.answer()
-    await update_last_activity(state)
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
@@ -86,26 +85,29 @@ async def handle_feedback_answer(
         value=value,
         is_tap_to_keyboard=True
     )
+    msg = None
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":
         try:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Когда оставите отзыв на товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), нажмите на кнопку 'Да, оставил(а)'", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
                 parse_mode="MarkdownV2"
             )
         except:
-            await callback.message.edit_text(
+            msg = await callback.message.edit_text(
                 f"Нужно оставить отзыв 5 звезд на товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP), затем нажмите на кнопку 'Да, оставил(а)'", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
                 parse_mode="MarkdownV2"
             )
         await state.set_state(UserFlow.waiting_for_feedback)
+        await update_last_activity(state, msg)
         return
     
     # дальше переходим в состояние waiting_for_photo_feedback - ждем фотки отзыва от юзера
-    await callback.message.edit_text(
+    msg = await callback.message.edit_text(
         f"Отправьте, пожалуйста скриншот отзыва на 5 звёзд"
     )
     await state.set_state(UserFlow.waiting_for_photo_feedback)
+    await update_last_activity(state, msg)
    

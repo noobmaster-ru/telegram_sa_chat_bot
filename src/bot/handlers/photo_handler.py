@@ -27,7 +27,7 @@ def encode_image(image_path):
 # ловим любой текст в состояних waiting_for_photo_order, waiting_for_photo_feedback , waiting_for_photo_shk и просим отправить фото!
 @router.business_message(F.text, StateFilter(UserFlow.waiting_for_photo_order, UserFlow.waiting_for_photo_feedback, UserFlow.waiting_for_photo_shk))
 async def handle_photo(message: Message, state: FSMContext):
-    await update_last_activity(state)
+    await update_last_activity(state, message)
     current_state = await state.get_state() 
     await message.bot(
         ReadBusinessMessage(
@@ -58,7 +58,6 @@ async def handle_photo(
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass
 ):
-    await update_last_activity(state)
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -80,16 +79,20 @@ async def handle_photo(
         photo_type = user_data.get("photo_type", "order") 
         
         if photo_type == "order":
-            await message.answer("Пожалуйста, отправьте только один скриншот: скриншот заказа товара.")
+            msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот заказа товара.")
+            await update_last_activity(state, msg)
             return
         elif photo_type == "feedback":
-            await message.answer("Пожалуйста, отправьте только один скриншот: скриншот отзыва товара.")
+            msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот отзыва товара.")
+            await update_last_activity(state, msg)
             return
         elif photo_type == "shk":
-            await message.answer("Пожалуйста, отправьте только одну фотографию: фотографию разрезанных этикеток товара.")
+            msg = await message.answer("Пожалуйста, отправьте только одну фотографию: фотографию разрезанных этикеток товара.")
+            await update_last_activity(state, msg)
             return
         else:
-            await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")
+            msg = await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")
+            await update_last_activity(state, msg)
             return
 
     # === 2. Извлекаем данные из FSM ===
@@ -152,15 +155,17 @@ async def handle_photo(
                 parse_mode="MarkdownV2"
             )
             # записали фотку заказа - теперь идем дальше по сценарию - спрашиваем получили ли заказ
-            await message.answer(
+            msg = await message.answer(
                 f"📬 Вы получили товар [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
                 parse_mode="MarkdownV2"
             )
             await state.set_state(UserFlow.waiting_for_order_receive)
+            await update_last_activity(state, msg)
         else:
             await state.set_state(UserFlow.waiting_for_photo_order)
-            await message.answer("❌ Фото заказа не принято. Попробуйте прислать корректное фото заказа.")
+            msg = await message.answer("❌ Фото заказа не принято. Попробуйте прислать корректное фото заказа.")
+            await update_last_activity(state, msg)
 
     elif photo_type == "feedback":
         
@@ -194,15 +199,17 @@ async def handle_photo(
                 parse_mode="MarkdownV2"
             )
             #  Следующий вопрос - разрезали ли ШК
-            await message.answer(
+            msg = await message.answer(
                 f"✂️ ШК разрезали на [{nm_id}](https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP)?", 
                 reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
                 parse_mode="MarkdownV2"
             )
             await state.set_state(UserFlow.waiting_for_shk)
+            await update_last_activity(state, msg)
         else:
             await state.set_state(UserFlow.waiting_for_photo_feedback)
-            await message.answer("❌ Фото отзыва не принято. Попробуйте прислать корректное фото отзыва.")
+            msg = await message.answer("❌ Фото отзыва не принято. Попробуйте прислать корректное фото отзыва.")
+            await update_last_activity(state, msg)
 
     elif photo_type == "shk":
         # отправляем в OpenAI для классификации
@@ -235,14 +242,16 @@ async def handle_photo(
                 parse_mode="MarkdownV2"
             )
             await message.answer("☺️ Вы прислали все фотографии, которые были нам нужны. Спасибо!")
-            await message.answer(
+            msg = await message.answer(
                 "Отправьте теперь нам, пожалуйста, свои реквизиты в формате:\nНомер карты в формате:\nAAAA BBBB CCCC DDDD\n   *ИЛИ*\nНомер телефона в формате: 8910XXXXXXX\n\nСпасибо",
                 parse_mode="MarkdownV2"
             )
             await state.set_state(UserFlow.waiting_for_requisites)
+            await update_last_activity(state, msg)
         else:
             await state.set_state(UserFlow.waiting_for_photo_shk)
-            await message.answer("❌ Фото разрезанных штрихкодов не принято. Попробуйте прислать корректное фото разрезанных штрихкодов")
+            msg = await message.answer("❌ Фото разрезанных штрихкодов не принято. Попробуйте прислать корректное фото разрезанных штрихкодов")
+            await update_last_activity(state, msg)
 
     # photo_type == "other_type" ,юзер тупой и продолжает отправлять ненужные фотографии
     else:
@@ -254,9 +263,10 @@ async def handle_photo(
         await asyncio.sleep(3)
         current_state = await state.get_state() 
         if current_state == UserFlow.waiting_for_requisites:
-            await message.answer(
+            msg = await message.answer(
                 "☺️ Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, теперь отправьте нам свои реквизиты в формате:\nНомер карты в формате: AAAA BBBB CCCC DDDD\n *ИЛИ* \nНомер телефона: 8910XXXXXXX",
                 parse_mode="MarkdownV2"
             )
+            await update_last_activity(state, msg)
         elif current_state == UserFlow.continue_dialog:
             await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")

@@ -15,6 +15,5 @@ async def reset_admin(
 ):
     telegram_id = message.from_user.id
     if telegram_id in ADMIN_ID_LIST:
-        await spreadsheet.delete_row(telegram_id)
         await state.clear()
         await message.answer("bot reseted!")
