@@ -8,6 +8,8 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
+from dishka.integrations.aiogram import FromDishka
+
 from src.bot.states.user_flow import UserFlow
 
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -45,9 +47,9 @@ bank_pattern = (
 @router.business_message(StateFilter(UserFlow.waiting_for_requisites))
 async def handle_requisites_message(
     message: Message,
-    spreadsheet: GoogleSheetClass,
+    spreadsheet: FromDishka[GoogleSheetClass],
     state: FSMContext,
-    client_gpt_5: OpenAiRequestClass
+    client_gpt_5: FromDishka[OpenAiRequestClass]
 ):
     """
     Обрабатывает сообщение с реквизитами:
@@ -333,7 +335,7 @@ async def handle_requisites_message(
 async def handle_amount(
     message: Message, 
     state: FSMContext,
-    spreadsheet: GoogleSheetClass
+    spreadsheet: FromDishka[GoogleSheetClass]
 ):
     await message.bot(
         ReadBusinessMessage(
@@ -425,7 +427,7 @@ async def handle_amount(
 async def handle_card_or_phone_number(
     message: Message, 
     state: FSMContext,
-    spreadsheet: GoogleSheetClass
+    spreadsheet: FromDishka[GoogleSheetClass]
 ):
     text = message.text.strip()
     telegram_id = message.from_user.id
@@ -513,7 +515,7 @@ async def handle_card_or_phone_number(
 async def handle_bank_name(
     message: Message, 
     state: FSMContext,
-    spreadsheet: GoogleSheetClass
+    spreadsheet: FromDishka[GoogleSheetClass]
 ):
     await message.bot(
         ReadBusinessMessage(
@@ -648,7 +650,7 @@ async def confirm_requisites_no(
 async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
-    spreadsheet: GoogleSheetClass,
+    spreadsheet: FromDishka[GoogleSheetClass]
 ):
     await callback.answer()
     """

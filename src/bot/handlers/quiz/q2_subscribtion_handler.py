@@ -6,6 +6,8 @@ from aiogram.filters import StateFilter
 from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
 
+from dishka.integrations.aiogram import FromDishka
+
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
@@ -18,9 +20,9 @@ from .router import router
 @router.business_message(StateFilter(UserFlow.waiting_for_subcription_to_channel))
 async def handle_unexpected_text_waiting_for_subcription_to_channel(
     message: types.Message,
-    spreadsheet: GoogleSheetClass,
+    spreadsheet: FromDishka[GoogleSheetClass],
     CHANNEL_USERNAME: str,
-    client_gpt_5: OpenAiRequestClass,
+    client_gpt_5: FromDishka[OpenAiRequestClass],
     state: FSMContext,
     bot: Bot
 ):

@@ -5,6 +5,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 from aiogram.filters import StateFilter
 
+from dishka.integrations.aiogram import FromDishka
+
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
 from src.services.google_sheets_class import GoogleSheetClass
@@ -17,8 +19,8 @@ from .router import router
 @router.business_message(StateFilter(UserFlow.waiting_for_feedback))
 async def handle_unexpected_text_waiting_for_feedback_done(
     message: types.Message,
-    spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass,
+    spreadsheet: FromDishka[GoogleSheetClass],
+    client_gpt_5: FromDishka[OpenAiRequestClass],
     state: FSMContext,
     bot: Bot
 ):
@@ -65,7 +67,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
 @router.callback_query(StateFilter(UserFlow.waiting_for_feedback), F.data.startswith("feedback_"))
 async def handle_feedback_answer(
     callback: CallbackQuery, 
-    spreadsheet: GoogleSheetClass, 
+    spreadsheet: FromDishka[GoogleSheetClass], 
     state: FSMContext,
 ):
     await callback.answer()

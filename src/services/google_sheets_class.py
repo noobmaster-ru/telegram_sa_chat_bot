@@ -15,9 +15,9 @@ class GoogleSheetClass:
         service_account_json: str,
         table_url: str, 
         buyers_sheet_name: str,
-        redis_client: Redis,
         REDIS_KEY_USER_ROW_POSITION_STRING: str,
-        REDIS_KEY_NM_IDS_ORDERED_LIST: str
+        REDIS_KEY_NM_IDS_ORDERED_LIST: str,
+        redis_client: Redis = None
     ):
         # Авторизация и получение объекта листа
         self.table_url = table_url

@@ -2,6 +2,8 @@ from aiogram import types
 from aiogram.filters import  Command
 from aiogram.fsm.context import FSMContext
 
+from dishka.integrations.aiogram import FromDishka
+
 from src.services.google_sheets_class import GoogleSheetClass
 from .router import router
 
@@ -9,7 +11,7 @@ from .router import router
 @router.business_message(Command('reset'))
 async def reset_admin(
     message: types.Message,
-    spreadsheet: GoogleSheetClass,
+    spreadsheet: FromDishka[GoogleSheetClass],
     ADMIN_ID_LIST: list,
     state: FSMContext
 ):

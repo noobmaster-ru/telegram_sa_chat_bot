@@ -9,6 +9,8 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
+from dishka.integrations.aiogram import FromDishka
+
 from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
@@ -55,8 +57,8 @@ async def handle_photo(message: Message, state: FSMContext):
 async def handle_photo(
     message: Message,
     state: FSMContext,
-    spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass
+    spreadsheet: FromDishka[GoogleSheetClass],
+    client_gpt_5: FromDishka[OpenAiRequestClass]
 ):
     await message.bot(
         ReadBusinessMessage(

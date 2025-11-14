@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
 
+from dishka.integrations.aiogram import FromDishka
 
 from src.bot.states.user_flow import UserFlow
 
@@ -32,8 +33,8 @@ async def wait_response(message: Message):
 async def handle_messages_after_requisites(
     message: Message, 
     state: FSMContext, 
-    spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass
+    spreadsheet: FromDishka[GoogleSheetClass],
+    client_gpt_5: FromDishka[OpenAiRequestClass]
 ):
     telegram_id = message.from_user.id
     text = message.text if message.text else "(без текста)"

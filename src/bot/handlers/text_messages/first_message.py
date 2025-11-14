@@ -9,6 +9,7 @@ from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
 from redis.asyncio import Redis
 
+from dishka.integrations.aiogram import FromDishka
 
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
@@ -42,7 +43,7 @@ async def wait_response(message: Message, bot: Bot):
 async def handle_first_message(
     message: Message, 
     state: FSMContext, 
-    spreadsheet: GoogleSheetClass,
+    spreadsheet: FromDishka[GoogleSheetClass],
     INSTRUCTION_SHEET_NAME: str,
     redis: Redis,
     REDIS_KEY_NM_IDS_ORDERED_LIST: str,
