@@ -4,12 +4,12 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as asyncredis
 from src.bot.utils.inactivity_checker import inactivity_checker
-from src.bot import (
-    text_router, 
-    quiz_router,
-    photo_router, 
-    requisites_router
-)
+
+
+from src.bot.handlers.clients.text_messages import router as text_router
+from src.bot.handlers.clients.quiz import router as quiz_router 
+from src.bot.handlers.clients.photo import router as photo_router
+from src.bot.handlers.clients.payment_details import router as payment_router
 
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -84,7 +84,7 @@ async def main():
     dp.include_router(text_router) # catch first and last text messages and get it to gpt
     dp.include_router(quiz_router) #  quiz - Yes/No questions
     dp.include_router(photo_router) # catch photos
-    dp.include_router(requisites_router) # catch requisites
+    dp.include_router(payment_router) # catch requisites
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
