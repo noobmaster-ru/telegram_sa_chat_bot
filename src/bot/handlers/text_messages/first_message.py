@@ -14,7 +14,7 @@ from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.user_flow import UserFlow
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
-
+from src.core.config import constants
 from .router import router
 
 
@@ -119,7 +119,7 @@ async def handle_first_message(
     await state.set_state('first_messages_state')
 
     # небольшая задержка
-    await asyncio.sleep(13)
+    await asyncio.sleep(constants.FIRST_MESSAGE_DELAY_SLEEP)
     
     # Сначала помечаем сообщение как прочитанное
     await message.bot(
@@ -129,15 +129,16 @@ async def handle_first_message(
             message_id=message.message_id
         )
     )
+    
     # небольшая задержка
-    await asyncio.sleep(5)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     # показываем "печатает"
     await bot.send_chat_action(
         chat_id=message.chat.id,
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(5)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await message.answer(text="Здравствуйте!")
     
     
@@ -147,25 +148,25 @@ async def handle_first_message(
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await bot.send_chat_action(
         chat_id=message.chat.id,
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await bot.send_chat_action(
         chat_id=message.chat.id,
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await bot.send_chat_action(
         chat_id=message.chat.id,
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await message.answer(
         text="Сейчас пришлю вам мою подробную инструкцию, пожалуйста, выполняйте все условия!! Вам также будет помогать мой робот-помощник🤖, вы не пугайтесь😂 , он поможет быстрее собрать все нужные данные, реквизиты, затем я их проверю и пришлю вам деньги ☺️. "
     )
@@ -177,7 +178,7 @@ async def handle_first_message(
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await message.answer(text="Вот инструкция")
     
     await bot.send_chat_action(
@@ -185,17 +186,17 @@ async def handle_first_message(
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     # Отправляем инструкцию
     await message.answer(
         text=instruction_str,
         parse_mode="MarkdownV2",
     )
     
-    await asyncio.sleep(4)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     # Отправляем бота! и отправляем кнопки "Согласны на условия?"
     msg = await message.answer(
-        "Здравствуйте!\nЯ - 🤖-помощник Виктории.\nВы согласны на наши условия кэшбека?",
+        f"Здравствуйте!\nЯ - 🤖-помощник {constants.MANAGER_NAME}.\nВы согласны на наши условия кэшбека?",
         reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
     )
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"

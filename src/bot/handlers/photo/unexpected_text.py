@@ -14,7 +14,6 @@ from .router import router
 # catch all text waiting_for_photo_order, waiting_for_photo_feedback , waiting_for_photo_shk  and ask user to send photo!
 @router.business_message(F.text, StateFilter(UserFlow.waiting_for_photo_order, UserFlow.waiting_for_photo_feedback, UserFlow.waiting_for_photo_shk))
 async def handle_photo(message: Message, state: FSMContext):
-    await update_last_activity(state, message)
     current_state = await state.get_state() 
     await message.bot(
         ReadBusinessMessage(
@@ -29,10 +28,13 @@ async def handle_photo(message: Message, state: FSMContext):
         business_connection_id = message.business_connection_id
     )
     if current_state == UserFlow.waiting_for_photo_order:
-        await message.answer("Пришлите, пожалуйста, скриншот заказа.")
+        msg = await message.answer("Пришлите, пожалуйста, скриншот заказа.")
+        await update_last_activity(state, msg)
     elif current_state == UserFlow.waiting_for_photo_feedback:
-        await message.answer("Пришлите, пожалуйста, скриншот отзыва на 5 звёзд.")
+        msg = await message.answer("Пришлите, пожалуйста, скриншот отзыва на 5 звёзд.")
+        await update_last_activity(state, msg)
     # current_state == UserFlow.waiting_for_photo_shk:
     else:
-        await message.answer("Пришлите, пожалуйста, фотографию разрезанных этикеток.")
+        msg = await message.answer("Пришлите, пожалуйста, фотографию разрезанных этикеток.")
+        await update_last_activity(state, msg)
 

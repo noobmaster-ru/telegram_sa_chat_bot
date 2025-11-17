@@ -4,6 +4,13 @@ TIME_SLEEP_API_GET_REMAINS = 3600*23 # 3600s = 1 hour * 23 = 23 hours
 
 # Telegram
 MIN_LEN_TEXT = 12
+FIRST_MESSAGE_DELAY_SLEEP = 0.1 # 15 in production 
+DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.1 # 5 #in production
+TIME_DURATION_BEETWEEN_REMINDER =  10 #3600*6 #in production
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 10 # 3600*23 # in production
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =   10 #3600  # in production - every hour check users last time activitys
+
+MANAGER_NAME = 'Виктории' # в родительном падеже надо
 CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
@@ -11,13 +18,30 @@ OK_WORDS = [
     "окей!", "хорошо,сейчас", "понял"
 ]
 ADMIN_ID_LIST = [694144143, 547299317]
-TIME_DURATION_BEETWEEN_REMINDER = 3600 # 3600s = 1 hour  
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # 3600s = 1 hour * 23 = 23 hours
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  # 3600s = 1 hour  - every hour check users last time activitys
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks
 }
+
+# reqular expressions for parsing requisites
+# 16 numbers or 4 for blocks with 4 numbers with hyphen
+card_pattern = r"\b(?:\d{16}|\d{4}(?:[ -]\d{4}){3})\b"
+
+# amount with "р", "руб", "₽"
+amount_pattern = (
+    r"(?<!\d[ -])"  
+    r"\b(\d{1,6}(?:[.,]\d{1,2})?\s?(?:р|руб(?:лей)?|₽|Р|Рублей)?)\b"
+    r"(?![ -]?\d)"  
+)
+
+# +7910... or 8910... or 7910...
+phone_pattern = r"\b(?:\+7|8|7)[\s\-()]?\d{3}[\s\-()]?\d{3}[\s\-()]?\d{2}[\s\-()]?\d{2}\b"
+bank_pattern = (
+    r"(?<!\w)("
+    r"сбер(?:банк)?|тинькофф|тинькоф|тиньков|т[-\s]?банк|альфа(?:банк)?|"
+    r"втб|газпромбанк|райф+айзен|росбанк|открытие|почтабанк|отп|совкомбанк|мтс(?:банк)?|яндекс(?:банк)?"
+    r")(?!\w)"
+)
 
 
 # Open AI

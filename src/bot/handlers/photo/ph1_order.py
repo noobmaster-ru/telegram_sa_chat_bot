@@ -32,13 +32,7 @@ async def handle_photo_order(
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass
 ):
-    await message.bot(
-        ReadBusinessMessage(
-            business_connection_id=message.business_connection_id,
-            chat_id=message.chat.id,
-            message_id=message.message_id
-        )
-    )
+
     user_data = await state.get_data()
     # === 1. Проверяем, не отправил ли пользователь альбом(несколько фоток) ===
     if message.media_group_id is not None:
@@ -113,6 +107,13 @@ async def handle_photo_order(
         button_name="photo_order",
         value=model_response,
         is_tap_to_keyboard=False
+    )
+    await message.bot(
+        ReadBusinessMessage(
+            business_connection_id=message.business_connection_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id
+        )
     )
     await message.bot.send_chat_action(
         chat_id=message.chat.id,

@@ -1,5 +1,7 @@
 # telegram_sa_chat_bot
-Для запуска нужны:
+Все константы в src/core/constants.py
+
+Для запуска от селлера нужно(в .env указать пока что):
 ```    
     - WB_TOKEN
     - GOOGLE_SHEETS_URL (ссылка на гугл-таблицу + вставить туда SERVICE_ACCOUNT_JSON c доступом РЕДАКТОР)
