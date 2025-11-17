@@ -9,11 +9,10 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
-from src.bot.states.user_flow import UserFlow
-from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
-
+from src.core.config import constants
 
 from .router import router
 
@@ -24,7 +23,7 @@ def encode_image(image_path):
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 # ==== Получение фото от пользователя уже после скрина заказа/отзыва/шк ==== 
-@router.business_message(F.photo, StateFilter(UserFlow.waiting_for_requisites, UserFlow.continue_dialog))
+@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_requisites, ClientStates.continue_dialog))
 async def handle_photo_other_type(
     message: Message,
     state: FSMContext,
@@ -53,13 +52,13 @@ async def handle_photo_other_type(
         action=ChatAction.TYPING,
         business_connection_id = message.business_connection_id
     )
-    await asyncio.sleep(3)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     current_state = await state.get_state() 
-    if current_state == UserFlow.waiting_for_requisites:
+    if current_state == ClientStates.waiting_for_requisites:
         msg = await message.answer(
             "☺️ Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, теперь отправьте нам свои реквизиты в формате:\nНомер карты в формате: AAAA BBBB CCCC DDDD\n *ИЛИ* \nНомер телефона: 8910XXXXXXX",
             parse_mode="MarkdownV2"
         )
         await update_last_activity(state, msg)
-    elif current_state == UserFlow.continue_dialog:
+    elif current_state == ClientStates.continue_dialog:
         await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")

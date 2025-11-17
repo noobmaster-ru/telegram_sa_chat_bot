@@ -9,7 +9,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -25,7 +25,7 @@ def encode_image(image_path):
 
 
 # ==== Получение скрина отзыва от пользователя ==== 
-@router.business_message(F.photo, StateFilter(UserFlow.waiting_for_photo_feedback))
+@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_photo_feedback))
 async def handle_photo_feedback(
     message: Message,
     state: FSMContext,
@@ -87,7 +87,7 @@ async def handle_photo_feedback(
     
     # Читаем байты изображения эталона
     # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent.parent / "resources" / f"{nm_id}.png"
+    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.png"
     reference_image_extension = filetype.guess(reference_path).extension
     base64_image_ref = encode_image(reference_path)
     ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"
@@ -133,13 +133,12 @@ async def handle_photo_feedback(
         )
         #  Следующий вопрос - разрезали ли ШК
         msg = await message.answer(
-            f"✂️ Этикетки разрезали на `{nm_id}`?", 
-            reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
-            parse_mode="MarkdownV2"
+            f"✂️ Этикетки разрезали на {nm_id}?", 
+            reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
         )
-        await state.set_state(UserFlow.waiting_for_shk)
+        await state.set_state(ClientStates.waiting_for_shk)
         await update_last_activity(state, msg)
     else:
-        await state.set_state(UserFlow.waiting_for_photo_feedback)
+        await state.set_state(ClientStates.waiting_for_photo_feedback)
         msg = await message.answer("❌ Фото отзыва не принято. Попробуйте прислать корректное фото отзыва.")
         await update_last_activity(state, msg)

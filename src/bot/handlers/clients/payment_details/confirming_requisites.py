@@ -5,13 +5,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
 
+from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
-from src.bot.states.user_flow import UserFlow
 from src.bot.utils.last_activity import update_last_activity
 
 from .router import router
 
-@router.callback_query(StateFilter(UserFlow.confirming_requisites), F.data == "confirm_requisites_no")
+@router.callback_query(StateFilter(ClientStates.confirming_requisites), F.data == "confirm_requisites_no")
 async def confirm_requisites_no(
     callback: CallbackQuery, 
     state: FSMContext
@@ -49,10 +49,10 @@ async def confirm_requisites_no(
         "❌ Хорошо, давайте попробуем ещё раз.\n"
         "Отправьте номер телефона, сумму для оплаты , название банка и (если есть) номер карты одним сообщением."
     )
-    await state.set_state(UserFlow.waiting_for_requisites)
+    await state.set_state(ClientStates.waiting_for_requisites)
     await update_last_activity(state, msg)
 
-@router.callback_query(StateFilter(UserFlow.confirming_requisites), F.data == "confirm_requisites_yes")
+@router.callback_query(StateFilter(ClientStates.confirming_requisites), F.data == "confirm_requisites_yes")
 async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
@@ -82,7 +82,7 @@ async def confirm_requisites_yes(
         amount=data.get('amount','-'),
     )
 
-    await state.set_state(UserFlow.continue_dialog)
+    await state.set_state(ClientStates.continue_dialog)
     msg = await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
         f"Номер карты: `{data.get('card_number', '-')}`\n"

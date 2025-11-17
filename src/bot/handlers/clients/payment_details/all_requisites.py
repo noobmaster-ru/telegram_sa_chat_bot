@@ -7,17 +7,17 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
 
+from src.bot.states.client import ClientStates
 from src.core.constants import card_pattern, phone_pattern, bank_pattern, amount_pattern
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.services.google_sheets_class import GoogleSheetClass
-from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.last_activity import update_last_activity
 
 from .router import router
 
 # --- Новый хэндлер для реквизитов: ---
-@router.business_message(StateFilter(UserFlow.waiting_for_requisites))
+@router.business_message(StateFilter(ClientStates.waiting_for_requisites))
 async def handle_requisites_message(
     message: Message,
     spreadsheet: GoogleSheetClass,
@@ -98,7 +98,7 @@ async def handle_requisites_message(
             parse_mode="Markdown",
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
-        await state.set_state(UserFlow.confirming_requisites)
+        await state.set_state(ClientStates.confirming_requisites)
         await update_last_activity(state, msg)
         return
     
@@ -110,7 +110,7 @@ async def handle_requisites_message(
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
-        await state.set_state(UserFlow.waiting_for_amount)
+        await state.set_state(ClientStates.waiting_for_amount)
         await update_last_activity(state, msg)
         return
     
@@ -122,7 +122,7 @@ async def handle_requisites_message(
             f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
             parse_mode="Markdown"
         )
-        await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        await state.set_state(ClientStates.waiting_for_card_or_phone_number)
         await update_last_activity(state, msg)
         return
     
@@ -134,7 +134,7 @@ async def handle_requisites_message(
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
-        await state.set_state(UserFlow.waiting_for_amount)
+        await state.set_state(ClientStates.waiting_for_amount)
         await update_last_activity(state, msg)
         return
     
@@ -146,7 +146,7 @@ async def handle_requisites_message(
             f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
             parse_mode="Markdown"
         )
-        await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        await state.set_state(ClientStates.waiting_for_card_or_phone_number)
         await update_last_activity(state, msg)
         return
     
@@ -160,7 +160,7 @@ async def handle_requisites_message(
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
             parse_mode="Markdown"
         )
-        await state.set_state(UserFlow.waiting_for_amount)
+        await state.set_state(ClientStates.waiting_for_amount)
         await update_last_activity(state, msg)
         return
     
@@ -181,7 +181,7 @@ async def handle_requisites_message(
                 f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )  
-        await state.set_state(UserFlow.waiting_for_amount)
+        await state.set_state(ClientStates.waiting_for_amount)
         await update_last_activity(state, msg)
         return
     
@@ -195,7 +195,7 @@ async def handle_requisites_message(
            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
             parse_mode="Markdown"
         )  
-        await state.set_state(UserFlow.waiting_for_card_or_phone_number)
+        await state.set_state(ClientStates.waiting_for_card_or_phone_number)
         await update_last_activity(state, msg)
         return
     
@@ -227,7 +227,7 @@ async def handle_requisites_message(
                 f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
-        await state.set_state(UserFlow.waiting_for_amount)
+        await state.set_state(ClientStates.waiting_for_amount)
         await update_last_activity(state, msg)
         return
     
@@ -259,7 +259,7 @@ async def handle_requisites_message(
                 f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
                 parse_mode="Markdown"
             ) 
-        await state.set_state(UserFlow.waiting_for_bank)
+        await state.set_state(ClientStates.waiting_for_bank)
         await update_last_activity(state, msg)
         return
     
@@ -274,7 +274,7 @@ async def handle_requisites_message(
             parse_mode="Markdown",
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
-        await state.set_state(UserFlow.confirming_requisites)
+        await state.set_state(ClientStates.confirming_requisites)
         await update_last_activity(state, msg)
         return 
     
@@ -289,7 +289,7 @@ async def handle_requisites_message(
             parse_mode="Markdown",
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
-        await state.set_state(UserFlow.confirming_requisites)
+        await state.set_state(ClientStates.confirming_requisites)
         await update_last_activity(state, msg)
         return 
     
@@ -301,5 +301,5 @@ async def handle_requisites_message(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_requisites)
+    await state.set_state(ClientStates.waiting_for_requisites)
     await message.answer(gpt5_response_text)

@@ -5,14 +5,14 @@ from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
 
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 
 from .router import router
 
-from src.core.config import settings
+from src.core.config import constants
 
 
 @router.business_message(StateFilter("generating"))
@@ -28,7 +28,7 @@ async def wait_response(message: Message):
     await message.answer("Ожидайте ответа, пожалуйста ...")
 
 
-@router.business_message(StateFilter(UserFlow.continue_dialog))
+@router.business_message(StateFilter(ClientStates.continue_dialog))
 async def handle_messages_after_requisites(
     message: Message, 
     state: FSMContext, 
@@ -68,19 +68,19 @@ async def handle_messages_after_requisites(
             nm_id=nm_id,
             count=nm_id_amount
         )
-        await state.set_state(UserFlow.continue_dialog)
+        await state.set_state(ClientStates.continue_dialog)
         await message.answer(gpt5_response_text)
     else:
-        if len(text) > settings.MIN_LEN_TEXT:
+        if len(text) > constants.MIN_LEN_TEXT:
             await state.set_state('generating')
             gpt5_response_text = await client_gpt_5.create_gpt_5_response(
                 new_prompt=text,
                 nm_id=nm_id,
                 count=nm_id_amount
             )
-            await state.set_state(UserFlow.continue_dialog)
+            await state.set_state(ClientStates.continue_dialog)
             await message.answer(gpt5_response_text)    
-        elif text in settings.OK_WORDS:
+        elif text in constants.OK_WORDS:
             await message.answer("👍")
         else:
             await message.answer("Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением")

@@ -5,16 +5,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
 
+from src.bot.states.client import ClientStates
 from src.core.constants import bank_pattern
 from src.services.google_sheets_class import GoogleSheetClass
-from src.bot.states.user_flow import UserFlow
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.last_activity import update_last_activity
 
 from .router import router
 
 
-@router.business_message(StateFilter(UserFlow.waiting_for_bank))
+@router.business_message(StateFilter(ClientStates.waiting_for_bank))
 async def handle_bank_name(
     message: Message, 
     state: FSMContext,
@@ -53,7 +53,7 @@ async def handle_bank_name(
                     parse_mode="Markdown",
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
-                await state.set_state(UserFlow.confirming_requisites)
+                await state.set_state(ClientStates.confirming_requisites)
                 await update_last_activity(state, msg)
                 return
             else:
@@ -66,7 +66,7 @@ async def handle_bank_name(
                     parse_mode="Markdown",
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
-                await state.set_state(UserFlow.confirming_requisites)
+                await state.set_state(ClientStates.confirming_requisites)
                 await update_last_activity(state, msg)
                 return
         if data.get('phone_number'):
@@ -81,7 +81,7 @@ async def handle_bank_name(
                     parse_mode="Markdown",
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
-                await state.set_state(UserFlow.confirming_requisites)
+                await state.set_state(ClientStates.confirming_requisites)
                 await update_last_activity(state, msg)
                 return 
             else:
@@ -94,7 +94,7 @@ async def handle_bank_name(
                     parse_mode="Markdown",
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
-                await state.set_state(UserFlow.confirming_requisites)
+                await state.set_state(ClientStates.confirming_requisites)
                 await update_last_activity(state, msg)
                 return
     else:
@@ -102,6 +102,6 @@ async def handle_bank_name(
                 f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
                 parse_mode="Markdown"
             )
-        await state.set_state(UserFlow.waiting_for_amount)
+        await state.set_state(ClientStates.waiting_for_amount)
         await update_last_activity(state, msg)
         return

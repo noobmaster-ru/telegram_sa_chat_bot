@@ -6,7 +6,7 @@ from aiogram.methods import ReadBusinessMessage
 from aiogram.filters import StateFilter
 
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
@@ -14,7 +14,7 @@ from src.bot.utils.last_activity import update_last_activity
 from .router import router
 
 # ------ 5. catch all text from user in state "waiting_for_feedback" and send it to gpt 
-@router.business_message(StateFilter(UserFlow.waiting_for_feedback))
+@router.business_message(StateFilter(ClientStates.waiting_for_feedback))
 async def handle_unexpected_text_waiting_for_feedback_done(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
@@ -54,7 +54,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_feedback)
+    await state.set_state(ClientStates.waiting_for_feedback)
     msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а) отзыв")
@@ -62,7 +62,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     await update_last_activity(state, msg)
 
 # ------ 5. wait until user tap to button "Yes, made feedback" and go to the state "waiting_for_photo_feedback"
-@router.callback_query(StateFilter(UserFlow.waiting_for_feedback), F.data.startswith("feedback_"))
+@router.callback_query(StateFilter(ClientStates.waiting_for_feedback), F.data.startswith("feedback_"))
 async def handle_feedback_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
@@ -90,24 +90,25 @@ async def handle_feedback_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда оставите отзыв на товар `{nm_id}`, нажмите на кнопку 'Да, оставил(а)'", 
-                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
-                parse_mode="MarkdownV2"
+                f"Когда оставите отзыв на товар {nm_id}, нажмите на кнопку 'Да, оставил(а)'", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
             )
+            await state.set_state(ClientStates.waiting_for_feedback)
+            await update_last_activity(state, msg)
+            return
         except:
             msg = await callback.message.edit_text(
-                f"Нужно оставить отзыв 5 звезд на товар `{nm_id}`, затем нажмите на кнопку 'Да, оставил(а)'", 
-                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
-                parse_mode="MarkdownV2"
+                f"Нужно оставить отзыв 5 звезд на товар {nm_id}, затем нажмите на кнопку 'Да, оставил(а)'", 
+                reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
             )
-        await state.set_state(UserFlow.waiting_for_feedback)
-        await update_last_activity(state, msg)
-        return
+            await state.set_state(ClientStates.waiting_for_feedback)
+            await update_last_activity(state, msg)
+            return
     
     # дальше переходим в состояние waiting_for_photo_feedback - ждем фотки отзыва от юзера
     msg = await callback.message.edit_text(
         f"Отправьте, пожалуйста скриншот отзыва на 5 звёзд"
     )
-    await state.set_state(UserFlow.waiting_for_photo_feedback)
+    await state.set_state(ClientStates.waiting_for_photo_feedback)
     await update_last_activity(state, msg)
    

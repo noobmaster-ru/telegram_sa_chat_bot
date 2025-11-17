@@ -9,7 +9,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -25,7 +25,7 @@ def encode_image(image_path):
 
 
 # ==== Получение скрина заказа от пользователя ==== 
-@router.business_message(F.photo, StateFilter(UserFlow.waiting_for_photo_order))
+@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_photo_order))
 async def handle_photo_order(
     message: Message,
     state: FSMContext,
@@ -87,7 +87,7 @@ async def handle_photo_order(
     
     # Читаем байты изображения эталона
     # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent.parent / "resources" / f"{nm_id}.png"
+    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.png"
     reference_image_extension = filetype.guess(reference_path).extension
     base64_image_ref = encode_image(reference_path)
     ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"
@@ -130,13 +130,12 @@ async def handle_photo_order(
         )
         # записали фотку заказа - теперь идем дальше по сценарию - спрашиваем получили ли заказ
         msg = await message.answer(
-            f"📬 Вы получили товар `{nm_id}`?", 
-            reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
-            parse_mode="MarkdownV2"
+            f"📬 Вы получили товар {nm_id}?", 
+            reply_markup=get_yes_no_keyboard("receive", "получил(а)")
         )
-        await state.set_state(UserFlow.waiting_for_order_receive)
+        await state.set_state(ClientStates.waiting_for_order_receive)
         await update_last_activity(state, msg)
     else:
-        await state.set_state(UserFlow.waiting_for_photo_order)
+        await state.set_state(ClientStates.waiting_for_photo_order)
         msg = await message.answer("❌ Фото заказа не принято. Попробуйте прислать корректное фото заказа.")
         await update_last_activity(state, msg)

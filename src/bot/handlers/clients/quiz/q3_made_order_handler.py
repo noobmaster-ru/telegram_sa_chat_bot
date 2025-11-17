@@ -6,7 +6,7 @@ from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
 
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -15,7 +15,7 @@ from src.bot.utils.last_activity import update_last_activity
 from .router import router
 
 # ------ 3. catch all text from user in state "waiting_for_order" and send it to gpt 
-@router.business_message(StateFilter(UserFlow.waiting_for_order))
+@router.business_message(StateFilter(ClientStates.waiting_for_order))
 async def handle_unexpected_text_waiting_for_order(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
@@ -56,7 +56,7 @@ async def handle_unexpected_text_waiting_for_order(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_order)
+    await state.set_state(ClientStates.waiting_for_order)
     msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("order", "заказал(а)")
@@ -64,7 +64,7 @@ async def handle_unexpected_text_waiting_for_order(
     await update_last_activity(state, msg)
 
 # ------ 3. wait until user tap to button "Yes, ordered" and go to state "waiting_for_photo_order"
-@router.callback_query(StateFilter(UserFlow.waiting_for_order), F.data.startswith("order_"))
+@router.callback_query(StateFilter(ClientStates.waiting_for_order), F.data.startswith("order_"))
 async def handle_order_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
@@ -92,17 +92,15 @@ async def handle_order_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда закажете товар `{nm_id}`, нажмите на кнопку 'Да, заказал(а)'",
-                reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
-                parse_mode="MarkdownV2"
+                f"Когда закажете товар {nm_id}, нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
             )
         except:
             msg = await callback.message.edit_text(
-                f"Нужно заказать товар `{nm_id}`, когда закажете товар - нажмите на кнопку 'Да, заказал(а)'",
-                reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
-                parse_mode="MarkdownV2"
+                f"Нужно заказать товар {nm_id}, когда закажете товар ,нажмите на кнопку 'Да, заказал(а)'",
+                reply_markup=get_yes_no_keyboard("order", "заказал(а)")
             )
-        await state.set_state(UserFlow.waiting_for_order)
+        await state.set_state(ClientStates.waiting_for_order)
         await update_last_activity(state, msg)
         return
     
@@ -110,5 +108,5 @@ async def handle_order_answer(
     msg = await callback.message.edit_text(
         f"Отправьте, пожалуйста фотографию сделанного заказа."
     )
-    await state.set_state(UserFlow.waiting_for_photo_order)
+    await state.set_state(ClientStates.waiting_for_photo_order)
     await update_last_activity(state, msg)

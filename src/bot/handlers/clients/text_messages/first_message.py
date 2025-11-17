@@ -11,7 +11,7 @@ from redis.asyncio import Redis
 
 
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
 from src.core.config import constants
@@ -200,7 +200,7 @@ async def handle_first_message(
         reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
     )
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
-    await state.set_state(UserFlow.waiting_for_agreement)
+    await state.set_state(ClientStates.waiting_for_agreement)
     await state.update_data(
         telegram_id=telegram_id,
         business_connection_id=business_connection_id,

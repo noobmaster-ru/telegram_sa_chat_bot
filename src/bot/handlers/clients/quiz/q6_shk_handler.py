@@ -6,7 +6,7 @@ from aiogram.methods import ReadBusinessMessage
 from aiogram.types import  CallbackQuery
 
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -16,7 +16,7 @@ from .router import router
 
 
 # ------ 6. catch all text from user in state "waiting_for_shk" and send it to gpt 
-@router.business_message(StateFilter(UserFlow.waiting_for_shk))
+@router.business_message(StateFilter(ClientStates.waiting_for_shk))
 async def handle_unexpected_text_waiting_for_shk(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
@@ -56,7 +56,7 @@ async def handle_unexpected_text_waiting_for_shk(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_shk)
+    await state.set_state(ClientStates.waiting_for_shk)
     msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("shk", "разрезал(а) ШК")
@@ -65,7 +65,7 @@ async def handle_unexpected_text_waiting_for_shk(
 
 
 # ------ 6. wait until user tap to button "Yes, cutted shk" and go to the state "waiting_for_photo_shk"
-@router.callback_query(StateFilter(UserFlow.waiting_for_shk), F.data.startswith("shk_"))
+@router.callback_query(StateFilter(ClientStates.waiting_for_shk), F.data.startswith("shk_"))
 async def handle_shk_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass,
@@ -94,23 +94,24 @@ async def handle_shk_answer(
     if value == "Нет":  
         try:
             msg = await callback.message.edit_text(
-                f"Когда разрежете ШК от `{nm_id}`, нажмите на кнопку 'Да, разрезал(а)'", 
-                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
-                parse_mode="MarkdownV2"
+                f"Когда разрежете ШК от {nm_id}, нажмите на кнопку 'Да, разрезал(а)'", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
             )
+            await state.set_state(ClientStates.waiting_for_shk)
+            await update_last_activity(state, msg)
+            return
         except:
             msg = await callback.message.edit_text(
-                f"Нужно разрезать ШК товара `{nm_id}`, затем нажмите на кнопку 'Да, разрезал(а)'", 
-                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)"),
-                parse_mode="MarkdownV2"
+                f"Нужно разрезать ШК товара {nm_id}, затем нажмите на кнопку 'Да, разрезал(а)'", 
+                reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
             )
-        await state.set_state(UserFlow.waiting_for_shk)
-        await update_last_activity(state, msg)
-        return
+            await state.set_state(ClientStates.waiting_for_shk)
+            await update_last_activity(state, msg)
+            return
     
     # дальше переходим в состояние waiting_for_photo_shk - ждем фотки разрезанных ШК
     msg = await callback.message.edit_text(
         f"Отправьте, пожалуйста, фотографию разрезанных ШК."
     )
-    await state.set_state(UserFlow.waiting_for_photo_shk)
+    await state.set_state(ClientStates.waiting_for_photo_shk)
     await update_last_activity(state, msg)

@@ -1,3 +1,4 @@
+import logging
 from aiogram import F, types, Bot
 from aiogram.enums import ChatAction
 from aiogram.types import CallbackQuery
@@ -7,7 +8,7 @@ from aiogram.methods import ReadBusinessMessage
 from aiogram.filters import StateFilter
 
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -16,7 +17,7 @@ from .router import router
 
 
 # ------ 1. catch all text from user in state "waiting_for_agreement" and send it to gpt 
-@router.business_message(StateFilter(UserFlow.waiting_for_agreement))
+@router.business_message(StateFilter(ClientStates.waiting_for_agreement))
 async def handle_unexpected_text_waiting_for_agreement(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
@@ -57,7 +58,7 @@ async def handle_unexpected_text_waiting_for_agreement(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_agreement)
+    await state.set_state(ClientStates.waiting_for_agreement)
     msg = await message.answer(
         gpt_5_response, 
         reply_markup=get_yes_no_keyboard("agree","согласен(на)")
@@ -65,7 +66,7 @@ async def handle_unexpected_text_waiting_for_agreement(
     await update_last_activity(state, msg)
     
 # ------ 1. wait until user tap to button "Yes, agree"
-@router.callback_query(StateFilter(UserFlow.waiting_for_agreement), F.data.startswith("agree_"))
+@router.callback_query(StateFilter(ClientStates.waiting_for_agreement), F.data.startswith("agree_"))
 async def handle_agreement(
     callback: CallbackQuery,
     state: FSMContext,
@@ -97,8 +98,6 @@ async def handle_agreement(
                 await callback.message.edit_text(
                     "✅ Отлично! Вы подписаны на канал.",
                 )
-
-
                 await spreadsheet.update_buyer_button_and_time(
                     telegram_id=telegram_id,
                     button_name="subscribe",
@@ -106,11 +105,10 @@ async def handle_agreement(
                     is_tap_to_keyboard=True
                 )
                 # 👉 start quiz_handlers
-                await state.set_state(UserFlow.waiting_for_order)
+                await state.set_state(ClientStates.waiting_for_order)
                 msg = await callback.message.edit_text(
-                    f"📦 Вы заказали товар `{nm_id}`?", 
-                    reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
-                    parse_mode="MarkdownV2"
+                    f"📦 Вы заказали товар {nm_id}?", 
+                    reply_markup=get_yes_no_keyboard("order", "заказал(а)") 
                 )
                 await update_last_activity(state, msg)
                 return
@@ -118,8 +116,8 @@ async def handle_agreement(
                 # Не подписан
                 try:
                     msg = await callback.message.edit_text(
-                        "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
-                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                        "❌ Пока вы не подпишетесь на канал , раздача невозможна.\n"
+                        f"Подпишитесь на {CHANNEL_USERNAME} и на кнопку ниже нажмите:",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
                 except:
@@ -127,12 +125,13 @@ async def handle_agreement(
                         f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
-                await state.set_state(UserFlow.waiting_for_subcription_to_channel)
+                await state.set_state(ClientStates.waiting_for_subcription_to_channel)
                 await update_last_activity(state, msg)
-        except TelegramBadRequest:
+        except TelegramBadRequest as e:
             msg = await callback.message.answer(
-                "⚠️ Не удалось проверить подписку. Проверьте, что бот — администратор канала."
+                "⚠️ Не удалось проверить подписку. Проверьте, что бот является администратором канала."
             )
+            logging.info(e)
             await update_last_activity(state, msg)
     else:
         try:
@@ -145,6 +144,6 @@ async def handle_agreement(
                 "Вы согласны на условия?",
                 reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
             )
-        await state.set_state(UserFlow.waiting_for_agreement)
+        await state.set_state(ClientStates.waiting_for_agreement)
         await update_last_activity(state, msg)
         return 

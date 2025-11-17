@@ -4,7 +4,7 @@ import json
 import logging
 from aiogram import Bot
 from aiogram.fsm.storage.redis import RedisStorage
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.core.config import constants
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.core.config import constants
@@ -15,57 +15,57 @@ from src.core.config import constants
 
 TIME_DURATION = constants.TIME_DURATION_BEETWEEN_REMINDER # 1 hour
 REMINDER_TIMEOUTS = {
-    UserFlow.waiting_for_agreement.state: TIME_DURATION, 
-    UserFlow.waiting_for_subcription_to_channel.state: TIME_DURATION, 
-    UserFlow.waiting_for_order.state: TIME_DURATION, 
+    ClientStates.waiting_for_agreement.state: TIME_DURATION, 
+    ClientStates.waiting_for_subcription_to_channel.state: TIME_DURATION, 
+    ClientStates.waiting_for_order.state: TIME_DURATION, 
     
-    UserFlow.waiting_for_photo_order.state: TIME_DURATION, 
-    UserFlow.waiting_for_order_receive.state: constants.TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE, # 1 day
-    UserFlow.waiting_for_feedback.state: TIME_DURATION, 
-    
-    
-    UserFlow.waiting_for_photo_feedback.state: TIME_DURATION,     
-    UserFlow.waiting_for_shk.state: TIME_DURATION,   
+    ClientStates.waiting_for_photo_order.state: TIME_DURATION, 
+    ClientStates.waiting_for_order_receive.state: constants.TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE, # 1 day
+    ClientStates.waiting_for_feedback.state: TIME_DURATION, 
     
     
-    UserFlow.waiting_for_photo_shk.state: TIME_DURATION,
-    UserFlow.waiting_for_requisites.state: TIME_DURATION,         
+    ClientStates.waiting_for_photo_feedback.state: TIME_DURATION,     
+    ClientStates.waiting_for_shk.state: TIME_DURATION,   
     
-    UserFlow.waiting_for_bank.state: TIME_DURATION,         
-    UserFlow.waiting_for_amount.state: TIME_DURATION,  
-    UserFlow.waiting_for_card_or_phone_number.state: TIME_DURATION,  
-    UserFlow.confirming_requisites.state: TIME_DURATION
+    
+    ClientStates.waiting_for_photo_shk.state: TIME_DURATION,
+    ClientStates.waiting_for_requisites.state: TIME_DURATION,         
+    
+    ClientStates.waiting_for_bank.state: TIME_DURATION,         
+    ClientStates.waiting_for_amount.state: TIME_DURATION,  
+    ClientStates.waiting_for_card_or_phone_number.state: TIME_DURATION,  
+    ClientStates.confirming_requisites.state: TIME_DURATION
 }
 
 REMINDER_TEXTS = {
-    UserFlow.waiting_for_agreement.state: "Вы в итоге согласны с условиями? нажмите на кнопку", 
-    UserFlow.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем. нажмите на кнопку, что подписались", 
-    UserFlow.waiting_for_order.state: "Вы заказали товар? нажмите на кнопку", 
+    ClientStates.waiting_for_agreement.state: "Вы в итоге согласны с условиями? нажмите на кнопку", 
+    ClientStates.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем. нажмите на кнопку, что подписались", 
+    ClientStates.waiting_for_order.state: "Вы заказали товар? нажмите на кнопку", 
      
-    UserFlow.waiting_for_photo_order.state: "Напоминаю, что ждём скриншот вашего заказа",
-    UserFlow.waiting_for_order_receive.state: "Товар получили? нажмите на кнопку",
-    UserFlow.waiting_for_feedback.state: "Вы отзыв оставили 5 звёзд? на кнопку нажмите", # 1 мин
+    ClientStates.waiting_for_photo_order.state: "Напоминаю, что ждём скриншот вашего заказа",
+    ClientStates.waiting_for_order_receive.state: "Товар получили? нажмите на кнопку",
+    ClientStates.waiting_for_feedback.state: "Вы отзыв оставили 5 звёзд? на кнопку нажмите", # 1 мин
     
     
-    UserFlow.waiting_for_photo_feedback.state: "Скриншот отзыва отправьте",
-    UserFlow.waiting_for_shk.state: "Этикетки разрезали? нажмите на кнопку",   
+    ClientStates.waiting_for_photo_feedback.state: "Скриншот отзыва отправьте",
+    ClientStates.waiting_for_shk.state: "Этикетки разрезали? нажмите на кнопку",   
     
-    UserFlow.waiting_for_photo_shk.state: "Отправьте фото разрезанных этикеток!!!",
-    UserFlow.waiting_for_requisites.state: "Пожалуйста, отправьте реквизиты, чтобы мы могли сделать выплату",
+    ClientStates.waiting_for_photo_shk.state: "Отправьте фото разрезанных этикеток!!!",
+    ClientStates.waiting_for_requisites.state: "Пожалуйста, отправьте реквизиты, чтобы мы могли сделать выплату",
     
-    UserFlow.waiting_for_bank.state: "Отправьте название банка!",  
-    UserFlow.waiting_for_amount.state: "Отправьте cумму перевода!",  
-    UserFlow.waiting_for_card_or_phone_number.state: "Номер карты или номер телефона отправьте",  
-    UserFlow.confirming_requisites.state: "Подтвердите реквизиты ваши, на кнопку нажмите"
+    ClientStates.waiting_for_bank.state: "Отправьте название банка!",  
+    ClientStates.waiting_for_amount.state: "Отправьте cумму перевода!",  
+    ClientStates.waiting_for_card_or_phone_number.state: "Номер карты или номер телефона отправьте",  
+    ClientStates.confirming_requisites.state: "Подтвердите реквизиты ваши, на кнопку нажмите"
 }
 REPLY_MARKUP_REMIND = [
-    UserFlow.waiting_for_agreement.state,
-    UserFlow.waiting_for_subcription_to_channel.state,
-    UserFlow.waiting_for_order.state,
-    UserFlow.waiting_for_order_receive.state,
-    UserFlow.waiting_for_feedback.state,
-    UserFlow.waiting_for_shk.state,
-    UserFlow.confirming_requisites.state # сообщение с подтверждением реквизитов не надо удалять!!! там сами реквизиты записаны!!1
+    ClientStates.waiting_for_agreement.state,
+    ClientStates.waiting_for_subcription_to_channel.state,
+    ClientStates.waiting_for_order.state,
+    ClientStates.waiting_for_order_receive.state,
+    ClientStates.waiting_for_feedback.state,
+    ClientStates.waiting_for_shk.state,
+    ClientStates.confirming_requisites.state # сообщение с подтверждением реквизитов не надо удалять!!! там сами реквизиты записаны!!1
 ]
 async def inactivity_checker(bot: Bot, storage: RedisStorage):
     """Периодически проверяет всех пользователей и шлёт напоминания"""
@@ -130,7 +130,7 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                             elif state == REPLY_MARKUP_REMIND[5]:    
                                 callback_prefix = "shk"
                                 statement = "разрезал(а) ШК"
-                            else: # UserFlow.confirming_requisites.state
+                            else: # ClientStates.confirming_requisites.state
                                 callback_prefix = "confirm_requisites"
                                 statement = "верно"  
                             msg = await bot.send_message(
@@ -154,7 +154,7 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                         new_data["last_messages_ids"] = [msg.message_id]
                         await redis.set(redis_key, json.dumps(new_data))
                 else:
-                    logging.info(f"  user {telegram_id} in state {state}, time_delta_last_msg_time_now = {delta}")
+                    logging.info(f"  client {telegram_id} in {state}, time_delta_last_msg_time_now = {delta:.1f}")
         except Exception as e:
             logging.info(f"[InactivityChecker] Ошибка: {e}")
         await asyncio.sleep(constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS)  

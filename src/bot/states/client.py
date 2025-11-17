@@ -1,6 +1,6 @@
 from aiogram.fsm.state import StatesGroup, State
 
-class UserFlow(StatesGroup):
+class ClientStates(StatesGroup):
     # user flow start
     waiting_for_agreement = State()
     waiting_for_subcription_to_channel = State()

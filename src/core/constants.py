@@ -6,9 +6,9 @@ TIME_SLEEP_API_GET_REMAINS = 3600*23 # 3600s = 1 hour * 23 = 23 hours
 MIN_LEN_TEXT = 12
 FIRST_MESSAGE_DELAY_SLEEP = 0.1 # 15 in production 
 DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.1 # 5 #in production
-TIME_DURATION_BEETWEEN_REMINDER =  10 #3600*6 #in production
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 10 # 3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =   10 #3600  # in production - every hour check users last time activitys
+TIME_DURATION_BEETWEEN_REMINDER =  20 #3600*6 #in production
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 20 # 3600*23 # in production
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =   30 #3600  # in production - every hour check users last time activitys
 
 MANAGER_NAME = 'Виктории' # в родительном падеже надо
 CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала

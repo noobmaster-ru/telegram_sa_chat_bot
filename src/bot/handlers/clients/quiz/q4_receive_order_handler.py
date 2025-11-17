@@ -6,7 +6,7 @@ from aiogram.methods import ReadBusinessMessage
 from aiogram.enums import ChatAction
 
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -15,7 +15,7 @@ from src.bot.utils.last_activity import update_last_activity
 from .router import router
 
 # ------ 4. catch all text from user in state "waiting_for_order_receive" and send it to gpt 
-@router.business_message(StateFilter(UserFlow.waiting_for_order_receive))
+@router.business_message(StateFilter(ClientStates.waiting_for_order_receive))
 async def handle_unexpected_text_waiting_for_order_receive(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
@@ -55,7 +55,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_order_receive)
+    await state.set_state(ClientStates.waiting_for_order_receive)
     msg = await message.answer(
         gpt_5_response,
         reply_markup=get_yes_no_keyboard("receive", "получил(а)")
@@ -63,7 +63,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
     await update_last_activity(state, msg)
 
 # ------ 4. wait until user tap to button "Yes, receive order"
-@router.callback_query(StateFilter(UserFlow.waiting_for_order_receive), F.data.startswith("receive_"))
+@router.callback_query(StateFilter(ClientStates.waiting_for_order_receive), F.data.startswith("receive_"))
 async def handle_receive_answer(
     callback: CallbackQuery, 
     spreadsheet: GoogleSheetClass, 
@@ -92,25 +92,25 @@ async def handle_receive_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда получите товар `{nm_id}`", 
-                reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
-                parse_mode="MarkdownV2"
+                f"Когда получите товар {nm_id}, нажмите на кнопку ниже", 
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
             )
+            await state.set_state(ClientStates.waiting_for_order_receive)
+            await update_last_activity(state, msg)
+            return
         except:
             msg = await callback.message.edit_text(
-                f"Нужно получить товар `{nm_id}`, после - нажмите на кнопку 'Да, получил(а)'",
-                reply_markup=get_yes_no_keyboard("receive", "получил(а)"),
-                parse_mode="MarkdownV2"
+                f"Нужно получить товар {nm_id}, после - нажмите на кнопку 'Да, получил(а)'",
+                reply_markup=get_yes_no_keyboard("receive", "получил(а)")
             )
-        await state.set_state(UserFlow.waiting_for_order_receive)
-        await update_last_activity(state, msg)
-        return
+            await state.set_state(ClientStates.waiting_for_order_receive)
+            await update_last_activity(state, msg)
+            return
     
     # ✅ Следующий вопрос
     msg = await callback.message.edit_text(
-        f"💬 Вы оставили отзыв на `{nm_id}`?", 
-        reply_markup=get_yes_no_keyboard("feedback", "оставил(а)"),
-        parse_mode="MarkdownV2"
+        f"💬 Вы оставили отзыв на {nm_id}?", 
+        reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
     )
-    await state.set_state(UserFlow.waiting_for_feedback)
+    await state.set_state(ClientStates.waiting_for_feedback)
     await update_last_activity(state, msg)

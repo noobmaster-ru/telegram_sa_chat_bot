@@ -6,7 +6,7 @@ from aiogram.filters import StateFilter
 from aiogram.enums import ChatAction
 from aiogram.methods import ReadBusinessMessage
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
@@ -15,7 +15,7 @@ from src.bot.utils.last_activity import update_last_activity
 from .router import router
 
 # ------ 2. catch all text from user in state "waiting_for_subcription_to_channel" and send it to gpt
-@router.business_message(StateFilter(UserFlow.waiting_for_subcription_to_channel))
+@router.business_message(StateFilter(ClientStates.waiting_for_subcription_to_channel))
 async def handle_unexpected_text_waiting_for_subcription_to_channel(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
@@ -58,7 +58,7 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
         nm_id=nm_id,
         count=nm_id_amount
     )
-    await state.set_state(UserFlow.waiting_for_subcription_to_channel)
+    await state.set_state(ClientStates.waiting_for_subcription_to_channel)
     msg = await message.answer(
         f'{gpt_5_response}\nПока вы не подпишетесь на канал — раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:',
         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
@@ -66,7 +66,7 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     await update_last_activity(state, msg)
 
 # ------ 2. wait until user tap to button "Yes, sub to channel"
-@router.callback_query(StateFilter(UserFlow.waiting_for_subcription_to_channel), F.data.startswith("subscribe_"))
+@router.callback_query(StateFilter(ClientStates.waiting_for_subcription_to_channel), F.data.startswith("subscribe_"))
 async def handle_subscription(
     callback: CallbackQuery,
     state: FSMContext,
@@ -101,18 +101,17 @@ async def handle_subscription(
                 )
                 # 👉 Начинаем пошаговый диалог
                 msg = await callback.message.answer(
-                    f"📦 Вы заказали товар `{nm_id}`?",  
-                    reply_markup=get_yes_no_keyboard("order", "заказал(а)"),
-                    parse_mode="MarkdownV2"
+                    f"📦 Вы заказали товар {nm_id}?",  
+                    reply_markup=get_yes_no_keyboard("order", "заказал(а)")
                 )
-                await state.set_state(UserFlow.waiting_for_order)
+                await state.set_state(ClientStates.waiting_for_order)
                 await update_last_activity(state, msg)
                 return
             else:
                 try:
                     # Не подписан
                     msg = await callback.message.edit_text(
-                        "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
+                        "❌ Пока вы не подпишетесь на канал , раздача невозможна.\n"
                         f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
@@ -131,7 +130,7 @@ async def handle_subscription(
         # Не подписан
         try:
             msg = await callback.message.edit_text(
-                "❌ Пока вы не подпишетесь на канал — раздача невозможна.\n"
+                "❌ Пока вы не подпишетесь на канал , раздача невозможна.\n"
                 f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                 reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
             )
@@ -140,5 +139,5 @@ async def handle_subscription(
                 f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
                 reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
             )
-        await state.set_state(UserFlow.waiting_for_subcription_to_channel)
+        await state.set_state(ClientStates.waiting_for_subcription_to_channel)
         await update_last_activity(state, msg)

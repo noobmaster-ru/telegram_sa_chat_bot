@@ -9,7 +9,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
@@ -23,7 +23,7 @@ def encode_image(image_path):
 
 
 # ==== Получение фото от пользователя ==== 
-@router.business_message(F.photo, StateFilter(UserFlow.waiting_for_photo_shk))
+@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_photo_shk))
 async def handle_photo_shk(
     message: Message,
     state: FSMContext,
@@ -86,7 +86,7 @@ async def handle_photo_shk(
     
     # Читаем байты изображения эталона
     # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent.parent / "resources" / f"{nm_id}.png"
+    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.png"
     reference_image_extension = filetype.guess(reference_path).extension
     base64_image_ref = encode_image(reference_path)
     ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"
@@ -132,9 +132,9 @@ async def handle_photo_shk(
             "Отправьте теперь нам, пожалуйста, свои реквизиты в формате:\nНомер карты в формате:\nAAAA BBBB CCCC DDDD\n   *ИЛИ*\nНомер телефона в формате: 8910XXXXXXX\n\nСпасибо",
             parse_mode="MarkdownV2"
         )
-        await state.set_state(UserFlow.waiting_for_requisites)
+        await state.set_state(ClientStates.waiting_for_requisites)
         await update_last_activity(state, msg)
     else:
-        await state.set_state(UserFlow.waiting_for_photo_shk)
+        await state.set_state(ClientStates.waiting_for_photo_shk)
         msg = await message.answer("❌ Фото разрезанных штрихкодов не принято. Попробуйте прислать корректное фото разрезанных штрихкодов")
         await update_last_activity(state, msg)

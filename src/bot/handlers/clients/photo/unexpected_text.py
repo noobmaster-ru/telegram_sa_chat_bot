@@ -5,14 +5,14 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
-from src.bot.states.user_flow import UserFlow
+from src.bot.states.client import ClientStates
 
 from src.bot.utils.last_activity import update_last_activity
 from .router import router
 
 
 # catch all text waiting_for_photo_order, waiting_for_photo_feedback , waiting_for_photo_shk  and ask user to send photo!
-@router.business_message(F.text, StateFilter(UserFlow.waiting_for_photo_order, UserFlow.waiting_for_photo_feedback, UserFlow.waiting_for_photo_shk))
+@router.business_message(F.text, StateFilter(ClientStates.waiting_for_photo_order, ClientStates.waiting_for_photo_feedback, ClientStates.waiting_for_photo_shk))
 async def handle_photo(message: Message, state: FSMContext):
     current_state = await state.get_state() 
     await message.bot(
@@ -27,13 +27,13 @@ async def handle_photo(message: Message, state: FSMContext):
         action=ChatAction.TYPING,
         business_connection_id = message.business_connection_id
     )
-    if current_state == UserFlow.waiting_for_photo_order:
+    if current_state == ClientStates.waiting_for_photo_order:
         msg = await message.answer("Пришлите, пожалуйста, скриншот заказа.")
         await update_last_activity(state, msg)
-    elif current_state == UserFlow.waiting_for_photo_feedback:
+    elif current_state == ClientStates.waiting_for_photo_feedback:
         msg = await message.answer("Пришлите, пожалуйста, скриншот отзыва на 5 звёзд.")
         await update_last_activity(state, msg)
-    # current_state == UserFlow.waiting_for_photo_shk:
+    # current_state == ClientStates.waiting_for_photo_shk:
     else:
         msg = await message.answer("Пришлите, пожалуйста, фотографию разрезанных этикеток.")
         await update_last_activity(state, msg)
