@@ -44,7 +44,7 @@ class ArticleORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     cabinet_id: Mapped[int] = mapped_column(ForeignKey("cabinets.id"))
 
-    article: Mapped[str] = mapped_column(String(64)) # названия товара 
+    article: Mapped[int] = mapped_column(Integer) # названия товара 
     giveaways: Mapped[int] = mapped_column(Integer)  # количество раздач
     photo_file_id: Mapped[str | None] = mapped_column(String(256))  # telegram file_id фото
 

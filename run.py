@@ -11,7 +11,7 @@ from src.bot.handlers.clients.quiz import router as quiz_router
 from src.bot.handlers.clients.photo import router as photo_router
 from src.bot.handlers.clients.payment_details import router as payment_router
 
-from src.bot.handlers.sellers.registration import router as registration_router
+from src.bot.handlers.sellers.add_cabinet import router as registration_router
 
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass

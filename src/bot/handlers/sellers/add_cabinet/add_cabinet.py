@@ -21,8 +21,19 @@ async def add_cabinet(
         f'Сделайте себе копию этой таблицы\n\n {constants.GOOGLE_SHEETS_TEMPLATE_URL}\n\n и пришлите мне ссылку на неё'
     )
     await state.set_state(SellerStates.waiting_for_new_google_sheets_url)
-
-
+    
+@router.message(StateFilter(SellerStates.waiting_for_new_google_sheets_url))
+async def handle_url(
+    message: Message,
+    state: FSMContext,
+):
+    google_sheets_url = message.text if message.text else "-"
+    await state.update_data(
+        google_sheets_url=google_sheets_url
+    )
+    await message.answer(f"Вот ваша ссылка на таблицу: {google_sheets_url}")
+    await message.answer("Теперь отправьте название для вашего кабинета")
+    await state.set_state(SellerStates.waiting_for_cabinet_name)
 
 @router.message(StateFilter(SellerStates.waiting_for_cabinet_name))
 async def handle_url(
@@ -36,7 +47,7 @@ async def handle_url(
     google_sheets_url = user_data["google_sheets_url"]
     user_id = user_data["user_id"]
     
-    await message.answer(f"Вот название для вашего кабинеты: {cabinet_name}")
+    await message.answer(f"Вот название для вашего кабинета: {cabinet_name}")
     async with db_session_factory() as session:
         new_cabinet = CabinetORM(
             name=cabinet_name,
@@ -45,23 +56,16 @@ async def handle_url(
         )
         session.add(new_cabinet)
         await session.commit()
+        
+        # session.refresh(new_cabinet) — подтянет cabinet.id
+        await session.refresh(new_cabinet)   
+        
+        # Сохраняем user_id в FSM
+        await state.update_data(cabinet_id=new_cabinet.id)
     await message.answer("Кабинет успешно добавлен!")
-    await state.set_state(SellerStates.waiting_for_tap_to_menu)
-    logging.info(f"added {user_data["telegram_id"]} into 'users'")
+    await message.answer("Теперь давайте добавим артикулы для раздачи и количество раздач.\n\nОтправьте артикул товара на ВБ")
+    await state.set_state(SellerStates.waiting_for_nm_id)
     
-    
-@router.message(StateFilter(SellerStates.waiting_for_new_google_sheets_url))
-async def handle_url(
-    message: Message,
-    state: FSMContext,
-):
-    google_sheets_url = message.text if message.text else "-"
-    await state.update_data(
-        google_sheets_url=google_sheets_url
-    )
-    await message.answer(f"Вот ваша ссылка на таблицу: {google_sheets_url}")
-    await message.answer("Отправьте теперь название для вашего кабинета")
-    await state.set_state(SellerStates.waiting_for_cabinet_name)
     
     
 # catch upexpected text from seller

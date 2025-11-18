@@ -12,7 +12,6 @@ from src.bot.states.seller import SellerStates
 from .router import router
 
 
-
 @router.message(CommandStart())
 async def cmd_start(
     message: Message,
@@ -43,9 +42,13 @@ async def cmd_start(
             )
             session.add(user)
             await session.commit()
-            await session.refresh(user)   # <— обязательный момент! 
-            # session.refresh(user) — подтянет user.id.
+            logging.info(f"added {telegram_id} into 'users' table")
+            
+            # session.refresh(user) — подтянет user.id
+            await session.refresh(user)   
         
-        # Сохраняем user_id в FSM
-        await state.update_data(user_id=user.id)
+            # Сохраняем user_id в FSM
+            await state.update_data(user_id=user.id)
     await state.set_state(SellerStates.waiting_for_tap_to_menu)
+    
+    
