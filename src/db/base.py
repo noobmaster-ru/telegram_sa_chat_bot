@@ -1,7 +1,6 @@
-# здесь будет бд
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-from src.db.config import db_settings
+from src.core.config import settings
 
 from aiogram import Dispatcher
 
@@ -10,7 +9,7 @@ class Base(DeclarativeBase):
 
 
 async_engine = create_async_engine(
-    url=db_settings.DATABASE_URL_asyncpg,
+    url=settings.DATABASE_URL_asyncpg,
     echo=True
 )
 

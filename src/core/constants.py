@@ -10,6 +10,11 @@ TIME_DURATION_BEETWEEN_REMINDER =  20 #3600*6 #in production
 TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 20 # 3600*23 # in production
 TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =   30 #3600  # in production - every hour check users last time activitys
 
+SELLER_MENU_TEXT = [
+    '⚙️Добавить кабинет', 
+    '❌Удалить кабинет',
+    'ℹ️Посмотреть подключенные кабинеты'
+]
 MANAGER_NAME = 'Виктории' # в родительном падеже надо
 CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
 OK_WORDS = [
@@ -53,6 +58,7 @@ GPT_TEMPERATURE=0.6
 GPT_REASONING="low" # "low" | "medium" | "high"
 
 # Google Sheets
+GOOGLE_SHEETS_TEMPLATE_URL='https://docs.google.com/spreadsheets/d/1KdSieYIl40NmbK8DBCfL2VJNbDFuK_ydJFirnT_XVkY/edit?gid=1585191033#gid=1585191033'
 ARTICLES_SHEET_STR="Артикулы"
 INSTRUCTION_SHEET_NAME_STR="Инструкция"
 BUYERS_SHEET_NAME_STR="Покупатели"

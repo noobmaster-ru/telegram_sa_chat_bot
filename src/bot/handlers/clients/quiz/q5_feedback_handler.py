@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 from aiogram.filters import StateFilter
 
-from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass

@@ -10,7 +10,7 @@ from aiogram.methods import ReadBusinessMessage
 from redis.asyncio import Redis
 
 
-from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
@@ -50,6 +50,7 @@ async def handle_first_message(
     REDIS_KEY_NM_IDS_TITLES_HASH: str,
     bot: Bot
 ):
+    await state.set_state('first_messages_state')
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
@@ -116,7 +117,6 @@ async def handle_first_message(
     )
     # Отправляем приветствие
     business_connection_id = message.business_connection_id
-    await state.set_state('first_messages_state')
 
     # небольшая задержка
     await asyncio.sleep(constants.FIRST_MESSAGE_DELAY_SLEEP)

@@ -1,17 +1,17 @@
 import logging
-
-from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram import Router, F
+from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy import select
-
-from bot.states.seller import SellerStates
+from src.bot.keyboards.reply.menu import kb_menu
 from src.db.models import UserORM
+from src.bot.states.seller import SellerStates
+from .router import router
 
-router = Router()
+
 
 @router.message(CommandStart())
 async def cmd_start(
@@ -20,28 +20,32 @@ async def cmd_start(
     db_session_factory: async_sessionmaker
 ):
     telegram_id = message.from_user.id
-    username = message.from_user.username if message.from_user.username else "no username"
-    first_name = message.from_user.first_name if message.from_user.first_name else "no first_name"
+    fullname = message.from_user.full_name 
     
+    await state.update_data(
+        telegram_id=telegram_id
+    )
+    await message.answer(f"Здравствуйте!")
+    await message.answer(
+        "Давайте зарегистрируем ваши кабинеты, выберите пункт 'Добавить кабинет' в меню",
+        reply_markup=kb_menu
+    )
     async with db_session_factory() as session:
-        # Проверяем, есть ли пользователь
+        # Проверяем, есть ли пользователь в бд 
         result = await session.execute(
             select(UserORM).where(UserORM.telegram_id == telegram_id)
         )
-        existing_user = result.scalar_one_or_none()
-
-        if existing_user:
-            logging.info(f"user {telegram_id} already in 'users'")
-        else:
-            # Создаём нового пользователя
-            new_user = UserORM(
+        user_exist = result.scalar_one_or_none()
+        if not user_exist:
+            user = UserORM(
                 telegram_id=telegram_id,
-                username=username,
-                first_name=first_name,
+                fullname=fullname
             )
-            session.add(new_user)
+            session.add(user)
             await session.commit()
-            logging.info(f"added {telegram_id} into 'users'")
-
-    await message.answer("Здравствуйте! Пришлите,пожалуйста, свой токен от личного кабинета 😊")
-    await state.set_state(SellerStates.token_handler)
+            await session.refresh(user)   # <— обязательный момент! 
+            # session.refresh(user) — подтянет user.id.
+        
+        # Сохраняем user_id в FSM
+        await state.update_data(user_id=user.id)
+    await state.set_state(SellerStates.waiting_for_tap_to_menu)

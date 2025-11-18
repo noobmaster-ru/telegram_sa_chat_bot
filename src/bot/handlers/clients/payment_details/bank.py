@@ -8,7 +8,7 @@ from aiogram.methods import ReadBusinessMessage
 from src.bot.states.client import ClientStates
 from src.core.constants import bank_pattern
 from src.services.google_sheets_class import GoogleSheetClass
-from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.last_activity import update_last_activity
 
 from .router import router

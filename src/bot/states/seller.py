@@ -1,8 +1,7 @@
 from aiogram.fsm.state import StatesGroup, State
 
 class SellerStates(StatesGroup):
-    google_sheet_handler = State()
-    service_account_handler = State()
-    # result_json = State()
-    nm_id_photo = State()
-    parsing_data = State()
+    waiting_for_tap_to_menu = State()
+    
+    waiting_for_new_google_sheets_url = State()
+    waiting_for_cabinet_name = State()

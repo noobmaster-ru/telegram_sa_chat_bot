@@ -7,7 +7,7 @@ from aiogram.types import  CallbackQuery
 
 
 from src.bot.states.client import ClientStates
-from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity

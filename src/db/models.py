@@ -1,9 +1,9 @@
 import datetime
 from sqlalchemy import (
-    Integer, String, BigInteger, TIMESTAMP, Boolean, JSON, ForeignKey
+    Integer, String, BigInteger, TIMESTAMP, ForeignKey
 )
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.orm import  Mapped, mapped_column, relationship
 
 from src.db.base import Base
 
@@ -12,61 +12,44 @@ class UserORM(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
-    username: Mapped[str | None] = mapped_column(String(64))
-    first_name: Mapped[str | None] = mapped_column(String(64))
-    supplier_ids: Mapped[dict | None] = mapped_column(JSON)
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    fullname: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
 
-    # Связь: один пользователь может иметь несколько поставщиков
-    suppliers: Mapped[list["SupplierORM"]] = relationship("SupplierORM", back_populates="user")
-
-
-class SupplierORM(Base):
-    __tablename__ = "suppliers"
+# Один юзер → много кабинетов
+# У каждого кабинета есть название и ссылка на Google Sheets
+class CabinetORM(Base):
+    __tablename__ = "cabinets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    supplier_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    name: Mapped[str | None] = mapped_column(String(128))
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    name: Mapped[str] = mapped_column(String(128))  # Название кабинета
+    table_link: Mapped[str] = mapped_column(String(256))  # ссылка на таблицу
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    is_active_token: Mapped[bool] = mapped_column(Boolean, default=True)
+    user = relationship("UserORM", backref="cabinets")
+    
+    
+# Тут храним артикулы
+# В каждом артикуле есть количество и фото
+class ArticleORM(Base):
+    __tablename__ = "articles"
 
-    # ForeignKey на пользователя
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
-    user: Mapped["UserORM"] = relationship("UserORM", back_populates="suppliers")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cabinet_id: Mapped[int] = mapped_column(ForeignKey("cabinets.id"))
 
+    article: Mapped[str] = mapped_column(String(64)) # названия товара 
+    giveaways: Mapped[int] = mapped_column(Integer)  # количество раздач
+    photo_file_id: Mapped[str | None] = mapped_column(String(256))  # telegram file_id фото
 
-class WBTokenORM(Base):
-    __tablename__ = "wb_tokens"
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    token: Mapped[str] = mapped_column(String(512), unique=True)
-    scopes: Mapped[dict | None] = mapped_column(JSON)
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
-    deleted_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    expires_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-
-
-class ServiceAccountORM(Base):
-    __tablename__ = "service_accounts"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    service_account: Mapped[str] = mapped_column(String(256), unique=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
-    deleted_at: Mapped[TIMESTAMP | None] = mapped_column(TIMESTAMP(timezone=True))
-
-
-class TableORM(Base):
-    __tablename__ = "tables"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    table_id: Mapped[str] = mapped_column(String(128), unique=True)
-    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
-    deleted_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    expires_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    type: Mapped[str | None] = mapped_column(String(64))
-    service_account_id: Mapped[int | None] = mapped_column(ForeignKey("service_accounts.id"))
-
-    supplier: Mapped["SupplierORM"] = relationship("SupplierORM")
-    service_account: Mapped["ServiceAccountORM"] = relationship("ServiceAccountORM")
+    cabinet = relationship("CabinetORM", backref="articles")

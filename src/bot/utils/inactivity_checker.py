@@ -6,7 +6,7 @@ from aiogram import Bot
 from aiogram.fsm.storage.redis import RedisStorage
 from src.bot.states.client import ClientStates
 from src.core.config import constants
-from src.bot.keyboards.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.core.config import constants
 
 # 60 - 1 min
@@ -38,25 +38,25 @@ REMINDER_TIMEOUTS = {
 }
 
 REMINDER_TEXTS = {
-    ClientStates.waiting_for_agreement.state: "Вы в итоге согласны с условиями? нажмите на кнопку", 
-    ClientStates.waiting_for_subcription_to_channel.state: "На канал почему не подписались? без подписки деньги не возвращаем. нажмите на кнопку, что подписались", 
-    ClientStates.waiting_for_order.state: "Вы заказали товар? нажмите на кнопку", 
+    ClientStates.waiting_for_agreement.state: "Вы в итоге согласны с наши условиями? нажмите, пожалуйста, на кнопку", 
+    ClientStates.waiting_for_subcription_to_channel.state: "Вы подписались на наш канал? в канале будем публиковать информацию о раздачах, нажмите, пожалуйста, на кнопку, что подписались", 
+    ClientStates.waiting_for_order.state: "Вы заказали товар? нажмите, пожалуйста, на кнопку", # 24 hour
      
-    ClientStates.waiting_for_photo_order.state: "Напоминаю, что ждём скриншот вашего заказа",
-    ClientStates.waiting_for_order_receive.state: "Товар получили? нажмите на кнопку",
-    ClientStates.waiting_for_feedback.state: "Вы отзыв оставили 5 звёзд? на кнопку нажмите", # 1 мин
+    ClientStates.waiting_for_photo_order.state: "Напоминаю, что ждём скриншот вашего заказа", 
+    ClientStates.waiting_for_order_receive.state: "Вы товар получили? нажмите, пожалуйста, на кнопку",
+    ClientStates.waiting_for_feedback.state: "Вы отзыв оставили 5 звёзд? нажмите , пожалуйста, на кнопку",
     
     
-    ClientStates.waiting_for_photo_feedback.state: "Скриншот отзыва отправьте",
-    ClientStates.waiting_for_shk.state: "Этикетки разрезали? нажмите на кнопку",   
+    ClientStates.waiting_for_photo_feedback.state: "Напоминаю, что ждём скриншот вашего отзыва",
+    ClientStates.waiting_for_shk.state: "Вы этикетки разрезали? нажмите, пожалуйста, на кнопку ниже",   
     
-    ClientStates.waiting_for_photo_shk.state: "Отправьте фото разрезанных этикеток!!!",
-    ClientStates.waiting_for_requisites.state: "Пожалуйста, отправьте реквизиты, чтобы мы могли сделать выплату",
+    ClientStates.waiting_for_photo_shk.state: "Напоминаю, что ждём фото разрезанных этикеток",
+    ClientStates.waiting_for_requisites.state: "Пожалуйста, отправьте реквизиты(номер карты/сумму оплаты/банк), чтобы мы могли сделать выплату",
     
-    ClientStates.waiting_for_bank.state: "Отправьте название банка!",  
-    ClientStates.waiting_for_amount.state: "Отправьте cумму перевода!",  
-    ClientStates.waiting_for_card_or_phone_number.state: "Номер карты или номер телефона отправьте",  
-    ClientStates.confirming_requisites.state: "Подтвердите реквизиты ваши, на кнопку нажмите"
+    ClientStates.waiting_for_bank.state: "Пожалуйста, отправьте название банка для перевода денег",  
+    ClientStates.waiting_for_amount.state: "Пожалуйста, отправьте cумму перевода",  
+    ClientStates.waiting_for_card_or_phone_number.state: "Пожалуйста, отправьте номер карты или номер телефона",  
+    ClientStates.confirming_requisites.state: "Пожалуйста, подтвердите ваши реквизиты, нажав на кнопку"
 }
 REPLY_MARKUP_REMIND = [
     ClientStates.waiting_for_agreement.state,

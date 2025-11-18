@@ -83,7 +83,7 @@ async def confirm_requisites_yes(
     )
 
     await state.set_state(ClientStates.continue_dialog)
-    msg = await callback.message.edit_text(
+    await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
         f"Номер карты: `{data.get('card_number', '-')}`\n"
         f"Номер телефона: `{data.get('phone_number', '-')}`\n"
@@ -92,6 +92,5 @@ async def confirm_requisites_yes(
         f"Ожидайте выплату в ближайшее время, спасибо ☺️",
         parse_mode="Markdown"
     )
-    await update_last_activity(state, msg)
     # удаляем данные из состояния и из redis (но можно и оставить так-то)
     # await state.set_data({})
