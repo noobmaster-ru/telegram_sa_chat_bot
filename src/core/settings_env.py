@@ -5,23 +5,18 @@ class EnvSettings(BaseSettings):
     # Wildberries
     WB_TOKEN: str
 
-
     # Telegram
     TG_BOT_TOKEN: str
-
 
     # OpenAI
     OPENAI_TOKEN: str
 
-
     # Proxy
     PROXY: str 
-
 
     # Google Sheets
     SERVICE_ACCOUNT_JSON: str
     GOOGLE_SHEETS_URL: str
-
 
     # Redis
     REDIS_URL: str
@@ -38,7 +33,7 @@ class EnvSettings(BaseSettings):
         password = quote_plus(self.POSTGRESQL_PASSWORD)
         return f"postgresql+asyncpg://{self.POSTGRESQL_USER}:{password}@{self.POSTGRESQL_HOST}:{self.POSTGRESQL_PORT}/{self.POSTGRESQL_DBNAME}"
 
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
