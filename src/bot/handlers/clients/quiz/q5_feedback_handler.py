@@ -10,7 +10,7 @@ from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
-
+from src.core.config import constants
 from .router import router
 
 # ------ 5. catch all text from user in state "waiting_for_feedback" and send it to gpt 
@@ -22,6 +22,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     state: FSMContext,
     bot: Bot
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -34,7 +35,6 @@ async def handle_unexpected_text_waiting_for_feedback_done(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-    await state.set_state('generating')
     # помечаем сообщение как прочитанное
     business_connection_id = message.business_connection_id
     await message.bot(
@@ -90,7 +90,7 @@ async def handle_feedback_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда оставите отзыв на товар {nm_id}, нажмите на кнопку 'Да, оставил(а)'", 
+                f"Когда оставите отзыв на товар {nm_id}, нажмите, пожалуйста, на кнопку ниже", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
             )
             await state.set_state(ClientStates.waiting_for_feedback)
@@ -98,7 +98,7 @@ async def handle_feedback_answer(
             return
         except:
             msg = await callback.message.edit_text(
-                f"Нужно оставить отзыв 5 звезд на товар {nm_id}, затем нажмите на кнопку 'Да, оставил(а)'", 
+                f"Нужно оставить отзыв 5 звезд на товар {nm_id}, затем нажмите, пожалуйста, на ниже", 
                 reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
             )
             await state.set_state(ClientStates.waiting_for_feedback)
@@ -107,7 +107,7 @@ async def handle_feedback_answer(
     
     # дальше переходим в состояние waiting_for_photo_feedback - ждем фотки отзыва от юзера
     msg = await callback.message.edit_text(
-        f"Отправьте, пожалуйста скриншот отзыва на 5 звёзд"
+        f"Отправьте, пожалуйста, скриншот отзыва на 5 звёзд"
     )
     await state.set_state(ClientStates.waiting_for_photo_feedback)
     await update_last_activity(state, msg)

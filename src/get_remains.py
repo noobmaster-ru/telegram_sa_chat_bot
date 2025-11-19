@@ -57,6 +57,7 @@ class WbApi:
             headers=headers,
             json=payload
         ) as resp:    
+            logging.info(f"WB API get_remains status.code = {resp.status}")
             if resp.status == 429:
                 logging.warning("[WB API] Too many requests, retrying in 20s...")
                 await asyncio.sleep(constants.TIME_SLEEP_API_GET_REMAINS)
@@ -77,12 +78,16 @@ class WbApi:
         """
         Загружает пары артикул-количество из Google Sheets в Redis с префиксом nm_id_in_articles_sheet
         """
-        pipe = self.redis.pipeline(transaction=True)
-        for nm_id, data in nm_id_remains_count.items():
-            pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, nm_id, data["remains"]) # nm_id: remains 
-            pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, nm_id, data["nm_id_name"]) # nm_id: name
-        await pipe.execute()
-        logging.info(f"✅ upload {constants.NM_IDS_FOR_CASHBACK} remains, names into Redis")
+        if nm_id_remains_count:
+            pipe = self.redis.pipeline(transaction=True)
+            for nm_id, data in nm_id_remains_count.items():
+                pipe.hset(REDIS_KEY_NM_IDS_REMAINS_HASH, nm_id, data["remains"]) # nm_id: remains 
+                pipe.hset(REDIS_KEY_NM_IDS_TITLES_HASH, nm_id, data["nm_id_name"]) # nm_id: name
+            await pipe.execute()
+            logging.info(f"✅ upload {nm_id_remains_count.items()} into Redis")
+        else:
+            logging.info(f" remains_parsing_result is empty, dont upload into redis")
+
 
 
 async def periodic_task():
@@ -114,7 +119,7 @@ async def periodic_task():
                     nm_id_remains_count=result,
                     REDIS_KEY_NM_IDS_REMAINS_HASH=constants.REDIS_KEY_NM_IDS_REMAINS_HASH,
                     REDIS_KEY_NM_IDS_TITLES_HASH=constants.REDIS_KEY_NM_IDS_TITLES_HASH
-                )            
+                )          
         except Exception as e:
             logging.error(f" [ERROR] update session: {e}")
         await asyncio.sleep(constants.TIME_SLEEP_API_GET_REMAINS)

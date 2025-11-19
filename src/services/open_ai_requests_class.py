@@ -60,9 +60,21 @@ class OpenAiRequestClass:
             },
             tools=[
                 {
-                    "type": "web_search"
+                    "type": "web_search",
+                    "filters": {
+                        "allowed_domains": [
+                            "www.wildberries.ru"
+                        ]
+                    },
+                    "user_location": {
+                        "type": "approximate",
+                        "country": "RU",
+                        "city": "Moscow",
+                        "region": "Moscow",
+                    }
                 }
             ],
+            tool_choice="auto",
             input=[
                 {
                     "role": "user",
@@ -71,10 +83,10 @@ class OpenAiRequestClass:
                             "type": "input_text", 
                             "text": (
                                 "Ты — эксперт по визуальному сравнению изображений.\n"
-                                f"Первая фотография — это наш товар (артикул `{nm_id}`; название `{nm_id_name}` должно быть на скриншоте).\n"
+                                f"Первая фотография — это наш товар (артикул `{nm_id}`; название товара `{nm_id_name}` должно быть на скриншоте).\n"
                                 "Вторая — фото(или скриншот) пользователя.\n\n"
                                 f"{prefix_message}\n\n"
-                                "Если не можешь определить по скриншоту , можно использовать веб-поиск, чтобы сверить внешний вид товара на сайте Wildberries.\n"
+                                "Если не можешь определить по скриншоту , можно использовать веб-поиск(web_search), чтобы сверить внешний вид товара на сайте Wildberries.\n"
                                 "Ответь строго одним словом: Да или Нет"
                             ),
                         },
@@ -122,7 +134,7 @@ class OpenAiRequestClass:
         nm_id_name: str
     ) -> str:
         """
-        Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
+        Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
             prefix_message="Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries.",
@@ -140,7 +152,7 @@ class OpenAiRequestClass:
         nm_id_name: str
     ) -> str:
         """
-        Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
+        Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
             prefix_message="Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries.",
@@ -158,7 +170,7 @@ class OpenAiRequestClass:
         nm_id_name: str 
     ) -> str:
         """
-        Отправляет фото модели GPT-4o и получает ответ: 'Да' или 'Нет'
+        Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
             prefix_message="Подумай и скажи есть ли на фотографии разрезанные этикетки (Штрихкода) Wildberries нашего товара.",

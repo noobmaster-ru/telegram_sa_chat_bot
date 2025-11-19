@@ -1,32 +1,32 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import DeclarativeBase
-from src.core.config import settings
+# from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+# from sqlalchemy.orm import DeclarativeBase
+# from src.core.config import settings
 
-from aiogram import Dispatcher
+# from aiogram import Dispatcher
 
-class Base(DeclarativeBase):
-    pass
+# class Base(DeclarativeBase):
+#     pass
 
 
-async_engine = create_async_engine(
-    url=settings.DATABASE_URL_asyncpg,
-    echo=True
-)
+# async_engine = create_async_engine(
+#     url=settings.DATABASE_URL_asyncpg,
+#     echo=True
+# )
 
-async_session_factory = async_sessionmaker(
-    bind=async_engine,
-    expire_on_commit=False,
-    class_=AsyncSession,
-)
+# async_session_factory = async_sessionmaker(
+#     bind=async_engine,
+#     expire_on_commit=False,
+#     class_=AsyncSession,
+# )
 
-async def on_startup(dispatcher: Dispatcher):
-    async with async_engine.begin() as conn:
-        async_engine.echo = True
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    dispatcher.workflow_data["db_session_factory"] = async_session_factory
-    print("[DB] connected and tables created")
+# async def on_startup(dispatcher: Dispatcher):
+#     async with async_engine.begin() as conn:
+#         async_engine.echo = True
+#         await conn.run_sync(Base.metadata.drop_all)
+#         await conn.run_sync(Base.metadata.create_all)
+#     dispatcher.workflow_data["db_session_factory"] = async_session_factory
+#     print("[DB] connected and tables created")
 
-async def on_shutdown(dispatcher: Dispatcher):
-    await async_engine.dispose()
-    print("[DB] disconnected")
+# async def on_shutdown(dispatcher: Dispatcher):
+#     await async_engine.dispose()
+#     print("[DB] disconnected")

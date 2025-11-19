@@ -8,6 +8,7 @@ from aiogram.methods import ReadBusinessMessage
 from src.bot.states.client import ClientStates
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
+from src.bot.keyboards.inline.get_sub_to_channel_keyboard import get_sub_to_channel
 
 from .router import router
 
@@ -57,6 +58,7 @@ async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
+    CHANNEL_USERNAME: str
 ):
     await callback.answer()
     """
@@ -82,7 +84,7 @@ async def confirm_requisites_yes(
         amount=data.get('amount','-'),
     )
 
-    await state.set_state(ClientStates.continue_dialog)
+
     await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
         f"Номер карты: `{data.get('card_number', '-')}`\n"
@@ -92,5 +94,22 @@ async def confirm_requisites_yes(
         f"Ожидайте выплату в ближайшее время, спасибо ☺️",
         parse_mode="Markdown"
     )
+    
+    # check subscribe to channel 
+    member = await callback.message.bot.get_chat_member(
+        chat_id=CHANNEL_USERNAME,
+        user_id=callback.from_user.id
+    )
+    if not member.status in ("member", "administrator", "creator"):
+        # Не подписан
+        await callback.message.answer(
+            f"Подпишитесь на наш канал {CHANNEL_USERNAME}, там будет информация о новых раздачах 🙃",
+            reply_markup=get_sub_to_channel()
+        )
+    else:
+        await callback.message.answer(
+            "✅ Отлично! Вы подписаны на наш канал. Там будет информация о новых раздачах 🙃",
+        )
+    await state.set_state(ClientStates.continue_dialog)
     # удаляем данные из состояния и из redis (но можно и оставить так-то)
     # await state.set_data({})

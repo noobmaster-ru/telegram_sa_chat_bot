@@ -14,7 +14,7 @@ from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
-
+from src.core.config import constants
 
 from .router import router
 
@@ -32,6 +32,7 @@ async def handle_photo_feedback(
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     user_data = await state.get_data()
     # === 1. Проверяем, не отправил ли пользователь альбом(несколько фоток) ===
     if message.media_group_id is not None:
@@ -95,7 +96,6 @@ async def handle_photo_feedback(
     # photo_type == "feedback"
     
     # отправляем в OpenAI для классификации
-    await state.set_state("generating")
     model_response = await client_gpt_5.classify_photo_feedback(
         ref_image_url=ref_image_url,
         user_image_url=user_image_url,

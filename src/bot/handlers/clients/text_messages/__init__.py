@@ -1,6 +1,6 @@
 import logging
 from .router import router
-from . import admins_commands, first_message, messages_after_requisites
+from . import admins_commands, first_message, messages_after_requisites, skip_message
 
 # Настраиваем логирование
 logging.basicConfig(

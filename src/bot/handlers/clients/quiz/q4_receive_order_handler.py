@@ -11,6 +11,7 @@ from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
+from src.core.config import constants
 
 from .router import router
 
@@ -23,6 +24,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
     state: FSMContext,
     bot: Bot
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
     user_data = await state.get_data()
@@ -35,7 +37,6 @@ async def handle_unexpected_text_waiting_for_order_receive(
         is_tap_to_keyboard=False
     )
     
-    await state.set_state('generating')
     # помечаем сообщение как прочитанное
     business_connection_id = message.business_connection_id
     await message.bot(
@@ -92,7 +93,7 @@ async def handle_receive_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда получите товар {nm_id}, нажмите на кнопку ниже", 
+                f"Когда получите товар {nm_id}, нажмите, пожалуйста, на кнопку ниже", 
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)")
             )
             await state.set_state(ClientStates.waiting_for_order_receive)
@@ -100,7 +101,7 @@ async def handle_receive_answer(
             return
         except:
             msg = await callback.message.edit_text(
-                f"Нужно получить товар {nm_id}, после - нажмите на кнопку 'Да, получил(а)'",
+                f"Нужно получить товар {nm_id}, затем нажмите, пожалуйста, на кнопку ниже",
                 reply_markup=get_yes_no_keyboard("receive", "получил(а)")
             )
             await state.set_state(ClientStates.waiting_for_order_receive)

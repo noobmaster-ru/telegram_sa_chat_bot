@@ -1,31 +1,34 @@
 # Wildberries
-TIME_SLEEP_API_GET_REMAINS = 3600*23 # 3600s = 1 hour * 23 = 23 hours
+TIME_SLEEP_API_GET_REMAINS = 3600*1 # 3600s = 1 hour * 23 = 23 hours
 
+# Aiogram
+SKIP_MESSAGE_STATE="skip_msg"
 
 # Telegram
 MIN_LEN_TEXT = 12
-FIRST_MESSAGE_DELAY_SLEEP = 0.1 # 15 in production 
-DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.1 # 5 #in production
-TIME_DURATION_BEETWEEN_REMINDER =  20 #3600*6 #in production
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 20 # 3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =   30 #3600  # in production - every hour check users last time activitys
+FIRST_MESSAGE_DELAY_SLEEP = 15 #in production 
+DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
+TIME_DURATION_BEETWEEN_REMINDER =  3600*12 #in production
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # in production
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =   3600  # in production - every hour check users last time activitys
 
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', 
     '❌Удалить кабинет',
     'ℹ️Посмотреть подключенные кабинеты'
 ]
-MANAGER_NAME = 'Виктории' # в родительном падеже надо
-CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
+MANAGER_NAME = 'Алисы' # в родительном падеже надо
+CHANNEL_USERNAME_STR="@solume_cashback"  # username канала
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
     "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!",
-    "окей!", "хорошо,сейчас", "понял"
+    "окей!", "Хорошо, сейчас", "понял", "Ладно", "Окэй!"
 ]
 ADMIN_ID_LIST = [694144143, 547299317]
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks
+    8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
 }
 
 # reqular expressions for parsing requisites
@@ -52,9 +55,9 @@ bank_pattern = (
 # Open AI
 GPT_MODEL_NAME='chatgpt-4o-latest'
 GPT_MODEL_NAME_PHOTO_ANALYSIS="gpt-5.1"
-GPT_MAX_TOKENS=135
-GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=600
-GPT_TEMPERATURE=0.6
+GPT_MAX_TOKENS=140
+GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=575
+GPT_TEMPERATURE=0.7
 GPT_REASONING="low" # "low" | "medium" | "high"
 
 # Google Sheets
@@ -64,7 +67,7 @@ INSTRUCTION_SHEET_NAME_STR="Инструкция"
 BUYERS_SHEET_NAME_STR="Покупатели"
 
 # Redis
-NM_IDS_FOR_CASHBACK = [555620866, 552281618, 518431572]
+NM_IDS_FOR_CASHBACK = [622131361]
 REDIS_KEY_SET_TELEGRAM_IDS="TELEGRAM_USERS_IDS" # нужен для проверки новых/старых юзеров, кто писал акку
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
 REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"

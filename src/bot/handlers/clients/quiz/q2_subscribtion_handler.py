@@ -11,6 +11,7 @@ from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
+from src.core.config import constants
 
 from .router import router
 
@@ -24,6 +25,7 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     state: FSMContext,
     bot: Bot
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -36,8 +38,6 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-    
-    await state.set_state('generating')
     # помечаем сообщение как прочитанное
     business_connection_id = message.business_connection_id
     await message.bot(
@@ -60,7 +60,7 @@ async def handle_unexpected_text_waiting_for_subcription_to_channel(
     )
     await state.set_state(ClientStates.waiting_for_subcription_to_channel)
     msg = await message.answer(
-        f'{gpt_5_response}\nПока вы не подпишетесь на канал — раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:',
+        f'{gpt_5_response}\nПока вы не подпишетесь на канал, раздача невозможна.\nПодпишитесь на {CHANNEL_USERNAME} и нажмите, пожалуйста, на кнопку ниже',
         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
     )
     await update_last_activity(state, msg)
@@ -112,12 +112,12 @@ async def handle_subscription(
                     # Не подписан
                     msg = await callback.message.edit_text(
                         "❌ Пока вы не подпишетесь на канал , раздача невозможна.\n"
-                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите,пожалуйста, на  кнопку ниже",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
                 except:
                     msg = await callback.message.edit_text(
-                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите, пожалуйста, на кнопку ниже",
                         reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
                     )
                 await update_last_activity(state, msg)
@@ -131,12 +131,12 @@ async def handle_subscription(
         try:
             msg = await callback.message.edit_text(
                 "❌ Пока вы не подпишетесь на канал , раздача невозможна.\n"
-                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите, пожалуйста, на кнопку ниже:",
                 reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
             )
         except:
             msg = await callback.message.edit_text(
-                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
+                f"Подпишитесь на {CHANNEL_USERNAME} и нажмите, пожалуйста, на кнопку ниже:",
                 reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
             )
         await state.set_state(ClientStates.waiting_for_subcription_to_channel)

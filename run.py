@@ -19,7 +19,7 @@ from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.core.config import settings, constants
-from src.db.base import on_shutdown, on_startup
+# from src.db.base import on_shutdown, on_startup
 
 async def main():
     redis = await asyncredis.from_url(settings.REDIS_URL)
@@ -67,8 +67,8 @@ async def main():
     dp.callback_query.middleware(middleware_ignore_bussiness_messages)
     
     # create poll connection to and close poll connection to db
-    dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
+    # dp.startup.register(on_startup)
+    # dp.shutdown.register(on_shutdown)
     
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
@@ -90,10 +90,10 @@ async def main():
     asyncio.create_task(inactivity_checker(bot, dp.storage))
     
     # seller routers 
-    dp.include_routers(registration_router) 
+    # dp.include_routers(registration_router) 
     
     # clients routers
-    dp.include_routers(text_router, quiz_router, photo_router,payment_router) 
+    dp.include_routers(text_router, quiz_router, photo_router, payment_router) 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

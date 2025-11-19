@@ -13,6 +13,7 @@ from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.services.google_sheets_class import GoogleSheetClass
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.last_activity import update_last_activity
+from src.core.config import constants
 
 from .router import router
 
@@ -295,7 +296,7 @@ async def handle_requisites_message(
     
     # если юзер мега тупой и ввел какой-то текст, то загоняем текст в модель
     # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
-    await state.set_state('generating')
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     gpt5_response_text = await client_gpt_5.create_gpt_5_response_requisites(
         new_prompt=text,
         nm_id=nm_id,

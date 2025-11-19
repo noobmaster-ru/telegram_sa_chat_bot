@@ -11,7 +11,7 @@ from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
-
+from src.core.config import constants
 from .router import router
 
 # ------ 3. catch all text from user in state "waiting_for_order" and send it to gpt 
@@ -23,6 +23,7 @@ async def handle_unexpected_text_waiting_for_order(
     state: FSMContext,
     bot: Bot
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -35,8 +36,6 @@ async def handle_unexpected_text_waiting_for_order(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-    
-    await state.set_state('generating')
     # помечаем сообщение как прочитанное
     business_connection_id = message.business_connection_id
     await message.bot(
@@ -92,12 +91,12 @@ async def handle_order_answer(
     if value == "Нет":
         try:
             msg = await callback.message.edit_text(
-                f"Когда закажете товар {nm_id}, нажмите на кнопку 'Да, заказал(а)'",
+                f"Когда закажете товар {nm_id}, нажмите, пожалуйста, на кнопку ниже",
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)")
             )
         except:
             msg = await callback.message.edit_text(
-                f"Нужно заказать товар {nm_id}, когда закажете товар ,нажмите на кнопку 'Да, заказал(а)'",
+                f"Нужно заказать товар {nm_id}, когда закажете товар, нажмите, пожалуйста, на кнопку ниже",
                 reply_markup=get_yes_no_keyboard("order", "заказал(а)")
             )
         await state.set_state(ClientStates.waiting_for_order)
@@ -106,7 +105,7 @@ async def handle_order_answer(
     
     # дальше переходим в состояние waiting_for_photo_order - ждем фотки заказа от юзера
     msg = await callback.message.edit_text(
-        f"Отправьте, пожалуйста фотографию сделанного заказа."
+        f"Отправьте, пожалуйста, фотографию сделанного заказа"
     )
     await state.set_state(ClientStates.waiting_for_photo_order)
     await update_last_activity(state, msg)

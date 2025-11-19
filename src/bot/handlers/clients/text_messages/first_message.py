@@ -18,23 +18,23 @@ from src.core.config import constants
 from .router import router
 
 
-@router.business_message(StateFilter("first_messages_state"))
-async def wait_response(message: Message, bot: Bot):
-    logging.info(f"  user {message.from_user.id} texted when we get him instruction")
-    business_connection_id = message.business_connection_id
-    await message.bot(
-        ReadBusinessMessage(
-            business_connection_id=business_connection_id,
-            chat_id=message.chat.id,
-            message_id=message.message_id
-        )
-    )
-    await bot.send_chat_action(
-        chat_id=message.chat.id,
-        action=ChatAction.TYPING,
-        business_connection_id = business_connection_id
-    )
-    return
+# @router.business_message(StateFilter(constants.SKIP_MESSAGE_STATE))
+# async def skip_message(message: Message, bot: Bot):
+#     logging.info(f"  user {message.from_user.id} text when we're processing him")
+#     business_connection_id = message.business_connection_id
+#     await message.bot(
+#         ReadBusinessMessage(
+#             business_connection_id=business_connection_id,
+#             chat_id=message.chat.id,
+#             message_id=message.message_id
+#         )
+#     )
+#     await bot.send_chat_action(
+#         chat_id=message.chat.id,
+#         action=ChatAction.TYPING,
+#         business_connection_id = business_connection_id
+#     )
+#     return
 
 
 # business_message - only for bussines account, handler for first message from clients
@@ -50,7 +50,7 @@ async def handle_first_message(
     REDIS_KEY_NM_IDS_TITLES_HASH: str,
     bot: Bot
 ):
-    await state.set_state('first_messages_state')
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"

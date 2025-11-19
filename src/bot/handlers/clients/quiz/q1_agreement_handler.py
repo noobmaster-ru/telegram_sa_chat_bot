@@ -13,6 +13,7 @@ from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
+from src.core.config import constants
 from .router import router
 
 
@@ -25,6 +26,7 @@ async def handle_unexpected_text_waiting_for_agreement(
     state: FSMContext,
     bot: Bot
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -38,7 +40,6 @@ async def handle_unexpected_text_waiting_for_agreement(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-    await state.set_state('generating')
     # Сначала помечаем сообщение как прочитанное
     business_connection_id = message.business_connection_id
     await message.bot(

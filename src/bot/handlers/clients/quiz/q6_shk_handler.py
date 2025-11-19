@@ -11,6 +11,7 @@ from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
+from src.core.config import constants
 
 from .router import router
 
@@ -24,6 +25,7 @@ async def handle_unexpected_text_waiting_for_shk(
     state: FSMContext,
     bot: Bot
 ):
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
     
@@ -36,7 +38,6 @@ async def handle_unexpected_text_waiting_for_shk(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-    await state.set_state('generating')
     # помечаем сообщение как прочитанное
     business_connection_id = message.business_connection_id
     await message.bot(
@@ -94,7 +95,7 @@ async def handle_shk_answer(
     if value == "Нет":  
         try:
             msg = await callback.message.edit_text(
-                f"Когда разрежете ШК от {nm_id}, нажмите на кнопку 'Да, разрезал(а)'", 
+                f"Когда разрежете этикетки от {nm_id}, нажмите, пожалуйста, на кнопку ниже", 
                 reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
             )
             await state.set_state(ClientStates.waiting_for_shk)
@@ -102,7 +103,7 @@ async def handle_shk_answer(
             return
         except:
             msg = await callback.message.edit_text(
-                f"Нужно разрезать ШК товара {nm_id}, затем нажмите на кнопку 'Да, разрезал(а)'", 
+                f"Нужно разрезать этикетки товара {nm_id}, затем нажмите, пожалуйста, на кнопку ниже", 
                 reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
             )
             await state.set_state(ClientStates.waiting_for_shk)
@@ -111,7 +112,7 @@ async def handle_shk_answer(
     
     # дальше переходим в состояние waiting_for_photo_shk - ждем фотки разрезанных ШК
     msg = await callback.message.edit_text(
-        f"Отправьте, пожалуйста, фотографию разрезанных ШК."
+        f"Отправьте, пожалуйста, фотографию разрезанных этикеток"
     )
     await state.set_state(ClientStates.waiting_for_photo_shk)
     await update_last_activity(state, msg)
