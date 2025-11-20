@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.db.models import ArticleORM
-
+from src.bot.keyboards.reply.menu import kb_menu
 from src.bot.states.seller import SellerStates
 from .router import router
 
@@ -16,7 +16,10 @@ async def handle_nm_id(message: Message, state: FSMContext):
     text = message.text.strip()
 
     if not text.isdigit():
-        return await message.answer("Введите артикул числом (только цифры).")
+        return await message.answer(
+            "Введите артикул числом *(только цифры).*",
+            parse_mode="MarkdownV2"
+        )
 
     nm_id = int(text)
 
@@ -30,7 +33,7 @@ async def handle_nm_id_amount(message: Message, state: FSMContext):
     text = message.text.strip()
 
     if not text.isdigit():
-        return await message.answer("Количество раздач должно быть числом.")
+        return await message.answer("Количество раздач должно быть целым *числом.*")
 
     amount = int(text)
 
@@ -65,7 +68,10 @@ async def handle_nm_id_photo(
         session.add(new_article)
         await session.commit()
 
-    await message.answer("Артикул успешно добавлен! 🎉")
+    await message.answer(
+        "Артикул успешно добавлен! 🎉",
+        reply_markup=kb_menu
+    )
     # очищаем только состояние юзера!!!
     await state.set_state(state=SellerStates.waiting_for_tap_to_menu)
 
