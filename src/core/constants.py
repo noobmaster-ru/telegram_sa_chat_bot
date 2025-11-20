@@ -3,8 +3,7 @@ INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', 
     '❌Удалить кабинет',
-    'ℹ️Посмотреть кабинеты',
-    '🔼Добавить артикул'
+    'ℹ️Посмотреть кабинеты'
 ]
 MANAGER_NAME = 'Виктории' # в родительном падеже надо
 CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала

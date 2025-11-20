@@ -11,8 +11,12 @@ from src.bot.handlers.clients.quiz import router as quiz_router
 from src.bot.handlers.clients.photo import router as photo_router
 from src.bot.handlers.clients.payment_details import router as payment_router
 
-from src.bot.handlers.sellers.add_cabinet import router as registration_router
+from src.bot.handlers.sellers.add_cabinet import router as add_cabinet_router
 from src.bot.handlers.sellers.cmd_start import router as start_router
+from src.bot.handlers.sellers.view_cabinets import router as view_cabinets_router
+from src.bot.handlers.sellers.delete_cabinet import router as delete_cabinet_router
+from src.bot.handlers.sellers.last_router import router as last_router
+
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 
@@ -90,7 +94,7 @@ async def main():
     asyncio.create_task(inactivity_checker(bot, dp.storage))
     
     # seller routers 
-    dp.include_routers(start_router,registration_router) 
+    dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router,last_router)
     
     # clients routers
     dp.include_routers(text_router, quiz_router, photo_router, payment_router) 

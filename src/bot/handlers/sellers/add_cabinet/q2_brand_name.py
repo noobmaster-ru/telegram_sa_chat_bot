@@ -1,12 +1,9 @@
 import logging
-from pathlib import Path
-from aiogram import F, Bot
+from aiogram import F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from sqlalchemy.ext.asyncio import async_sessionmaker
 from aiogram.types import ReplyKeyboardRemove, FSInputFile, InputMediaPhoto, Message, CallbackQuery
 
-from src.db.models import CabinetORM
 from src.bot.states.seller import SellerStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.services.string_converter_class import StringConverter

@@ -1,5 +1,4 @@
 import logging
-from aiogram import Router, F
 from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -10,11 +9,6 @@ from src.bot.keyboards.reply.menu import kb_menu
 from src.db.models import UserORM
 from src.bot.states.seller import SellerStates
 from ..add_cabinet.router import router
-
-# catch upexpected text from seller
-@router.message(StateFilter(SellerStates.waiting_for_tap_to_menu))
-async def waiting_for_tap_to_menu(message: Message):
-    await message.answer("Пожалуйста, выберите пункт в меню и продолжим.")
 
 @router.message(CommandStart())
 async def cmd_start(
