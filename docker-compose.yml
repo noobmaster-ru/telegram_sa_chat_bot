@@ -1,54 +1,52 @@
-# gleb variant
-
-
-services:
-  get-remains-gleb:
-    build: .
-    container_name: get-remains-gleb
-    command: ["python", "-m", "src.get_remains"]
-    env_file:
-      - .env
-    restart: always
-  tg-ai-agent-gleb:
-    build: .
-    container_name: tg-ai-agent-gleb
-    command: ["python", "-m", "run"]
-    env_file:
-      - .env
-    depends_on:
-      - get-remains-gleb
-    volumes:
-      - .:/app
-      - ./logs:/app/logs
-    restart: always                    
-
-
+# # gleb variant
 # services:
-#   redis:
-#     image: redis:7
-#     container_name: redis
-#     restart: always
-#     ports:
-#       - "6380:6379"
-#   get-remains:
+#   get-remains-gleb:
 #     build: .
-#     container_name: get-remains
+#     container_name: get-remains-gleb
 #     command: ["python", "-m", "src.get_remains"]
 #     env_file:
 #       - .env
-#     depends_on:
-#       - redis
 #     restart: always
-#   telegram-ai-agent:
+#   tg-ai-agent-gleb:
 #     build: .
-#     container_name: telegram-ai-agent
+#     container_name: tg-ai-agent-gleb
 #     command: ["python", "-m", "run"]
-#     env_file: 
+#     env_file:
 #       - .env
 #     depends_on:
-#       - get-remains
-#       - redis
+#       - get-remains-gleb
 #     volumes:
 #       - .:/app
 #       - ./logs:/app/logs
-#     restart: always
+#     restart: always                    
+
+
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    ports:
+      - "6380:6379"
+  get-remains:
+    build: .
+    container_name: get-remains
+    command: ["python", "-m", "src.get_remains"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: always
+  telegram-ai-agent:
+    build: .
+    container_name: telegram-ai-agent
+    command: ["python", "-m", "run"]
+    env_file: 
+      - .env
+    depends_on:
+      - get-remains
+      - redis
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    restart: always
