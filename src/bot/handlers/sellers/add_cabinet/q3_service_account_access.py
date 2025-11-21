@@ -35,11 +35,10 @@ async def handle_add_service_account_into_gs(
     del seller_data['message_id_to_delete']
     await state.set_data(seller_data)
     if callback.data == "service_account_yes": 
-        user_data = await state.get_data()    
-        google_sheets_url = user_data["google_sheets_url"]
-        user_id = user_data["user_id"]
-        brand_name = user_data["brand_name"]
-        
+        google_sheets_url = seller_data["google_sheets_url"]
+        user_id = seller_data["user_id"]
+        brand_name = seller_data["brand_name"]
+
         async with db_session_factory() as session:
             new_cabinet = CabinetORM(
                 brand_name=brand_name,
@@ -54,7 +53,7 @@ async def handle_add_service_account_into_gs(
             
             # Сохраняем user_id(id in postgresql) в FSM
             await state.update_data(cabinet_id=new_cabinet.id)
-        await callback.message.answer("✅Кабинет успешно добавлен!")
+        await callback.message.answer(f"✅ Бренд: {brand_name} успешно добавлен!")
         await callback.message.answer(
             "Теперь давайте добавим артикулы для раздачи и количество раздач\n\nОтправьте *артикул* товара на ВБ , *одно число*",
             parse_mode="MarkdownV2"

@@ -21,7 +21,7 @@ async def handle_brand_name(
         brand_name=brand_name
     )
     msg = await message.answer(
-        f"Это название вашего бренда *{brand_name}* ?",
+        f"Это название вашего бренда: *{brand_name}* ?",
         reply_markup=get_yes_no_keyboard(
             callback_prefix="brand_name",
             statement="название бренда"

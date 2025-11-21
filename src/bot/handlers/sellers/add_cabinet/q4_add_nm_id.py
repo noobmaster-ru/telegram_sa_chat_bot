@@ -15,7 +15,9 @@ from .router import router
 @router.message(F.text, StateFilter(SellerStates.waiting_for_nm_id))
 async def handle_nm_id(message: Message, state: FSMContext):
     text = message.text.strip()
-
+    seller_data = await state.get_data()
+    brand_name = seller_data["brand_name"]
+    
     if not text.isdigit():
         return await message.answer(
             "Введите артикул числом, *только цифры*",
@@ -27,7 +29,7 @@ async def handle_nm_id(message: Message, state: FSMContext):
     await state.update_data(nm_id=nm_id)
 
     await message.answer(
-        f"Артикул: *{nm_id}*\n\nВведите количество раздач для этого артикула:",
+        f"Бренд: *{brand_name}*\nАртикул: *{nm_id}*\n\nВведите количество раздач для этого артикула:",
         parse_mode="MarkdownV2"
     )
     await state.set_state(SellerStates.waiting_for_nm_id_amount)
@@ -35,16 +37,18 @@ async def handle_nm_id(message: Message, state: FSMContext):
 @router.message(F.text, StateFilter(SellerStates.waiting_for_nm_id_amount))
 async def handle_nm_id_amount(message: Message, state: FSMContext):
     text = message.text.strip()
-
+    seller_data = await state.get_data()
+    brand_name = seller_data["brand_name"]
+    nm_id = seller_data["nm_id"]
+    
     if not text.isdigit():
         return await message.answer("Количество раздач должно быть целым *числом.*")
 
     amount = int(text)
     
     await state.update_data(amount=amount)
-    seller_data = await state.get_data()
     await message.answer(
-        f"Артикул: *{seller_data["nm_id"]}*\nКоличество раздач: *{amount}*\n\n"
+        f"Бренд: *{brand_name}*\nАртикул: *{nm_id}*\nКоличество раздач: *{amount}*\n\n"
         "Теперь отправьте фото товара ,как изображение, не как файл",
         parse_mode="MarkdownV2"
     )
@@ -73,7 +77,7 @@ async def handle_nm_id_photo(
 
     nm_id = seller_data["nm_id"]
     amount = seller_data["amount"]
-
+    brand_name = seller_data["brand_name"]
 
     photo_file_id = message.photo[-1].file_id # в лучшем качестве
     
@@ -81,7 +85,7 @@ async def handle_nm_id_photo(
     # Отправляем фотографию обратно, используя этот file_id
     msg = await message.answer_photo(
         photo=photo_file_id,
-        caption=f"Получен артикул: *{nm_id}*\nКоличество для раздач: *{amount}*\n\n\n Данные заполнены верно?",
+        caption=f"Получен артикул: *{nm_id}*\nКоличество для раздач: *{amount}*\nБренд: *{brand_name}*\n\n\n Данные заполнены верно?",
         reply_markup=get_yes_no_keyboard(
             callback_prefix="data_verify",
             statement="верно"
@@ -112,6 +116,7 @@ async def write_data_into_db(
         amount = seller_data["amount"]
         cabinet_id = seller_data["cabinet_id"]  # должен быть установлен ранее в cmd_start
         file_id = seller_data["nm_id_photo_file_id"]
+        brand_name = seller_data["brand_name"]
         
         async with db_session_factory() as session:
             # Создаём объект ORM
@@ -126,8 +131,9 @@ async def write_data_into_db(
             await session.commit()
 
         await callback.message.answer(
-            "Артикул успешно добавлен! 🎉",
-            reply_markup=kb_menu
+            f"Бренд: *{brand_name}*\nАртикул: *{nm_id}*\n успешно добавлен! 🎉",
+            reply_markup=kb_menu,
+            parse_mode="MarkdownV2"
         )
         # очищаем только состояние юзера!!!
         await state.set_state(state=SellerStates.waiting_for_tap_to_menu)

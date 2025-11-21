@@ -61,8 +61,8 @@ async def view_cabinets(
             article_numbers = [str(art.article) for art in articles]
             # Формируем текстовую часть
             header = (
-                f"*КАБИНЕТ:* {cabinet.brand_name}\n"
-                f"*Ссылка:* {cabinet.table_link}\n\n"
+                f"*Бренд:* {cabinet.brand_name}\n"
+                f"*Таблица:* {cabinet.table_link}\n\n"
             )
 
             if articles:
