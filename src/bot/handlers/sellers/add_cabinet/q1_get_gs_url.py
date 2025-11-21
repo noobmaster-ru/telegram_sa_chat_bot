@@ -34,12 +34,15 @@ async def handle_gs_url(
     await state.update_data(
         google_sheets_url=google_sheets_url
     )
-    await message.answer(
-        f"Это  ваша ссылка на таблицу?:\n\n {google_sheets_url}",
+    msg = await message.answer(
+        f"Это ваша ссылка на таблицу?:\n\n {google_sheets_url}",
         reply_markup=get_yes_no_keyboard(
             callback_prefix="gs_url",
             statement="cсылка на google sheets"
         )
+    )
+    await state.update_data(
+        message_id_to_delete=msg.message_id
     )
     await state.set_state(SellerStates.waiting_for_tap_to_keyboard_gs)
 
@@ -47,13 +50,25 @@ async def handle_gs_url(
 @router.callback_query(F.data.startswith("gs_url_") , StateFilter(SellerStates.waiting_for_tap_to_keyboard_gs))
 async def callback_gs_url(
     callback: CallbackQuery,
-    state: FSMContext,
+    state: FSMContext
 ):
-    if callback.data == "gs_url_yes":   
-        await callback.message.edit_text("Теперь отправьте название вашего бренда на ВБ")
+    await callback.answer()
+    seller_data = await state.get_data() 
+    message_id_to_delete = seller_data["message_id_to_delete"]
+    await callback.bot.delete_message(
+        chat_id=callback.message.chat.id,
+        message_id=message_id_to_delete
+    )
+    del seller_data['message_id_to_delete']
+    await state.set_data(seller_data)
+    if callback.data == "gs_url_yes":  
+        await callback.message.answer(
+            "Теперь отправьте название вашего *бренда* на ВБ, *который видят покупатели, заказывая ваши товары*",
+            parse_mode="MarkdownV2"
+        )
         await state.set_state(SellerStates.waiting_for_brand_name)
     else:
-        await callback.message.edit_text("Хорошо, отправьте тогда ссылку ещё раз")
+        await callback.message.answer("Хорошо, отправьте тогда ссылку ещё раз")
         await state.set_state(SellerStates.waiting_for_new_google_sheets_url)
 
 

@@ -15,18 +15,21 @@ from .router import router
 async def handle_brand_name(
     message: Message,
     state: FSMContext,
-):    
+):   
     brand_name = message.text if message.text else "-"
     await state.update_data(
         brand_name=brand_name
     )
-    await message.answer(
+    msg = await message.answer(
         f"Это название вашего бренда *{brand_name}* ?",
         reply_markup=get_yes_no_keyboard(
             callback_prefix="brand_name",
             statement="название бренда"
         ),
         parse_mode="MarkdownV2"
+    )
+    await state.update_data(
+        message_id_to_delete=msg.message_id
     )
     await state.set_state(SellerStates.waiting_for_tap_to_keyboard_brand_name)
 
@@ -35,8 +38,17 @@ async def callback_brand_name(
     callback: CallbackQuery,
     state: FSMContext
 ):
+    await callback.answer()
+    seller_data = await state.get_data() 
+    message_id_to_delete = seller_data["message_id_to_delete"]
+    await callback.bot.delete_message(
+        chat_id=callback.message.chat.id,
+        message_id=message_id_to_delete
+    )
+    del seller_data['message_id_to_delete']
+    await state.set_data(seller_data)
     if callback.data == "brand_name_yes":
-        await callback.message.edit_text("Теперь необходимо добавить в таблице в редакторы наш сервисный аккаунт Google.")
+        await callback.message.answer("Теперь необходимо добавить в таблице в редакторы наш сервисный аккаунт Google.")
         INSTRUCTION_PHOTOS_DIR = constants.INSTRUCTION_PHOTOS_DIR
         photo_path1 = INSTRUCTION_PHOTOS_DIR + "1_access_settings.png"
         photo_path2 = INSTRUCTION_PHOTOS_DIR + "2_search_bar.png"
@@ -67,7 +79,7 @@ async def callback_brand_name(
             chat_id=callback.message.chat.id,
             media=media_group
         )
-        await callback.message.answer(
+        msg = await callback.message.answer(
             f"Дали доступ *Редактор* нашему cервисному аккаунту Google?",
             reply_markup=get_yes_no_keyboard(
                 callback_prefix="service_account",
@@ -75,9 +87,12 @@ async def callback_brand_name(
             ),
             parse_mode="MarkdownV2"
         )
+        await state.update_data(
+            message_id_to_delete=msg.message_id
+        )
         await state.set_state(SellerStates.add_cabinet_to_db)
     else:
-        await callback.message.edit_text("Хорошо, отправьте тогда название бренда ещё раз")
+        await callback.message.answer("Хорошо, отправьте тогда название бренда ещё раз")
         await state.set_state(SellerStates.waiting_for_brand_name)
 
 @router.message(StateFilter(SellerStates.waiting_for_tap_to_keyboard_brand_name))

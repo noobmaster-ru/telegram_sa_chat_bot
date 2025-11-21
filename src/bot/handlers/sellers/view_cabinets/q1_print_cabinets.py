@@ -58,7 +58,7 @@ async def view_cabinets(
                 .order_by(ArticleORM.created_at)
             )
             articles = result.scalars().all()
-
+            article_numbers = [str(art.article) for art in articles]
             # Формируем текстовую часть
             header = (
                 f"*КАБИНЕТ:* {cabinet.brand_name}\n"
@@ -75,10 +75,12 @@ async def view_cabinets(
 
             text_message = header + articles_text
             text_markdown2 = StringConverter.escape_markdown_v2(text_message)
+           
             # Сначала отправляем текст
             await message.answer(
                 text_markdown2,
-                parse_mode="MarkdownV2")
+                parse_mode="MarkdownV2"
+            )
 
             # Затем отправляем фото каждого артикула ОДНИМ сообщением
             photos = []
@@ -87,11 +89,12 @@ async def view_cabinets(
                 if art.photo_file_id:
                     if not photos:
                         # Первая фотография — с подписью
-                        caption = f"Фото артикулов {articles}"
+                        caption = f"Фото артикулов {', '.join(article_numbers)}"
+                        caption_safe = StringConverter.escape_markdown_v2(caption)
                         photos.append(
                             InputMediaPhoto(
                                 media=art.photo_file_id,
-                                caption=caption
+                                caption=caption_safe
                             )
                         )
                     else:
@@ -111,6 +114,6 @@ async def view_cabinets(
 
     # Возвращаем меню
     await message.answer(
-        "Вот ваши кабинеты, артикулы в них и количество раздач", 
+        "☝️Вот ваши кабинеты, артикулы в них и количество раздач", 
         reply_markup=kb_menu
     )

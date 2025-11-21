@@ -4,7 +4,8 @@ INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', 
     '❌Удалить кабинет',
-    'ℹ️Посмотреть кабинеты'
+    'ℹ️Посмотреть кабинеты',
+    '⬆️Добавить артикул'
 ]
 MANAGER_NAME = 'Евгения' # в родительном падеже надо
 CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
@@ -28,7 +29,7 @@ FIRST_MESSAGE_DELAY_SLEEP =  0.1 #20 #in production
 DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.2 #5 #in production
 TIME_DURATION_BEETWEEN_REMINDER =  60 #3600*12 #in production
 TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 60 #3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =  60 #3600  # in production - every hour check users last time activitys
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  # in production - every hour check users last time activitys
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks

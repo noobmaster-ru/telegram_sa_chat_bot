@@ -25,6 +25,15 @@ async def handle_add_service_account_into_gs(
     db_session_factory: async_sessionmaker,
     bot: Bot
 ):
+    await callback.answer()
+    seller_data = await state.get_data() 
+    message_id_to_delete = seller_data["message_id_to_delete"]
+    await callback.bot.delete_message(
+        chat_id=callback.message.chat.id,
+        message_id=message_id_to_delete
+    )
+    del seller_data['message_id_to_delete']
+    await state.set_data(seller_data)
     if callback.data == "service_account_yes": 
         user_data = await state.get_data()    
         google_sheets_url = user_data["google_sheets_url"]
@@ -45,11 +54,14 @@ async def handle_add_service_account_into_gs(
             
             # Сохраняем user_id(id in postgresql) в FSM
             await state.update_data(cabinet_id=new_cabinet.id)
-        await callback.message.edit_text("Кабинет успешно добавлен!")
-        await callback.message.answer("Теперь давайте добавим артикулы для раздачи и количество раздач.\n\nОтправьте артикул товара на ВБ")
+        await callback.message.answer("✅Кабинет успешно добавлен!")
+        await callback.message.answer(
+            "Теперь давайте добавим артикулы для раздачи и количество раздач\n\nОтправьте *артикул* товара на ВБ , *одно число*",
+            parse_mode="MarkdownV2"
+        )
         await state.set_state(SellerStates.waiting_for_nm_id)
     else:
-        await callback.message.edit_text("Пожалуйста, добавьте сервисный аккаунт в гугл-таблицу, без добавления мы не сможем записывать данные в вашу таблицу")
+        await callback.message.answer("Пожалуйста, добавьте сервисный аккаунт в гугл-таблицу, без добавления мы не сможем записывать данные в вашу таблицу")
         await callback.message.answer("Вот подробная инструкция")
         INSTRUCTION_PHOTOS_DIR = constants.INSTRUCTION_PHOTOS_DIR
         photo_path1 = INSTRUCTION_PHOTOS_DIR + "1_access_settings.png"
@@ -81,7 +93,7 @@ async def handle_add_service_account_into_gs(
             chat_id=callback.message.chat.id,
             media=media_group
         )
-        await callback.message.answer(
+        msg = await callback.message.answer(
             f"Дали доступ *Редактор* нашему cервисному аккаунту Google?",
             reply_markup=get_yes_no_keyboard(
                 callback_prefix="service_account",
@@ -89,7 +101,9 @@ async def handle_add_service_account_into_gs(
             ),
             parse_mode="MarkdownV2"
         )
-
+        await state.update_data(
+            message_id_to_delete=msg.message_id
+        )
     
 @router.message(StateFilter(SellerStates.add_cabinet_to_db))
 async def waiting_for_tap_to_keyboard_add_cabine_to_db(message: Message):
