@@ -1,4 +1,4 @@
-from aiogram import F
+from aiogram import F, Bot
 from aiogram.types import CallbackQuery
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -63,7 +63,8 @@ async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    CHANNEL_USERNAME: str
+    CHANNEL_USERNAME: str,
+    bot: Bot
 ):
     await callback.answer()
     """
@@ -106,7 +107,7 @@ async def confirm_requisites_yes(
     )
     
     # check subscribe to channel 
-    member = await callback.message.bot.get_chat_member(
+    member = await bot.get_chat_member(
         chat_id=CHANNEL_USERNAME,
         user_id=callback.from_user.id
     )
