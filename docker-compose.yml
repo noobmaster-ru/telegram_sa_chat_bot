@@ -1,26 +1,4 @@
-# # gleb variant
-# services:
-#   get-remains-gleb:
-#     build: .
-#     container_name: get-remains-gleb
-#     command: ["python", "-m", "src.get_remains"]
-#     env_file:
-#       - .env
-#     restart: always
-#   tg-ai-agent-gleb:
-#     build: .
-#     container_name: tg-ai-agent-gleb
-#     command: ["python", "-m", "run"]
-#     env_file:
-#       - .env
-#     depends_on:
-#       - get-remains-gleb
-#     volumes:
-#       - .:/app
-#       - ./logs:/app/logs
-#     restart: always                    
-
-
+# develop: redis + get_remains + bot
 services:
   redis:
     image: redis:7
