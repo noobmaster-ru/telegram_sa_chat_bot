@@ -105,11 +105,11 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                 text = REMINDER_TEXTS.get(state)
                 msg = None
                 if text:
-                    logging.info(f"bot delete messages_ids {last_messages_ids} in dialog with user: {telegram_id}, user state: {state}")
                     await bot.delete_business_messages(
                         business_connection_id=business_connection_id,
                         message_ids=last_messages_ids
                     )
+                    logging.info(f"bot delete messages_ids {last_messages_ids} in dialog with user: {telegram_id}, user state: {state}")
                     if state in REPLY_MARKUP_REMIND:
                         callback_prefix = None
                         statement = None

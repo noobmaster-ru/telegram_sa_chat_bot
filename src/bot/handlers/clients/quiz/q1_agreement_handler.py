@@ -75,6 +75,7 @@ async def handle_agreement(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     CHANNEL_USERNAME: str,
+    bot: Bot
 ):
     await callback.answer()
     telegram_id = callback.from_user.id
@@ -97,7 +98,7 @@ async def handle_agreement(
     if callback.data == "agree_yes":
         # Проверяем подписку
         try:
-            member = await callback.message.bot.get_chat_member(
+            member = await bot.get_chat_member(
                 chat_id=CHANNEL_USERNAME,
                 user_id=callback.from_user.id
             )
