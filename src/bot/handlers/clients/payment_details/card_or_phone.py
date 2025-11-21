@@ -20,6 +20,13 @@ async def handle_card_or_phone_number(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    text = message.text.strip()
+    telegram_id = message.from_user.id
+    business_connection_id = message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -27,8 +34,6 @@ async def handle_card_or_phone_number(
             message_id=message.message_id
         )
     )
-    text = message.text.strip()
-    telegram_id = message.from_user.id
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,

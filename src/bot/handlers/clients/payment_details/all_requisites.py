@@ -38,10 +38,15 @@ async def handle_requisites_message(
             message_id=message.message_id
         )
     )
+    user_data = await state.get_data()
     telegram_id = message.from_user.id
     text = message.text.strip()
-
-    user_data = await state.get_data()
+    business_connection_id = message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
+    
     nm_id = user_data.get("nm_id")
     nm_id_amount = user_data.get("nm_id_amount")
     

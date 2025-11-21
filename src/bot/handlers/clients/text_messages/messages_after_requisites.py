@@ -49,6 +49,9 @@ async def handle_messages_after_requisites(
         is_tap_to_keyboard=False
     )
     business_connection_id = message.business_connection_id
+    await state.update_data(
+        business_connection_id=business_connection_id
+    )
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=business_connection_id,

@@ -29,17 +29,22 @@ async def handle_photo_other_type(
     state: FSMContext,
     spreadsheet: GoogleSheetClass
 ):
+    # === 2. Извлекаем данные из FSM ===
+    telegram_id = message.from_user.id
+    business_connection_id = message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
     await message.bot(
         ReadBusinessMessage(
-            business_connection_id=message.business_connection_id,
+            business_connection_id=business_connection_id,
             chat_id=message.chat.id,
             message_id=message.message_id
         )
     )
 
-    # === 2. Извлекаем данные из FSM ===
-    telegram_id = message.from_user.id
-
+    
     # обновляем время последнего сообщения юзера
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -50,7 +55,7 @@ async def handle_photo_other_type(
     await message.bot.send_chat_action(
         chat_id=message.chat.id,
         action=ChatAction.TYPING,
-        business_connection_id = message.business_connection_id
+        business_connection_id = business_connection_id
     )
     await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     current_state = await state.get_state() 

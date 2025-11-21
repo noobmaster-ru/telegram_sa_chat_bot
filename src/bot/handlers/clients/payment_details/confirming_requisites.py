@@ -20,9 +20,14 @@ async def confirm_requisites_no(
     """
     Пользователь указал, что реквизиты неверные — начинаем ввод заново.
     """
+    business_connection_id = callback.message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
     await callback.message.bot(
         ReadBusinessMessage(
-            business_connection_id=callback.message.business_connection_id,
+            business_connection_id=business_connection_id,
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id
         )
@@ -64,9 +69,14 @@ async def confirm_requisites_yes(
     """
     Пользователь указал, что реквизиты верные — сохраняем их в гугл таблицу и очищаем состояние.
     """
+    business_connection_id = callback.message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
     await callback.message.bot(
         ReadBusinessMessage(
-            business_connection_id=callback.message.business_connection_id,
+            business_connection_id=business_connection_id,
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id
         )

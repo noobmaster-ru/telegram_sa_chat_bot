@@ -1,11 +1,12 @@
 # constants
+PHOTO_FILE_TYPE = "jpeg"
 INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', 
     '❌Удалить кабинет',
     'ℹ️Посмотреть кабинеты'
 ]
-MANAGER_NAME = 'Виктории' # в родительном падеже надо
+MANAGER_NAME = 'Алисы' # в родительном падеже надо
 CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
@@ -23,11 +24,11 @@ SKIP_MESSAGE_STATE="skip_msg"
 
 # Telegram
 MIN_LEN_TEXT = 12
-FIRST_MESSAGE_DELAY_SLEEP =  0.1 #15 #in production 
-DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.1 #5 #in production
-TIME_DURATION_BEETWEEN_REMINDER =  30 #3600*12 #in production
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 30 #3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =  60 #3600  # in production - every hour check users last time activitys
+FIRST_MESSAGE_DELAY_SLEEP =  20 #in production 
+DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
+TIME_DURATION_BEETWEEN_REMINDER =  3600*12 #in production
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # in production
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =  3600  # in production - every hour check users last time activitys
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks
@@ -60,7 +61,7 @@ GPT_MODEL_NAME='chatgpt-4o-latest'
 GPT_MODEL_NAME_PHOTO_ANALYSIS="gpt-5.1"
 GPT_MAX_TOKENS=140
 GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=575
-GPT_TEMPERATURE=0.7
+GPT_TEMPERATURE=0.75
 GPT_REASONING="low" # "low" | "medium" | "high"
 
 # Google Sheets
@@ -70,7 +71,7 @@ INSTRUCTION_SHEET_NAME_STR="Инструкция"
 BUYERS_SHEET_NAME_STR="Покупатели"
 
 # Redis
-NM_IDS_FOR_CASHBACK = [555620866]
+NM_IDS_FOR_CASHBACK = [622131361]
 REDIS_KEY_SET_TELEGRAM_IDS="TELEGRAM_USERS_IDS" # нужен для проверки новых/старых юзеров, кто писал акку
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
 REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"

@@ -34,6 +34,11 @@ async def handle_photo_feedback(
 ):
     await state.set_state(constants.SKIP_MESSAGE_STATE)
     user_data = await state.get_data()
+    business_connection_id = message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
     # === 1. Проверяем, не отправил ли пользователь альбом(несколько фоток) ===
     if message.media_group_id is not None:
 
@@ -88,7 +93,7 @@ async def handle_photo_feedback(
     
     # Читаем байты изображения эталона
     # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.png"
+    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.{constants.PHOTO_FILE_TYPE}"
     reference_image_extension = filetype.guess(reference_path).extension
     base64_image_ref = encode_image(reference_path)
     ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"

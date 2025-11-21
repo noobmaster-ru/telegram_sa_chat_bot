@@ -4,6 +4,8 @@ import json
 import logging
 from aiogram import Bot
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.exceptions import TelegramBadRequest, AiogramError # Импортируем нужные исключения
+
 from src.bot.states.client import ClientStates
 from src.core.config import constants
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
@@ -70,69 +72,69 @@ REPLY_MARKUP_REMIND = [
 async def inactivity_checker(bot: Bot, storage: RedisStorage):
     """Периодически проверяет всех пользователей и шлёт напоминания"""
     while True:
-        try:
-            # Сканируем все FSM-ключи
-            redis = storage.redis
-            async for redis_key in redis.scan_iter(match="fsm:*:*:data"):
-                raw_data = await redis.get(redis_key)
-                if not raw_data:
-                    continue
-                
-                try:
-                    user_data = json.loads(raw_data.decode())
-                except Exception as e:
-                    logging.warning(f" cant decode data for {redis_key}: {e}")
-                    continue
-                
-                last_time_activity = user_data["last_time_activity"]
-                business_connection_id = user_data["business_connection_id"]
-                telegram_id = user_data["telegram_id"] # chat_id == telegram_id
-                last_messages_ids = user_data["last_messages_ids"]
+        # Сканируем все FSM-ключи
+        redis = storage.redis
+        async for redis_key in redis.scan_iter(match="fsm:*:*:data"):
+            raw_data = await redis.get(redis_key)
+            if not raw_data:
+                continue
+            
+            try:
+                user_data = json.loads(raw_data.decode())
+            except Exception as e:
+                logging.warning(f" cant decode data for {redis_key}: {e}")
+                continue
+            
+            last_time_activity = user_data["last_time_activity"]
+            business_connection_id = user_data["business_connection_id"]
+            telegram_id = user_data["telegram_id"] # chat_id == telegram_id
+            last_messages_ids = user_data["last_messages_ids"]
 
-                # теперь читаем состояние
-                state_key = f"fsm:{telegram_id}:{telegram_id}:state"
-                raw_state = await redis.get(state_key)
+            # теперь читаем состояние
+            state_key = f"fsm:{telegram_id}:{telegram_id}:state"
+            raw_state = await redis.get(state_key)
+            state = None
+            if raw_state:
+                state = raw_state.decode() if isinstance(raw_state, bytes) else raw_state
+            else:
                 state = None
-                if raw_state:
-                    state = raw_state.decode() if isinstance(raw_state, bytes) else raw_state
-                else:
-                    state = None
-                
-                delta = time.time() - last_time_activity
-                if state in REMINDER_TIMEOUTS and delta > REMINDER_TIMEOUTS[state]:
-                    # отправляем напоминание
-                    text = REMINDER_TEXTS.get(state)
-                    msg = None
-                    if text:
-                        logging.info(f"bot delete messages_ids {last_messages_ids} in dialog with user: {telegram_id}, user state: {state}")
-                        await bot.delete_business_messages(
-                            business_connection_id=business_connection_id,
-                            message_ids=last_messages_ids
-                        )
-                        if state in REPLY_MARKUP_REMIND:
-                            callback_prefix = None
-                            statement = None
-                            if state == REPLY_MARKUP_REMIND[0]:
-                                callback_prefix = "agree"
-                                statement = "согласен(на)"
-                            elif state == REPLY_MARKUP_REMIND[1]:
-                                callback_prefix = "subscribe"
-                                statement = "подписался(лась)" 
-                            elif state == REPLY_MARKUP_REMIND[2]:
-                                callback_prefix = "order"
-                                statement = "заказал(а)"
-                            elif state == REPLY_MARKUP_REMIND[3]:
-                                callback_prefix = "receive"  
-                                statement = "получил(а)"
-                            elif state == REPLY_MARKUP_REMIND[4]:    
-                                callback_prefix = "feedback"
-                                statement = "оставил(а) отзыв" 
-                            elif state == REPLY_MARKUP_REMIND[5]:    
-                                callback_prefix = "shk"
-                                statement = "разрезал(а) ШК"
-                            else: # ClientStates.confirming_requisites.state
-                                callback_prefix = "confirm_requisites"
-                                statement = "верно"  
+            
+            delta = time.time() - last_time_activity
+            if state in REMINDER_TIMEOUTS and delta > REMINDER_TIMEOUTS[state]:
+                # отправляем напоминание
+                text = REMINDER_TEXTS.get(state)
+                msg = None
+                if text:
+                    logging.info(f"bot delete messages_ids {last_messages_ids} in dialog with user: {telegram_id}, user state: {state}")
+                    await bot.delete_business_messages(
+                        business_connection_id=business_connection_id,
+                        message_ids=last_messages_ids
+                    )
+                    if state in REPLY_MARKUP_REMIND:
+                        callback_prefix = None
+                        statement = None
+                        if state == REPLY_MARKUP_REMIND[0]:
+                            callback_prefix = "agree"
+                            statement = "согласен(на)"
+                        elif state == REPLY_MARKUP_REMIND[1]:
+                            callback_prefix = "subscribe"
+                            statement = "подписался(лась)" 
+                        elif state == REPLY_MARKUP_REMIND[2]:
+                            callback_prefix = "order"
+                            statement = "заказал(а)"
+                        elif state == REPLY_MARKUP_REMIND[3]:
+                            callback_prefix = "receive"  
+                            statement = "получил(а)"
+                        elif state == REPLY_MARKUP_REMIND[4]:    
+                            callback_prefix = "feedback"
+                            statement = "оставил(а) отзыв" 
+                        elif state == REPLY_MARKUP_REMIND[5]:    
+                            callback_prefix = "shk"
+                            statement = "разрезал(а) ШК"
+                        else: # ClientStates.confirming_requisites.state
+                            callback_prefix = "confirm_requisites"
+                            statement = "верно" 
+                        try:
                             msg = await bot.send_message(
                                 chat_id=telegram_id,
                                 text=text,
@@ -142,19 +144,39 @@ async def inactivity_checker(bot: Bot, storage: RedisStorage):
                                     statement=statement
                                 )
                             )
-                        else: # only text need
+                            # обновляем таймер, чтобы не спамить
+                            new_data = user_data.copy()
+                            new_data["last_time_activity"] = time.time()
+                            new_data["last_messages_ids"] = [msg.message_id]
+                            await redis.set(redis_key, json.dumps(new_data))
+                            logging.info(f" send message to user {telegram_id}, in state {state}")
+                        except TelegramBadRequest as e:
+                            logging.info(f" error in try to send message to user {telegram_id}: {e}")
+                        except AiogramError as e:
+                            logging.info(f" Aiogram error in try to send message to user {telegram_id}: {e}")
+                        except Exception as e:
+                            logging.info(f" unknown error in try to send message to user {telegram_id}: {e}")
+                    else: # only text need
+                        try:
                             msg = await bot.send_message(
                                 chat_id=telegram_id,
                                 text=text,
                                 business_connection_id=business_connection_id
                             )
-                        # обновляем таймер, чтобы не спамить
-                        new_data = user_data.copy()
-                        new_data["last_time_activity"] = time.time()
-                        new_data["last_messages_ids"] = [msg.message_id]
-                        await redis.set(redis_key, json.dumps(new_data))
-                else:
-                    logging.info(f"  client {telegram_id} in {state}, time_delta_last_msg_time_now = {delta:.1f}")
-        except Exception as e:
-            logging.info(f"[InactivityChecker] Ошибка: {e}")
+                            # обновляем таймер, чтобы не спамить
+                            new_data = user_data.copy()
+                            new_data["last_time_activity"] = time.time()
+                            new_data["last_messages_ids"] = [msg.message_id]
+                            await redis.set(redis_key, json.dumps(new_data))
+                            logging.info(f" send message to user {telegram_id}, in state {state}")
+                        except TelegramBadRequest as e:
+                            logging.info(f" error in try to send message to user {telegram_id}: {e}")
+                        except AiogramError as e:
+                            logging.info(f" Aiogram error in try to send message to user {telegram_id}: {e}")
+                        except Exception as e:
+                            logging.info(f" unknown error in try to send message to user {telegram_id}: {e}")
+            else:
+                logging.info(f"  client {telegram_id} in {state}, time_delta_last_msg_time_now = {delta:.1f}")
+        
+        # sleep time for a new epoch checking
         await asyncio.sleep(constants.TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS)  

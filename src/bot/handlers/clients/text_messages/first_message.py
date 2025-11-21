@@ -55,7 +55,7 @@ async def handle_first_message(
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
     text = message.text if message.text else "-"
-    
+    business_connection_id = message.business_connection_id
     
     # first message from user
     logging.info(
@@ -99,7 +99,10 @@ async def handle_first_message(
     await state.update_data(
         nm_id=available_nm_id,
         nm_id_amount=nm_id_amount,
-        nm_id_name=product_title
+        nm_id_name=product_title,
+        telegram_id=telegram_id,
+        business_connection_id=business_connection_id,
+        last_messages_ids=[]
     )
     
     instruction_str = await spreadsheet.get_instruction(
@@ -115,8 +118,6 @@ async def handle_first_message(
         telegram_id=telegram_id,
         nm_id=available_nm_id
     )
-    # Отправляем приветствие
-    business_connection_id = message.business_connection_id
 
     # небольшая задержка
     await asyncio.sleep(constants.FIRST_MESSAGE_DELAY_SLEEP)
@@ -201,9 +202,4 @@ async def handle_first_message(
     )
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"
     await state.set_state(ClientStates.waiting_for_agreement)
-    await state.update_data(
-        telegram_id=telegram_id,
-        business_connection_id=business_connection_id,
-        last_messages_ids=[]
-    )
     await update_last_activity(state, msg)

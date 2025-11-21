@@ -28,7 +28,11 @@ async def handle_unexpected_text_waiting_for_shk(
     await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     text = message.text
-    
+    business_connection_id = message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
     user_data = await state.get_data()
     nm_id = user_data.get("nm_id")
     nm_id_amount = user_data.get("nm_id_amount")
@@ -38,8 +42,7 @@ async def handle_unexpected_text_waiting_for_shk(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
     )
-    # помечаем сообщение как прочитанное
-    business_connection_id = message.business_connection_id
+
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=business_connection_id,
@@ -76,7 +79,12 @@ async def handle_shk_answer(
     """Обработка нажатия кнопок Да/Нет"""
     telegram_id = callback.from_user.id
     data = callback.data
-
+    business_connection_id = callback.message.business_connection_id
+    if business_connection_id:
+        await state.update_data(
+            business_connection_id=business_connection_id
+        )
+        
     key = data.split("_")[0]
     value = "Да" if data.endswith("_yes") else "Нет"
     
