@@ -140,7 +140,7 @@ async def handle_agreement(
             msg = await callback.message.answer(
                 "⚠️ Не удалось проверить подписку. Проверьте, что бот является администратором канала."
             )
-            logging.info(e)
+            logging.info(f"error in check_sub {e}")
             await update_last_activity(state, msg)
     else:
         try:

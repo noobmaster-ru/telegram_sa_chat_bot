@@ -7,7 +7,7 @@ SELLER_MENU_TEXT = [
     'ℹ️Посмотреть кабинеты'
 ]
 MANAGER_NAME = 'Алисы' # в родительном падеже надо
-CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
+CHANNEL_USERNAME_STR="@solume_cashback"  # username канала
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
     "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!",
