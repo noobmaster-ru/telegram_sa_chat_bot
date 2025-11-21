@@ -16,7 +16,7 @@ class EnvSettings(BaseSettings):
 
     # Google Sheets
     SERVICE_ACCOUNT_JSON: str
-    SERVICE_ACCOUNT_AXIOMAI: str
+    # SERVICE_ACCOUNT_AXIOMAI: str
     GOOGLE_SHEETS_URL: str
 
     # Redis

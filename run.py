@@ -71,8 +71,8 @@ async def main():
     dp.callback_query.middleware(middleware_ignore_bussiness_messages)
     
     # create poll connection to and close poll connection to db
-    dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
+    # dp.startup.register(on_startup)
+    # dp.shutdown.register(on_shutdown)
     
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
