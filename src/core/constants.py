@@ -32,7 +32,7 @@ TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 60 #3600*23 # in production
 TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  # in production - every hour check users last time activitys
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
-    8239184408, # @viktoria_cashbacks
+    # 8239184408, # @viktoria_cashbacks
     8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
 }
 

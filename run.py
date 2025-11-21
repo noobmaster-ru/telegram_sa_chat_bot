@@ -16,7 +16,7 @@ from src.bot.handlers.sellers.cmd_start import router as start_router
 from src.bot.handlers.sellers.view_cabinets import router as view_cabinets_router
 from src.bot.handlers.sellers.delete_cabinet import router as delete_cabinet_router
 from src.bot.handlers.sellers.last_router import router as last_router
-from src.bot.handlers.sellers.add_nm_id import router as add_nm_id_router
+from src.bot.handlers.sellers.add_extra_nm_id import router as add_nm_id_router
 
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass

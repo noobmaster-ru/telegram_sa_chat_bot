@@ -85,7 +85,7 @@ async def handle_nm_id_photo(
     # Отправляем фотографию обратно, используя этот file_id
     msg = await message.answer_photo(
         photo=photo_file_id,
-        caption=f"Получен артикул: *{nm_id}*\nКоличество для раздач: *{amount}*\nБренд: *{brand_name}*\n\n\n Данные заполнены верно?",
+        caption=f"\nБренд: *{brand_name}*\nАртикул: *{nm_id}*\nКоличество для раздач: *{amount}*\n\n\n Данные заполнены верно?",
         reply_markup=get_yes_no_keyboard(
             callback_prefix="data_verify",
             statement="верно"
@@ -131,7 +131,7 @@ async def write_data_into_db(
             await session.commit()
 
         await callback.message.answer(
-            f"Бренд: *{brand_name}*\nАртикул: *{nm_id}*\n успешно добавлен! 🎉",
+            f"Бренд: *{brand_name}*\nАртикул: *{nm_id}*\nКоличество раздач: {amount}\n\n\nУспешно добавлен🎉",
             reply_markup=kb_menu,
             parse_mode="MarkdownV2"
         )

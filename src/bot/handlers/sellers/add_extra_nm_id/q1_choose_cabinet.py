@@ -75,7 +75,7 @@ async def choose_cabinet(
         
         # 5. Отправляем сообщение с Inline-клавиатурой
         msg = await message.answer(
-            "Выберите кабинет из списка ниже:",
+            "Выберите кабинет из списка ниже для добавления артикула:",
             reply_markup=keyboard
         )
         await state.update_data(
