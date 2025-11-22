@@ -36,11 +36,14 @@ async def handle_amount(
         )
     )
     amounts = re.findall(amount_pattern, text, flags=re.IGNORECASE)
-    amount = amounts[0] if amounts else None
     bank_match = re.search(bank_pattern, text, flags=re.IGNORECASE)
+    amount = amounts[0] if amounts else None
     bank = bank_match.group(0).capitalize() if bank_match else None
-    await state.update_data(bank=bank)
-    await state.update_data(amount=amount)
+    
+    await state.update_data(
+        bank=bank,
+        amount=amount
+    )
 
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
