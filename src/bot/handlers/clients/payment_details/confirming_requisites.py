@@ -121,6 +121,12 @@ async def confirm_requisites_yes(
         await callback.message.answer(
             "✅ Отлично! Вы подписаны на наш канал. Там будет информация о новых раздачах 🙃",
         )
+        await spreadsheet.update_buyer_button_and_time(
+            telegram_id=telegram_id,
+            button_name="subscribe",
+            value="Да",
+            is_tap_to_keyboard=True
+        )
     await state.set_state(ClientStates.continue_dialog)
     # удаляем данные из состояния и из redis (но можно и оставить так-то)
     # await state.set_data({})

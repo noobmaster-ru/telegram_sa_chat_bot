@@ -1,13 +1,13 @@
 # constants
-PHOTO_FILE_TYPE = "jpeg"
+PHOTO_FILE_TYPE = 'png' #"jpeg"
 INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', 
     '❌Удалить кабинет',
     'ℹ️Посмотреть кабинеты'
 ]
-MANAGER_NAME = 'Алисы' # в родительном падеже надо
-CHANNEL_USERNAME_STR="@solume_cashback"  # username канала
+MANAGER_NAME = 'Виктории' #'Алисы' # в родительном падеже надо
+CHANNEL_USERNAME_STR= '@viktoriya_cash' #"@solume_cashback"    # username канала
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
     "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!",
@@ -24,11 +24,12 @@ SKIP_MESSAGE_STATE="skip_msg"
 
 # Telegram
 MIN_LEN_TEXT = 12
-FIRST_MESSAGE_DELAY_SLEEP =  20 #in production 
-DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
-TIME_DURATION_BEETWEEN_REMINDER =  3600*12 #in production
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =  3600  # in production - every hour check users last time activitys
+FIRST_MESSAGE_DELAY_SLEEP =  0.1 #20 #in production 
+DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.1 #5 #in production
+TIME_DURATION_BEETWEEN_REMINDER = 20 #3600*12 #in production
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 20 #3600*23 # in production
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS =  60 #3600  # in production - every hour check users last time activitys
+TIME_DELTA_CHECK_SUB_TO_CHANNEL = 60
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks
@@ -71,7 +72,7 @@ INSTRUCTION_SHEET_NAME_STR="Инструкция"
 BUYERS_SHEET_NAME_STR="Покупатели"
 
 # Redis
-NM_IDS_FOR_CASHBACK = [622131361]
+NM_IDS_FOR_CASHBACK = [555620866] #[622131361]
 REDIS_KEY_SET_TELEGRAM_IDS="TELEGRAM_USERS_IDS" # нужен для проверки новых/старых юзеров, кто писал акку
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
 REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"

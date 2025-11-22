@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as asyncredis
 from src.bot.utils.inactivity_checker import inactivity_checker
-
+from src.bot.utils.is_subscribe_checking import google_sheets_sub_updater
 
 from src.bot.handlers.clients.text_messages import router as text_router
 from src.bot.handlers.clients.quiz import router as quiz_router 
@@ -22,6 +22,7 @@ from src.services.open_ai_requests_class import OpenAiRequestClass
 
 from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
+from src.bot.middlewares.media_group import MediaGroupMiddleware
 from src.core.config import settings, constants
 # from src.db.base import on_shutdown, on_startup
 
@@ -60,6 +61,9 @@ async def main():
     bot = Bot(token=settings.TG_BOT_TOKEN)
     dp = Dispatcher(storage=storage)
     
+    # middlewate to skip media_group(many photos in one message)
+    dp.business_message.middleware(MediaGroupMiddleware(latency=2.5))
+
     # middlerware to check is user in redis store
     middleware_check_redis = CheckRedisUserMiddleware(redis, constants.REDIS_KEY_SET_TELEGRAM_IDS)
     dp.business_message.middleware(middleware_check_redis)
@@ -92,6 +96,9 @@ async def main():
     )
     # check last time activity and send reminder message if user too late inactive
     asyncio.create_task(inactivity_checker(bot, dp.storage))
+    
+    # check subscribtion to channel for all users in google sheets
+    asyncio.create_task(google_sheets_sub_updater(bot, spreadsheet))
     
     # seller routers 
     # dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router,last_router)

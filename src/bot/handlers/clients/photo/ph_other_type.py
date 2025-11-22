@@ -30,6 +30,8 @@ async def handle_photo_other_type(
     spreadsheet: GoogleSheetClass
 ):
     # === 2. Извлекаем данные из FSM ===
+    current_state = await state.get_state() 
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
     telegram_id = message.from_user.id
     business_connection_id = message.business_connection_id
     if business_connection_id:
@@ -44,7 +46,6 @@ async def handle_photo_other_type(
         )
     )
 
-    
     # обновляем время последнего сообщения юзера
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -57,13 +58,14 @@ async def handle_photo_other_type(
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
-    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
-    current_state = await state.get_state() 
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER) 
     if current_state == ClientStates.waiting_for_requisites:
         msg = await message.answer(
-            "☺️ Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, теперь отправьте нам свои реквизиты в формате:\nНомер карты в формате: AAAA BBBB CCCC DDDD\n *ИЛИ* \nНомер телефона: 8910XXXXXXX",
+            "☺️ Вы прислали все фотографии, которые были нам нужны, Спасибо! Пожалуйста, теперь отправьте нам свои реквизиты в формате:\nНомер карты в формате: AAAA BBBB CCCC DDDD\n *ИЛИ* \nНомер телефона: 8910XXXXXXX",
             parse_mode="MarkdownV2"
         )
+        await state.set_state(ClientStates.waiting_for_requisites)
         await update_last_activity(state, msg)
     elif current_state == ClientStates.continue_dialog:
         await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")
+        await state.set_state(ClientStates.continue_dialog)

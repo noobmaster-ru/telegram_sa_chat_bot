@@ -10,6 +10,7 @@ from aiogram.filters import StateFilter
 
 from src.bot.states.client import ClientStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.keyboards.inline.get_sub_to_channel_keyboard import get_sub_to_channel
 from src.services.google_sheets_class import GoogleSheetClass
 from src.services.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
@@ -85,9 +86,9 @@ async def handle_agreement(
             business_connection_id=business_connection_id
         )
     value = "Да" if callback.data == "agree_yes" else "Нет"
-    data = await state.get_data()
-    nm_id = data.get("nm_id")
-    
+    client_data = await state.get_data()
+    nm_id = client_data.get("nm_id")
+    messages_ids_to_delete = client_data["last_messages_ids"]
 
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
@@ -96,63 +97,53 @@ async def handle_agreement(
         is_tap_to_keyboard=True
     )
     if callback.data == "agree_yes":
-        # Проверяем подписку
-        try:
-            member = await bot.get_chat_member(
-                chat_id=CHANNEL_USERNAME,
-                user_id=callback.from_user.id
+        await callback.message.answer("Спасибо!")
+        if messages_ids_to_delete:
+            await callback.bot.delete_business_messages(
+                business_connection_id=business_connection_id,
+                message_ids=messages_ids_to_delete
             )
-            if member.status in ("member", "administrator", "creator"):
-                # Пользователь подписан → продолжаем
-                await callback.message.edit_text(
-                    "✅ Отлично! Вы подписаны на канал.",
-                )
-                await spreadsheet.update_buyer_button_and_time(
-                    telegram_id=telegram_id,
-                    button_name="subscribe",
-                    value="Да",
-                    is_tap_to_keyboard=True
-                )
-                # 👉 start quiz_handlers
-                await state.set_state(ClientStates.waiting_for_order)
-                msg = await callback.message.edit_text(
-                    f"📦 Вы заказали товар {nm_id}?", 
-                    reply_markup=get_yes_no_keyboard("order", "заказал(а)") 
-                )
-                await update_last_activity(state, msg)
-                return
-            else:
-                # Не подписан
-                try:
-                    msg = await callback.message.edit_text(
-                        "❌ Пока вы не подпишетесь на канал , раздача невозможна.\n"
-                        f"Подпишитесь на {CHANNEL_USERNAME} и на кнопку ниже нажмите:",
-                        reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
-                    )
-                except:
-                    msg = await callback.message.edit_text(
-                        f"Подпишитесь на {CHANNEL_USERNAME} и нажмите кнопку ниже:",
-                        reply_markup=get_yes_no_keyboard("subscribe", "подписался(лась)")
-                    )
-                await state.set_state(ClientStates.waiting_for_subcription_to_channel)
-                await update_last_activity(state, msg)
-        except TelegramBadRequest as e:
-            msg = await callback.message.answer(
-                "⚠️ Не удалось проверить подписку. Проверьте, что бот является администратором канала."
+            await state.update_data(last_messages_ids=[])
+        # check subscribe to channel 
+        member = await bot.get_chat_member(
+            chat_id=constants.CHANNEL_USERNAME_STR,
+            user_id=callback.from_user.id
+        )
+        if not member.status in ("member", "administrator", "creator"):
+            # Не подписан
+            await callback.message.answer(
+                f"Подпишитесь на наш канал {CHANNEL_USERNAME}, там будет информация о новых раздачах 🙃",
+                reply_markup=get_sub_to_channel()
             )
-            logging.info(f"error in check_sub {e}")
-            await update_last_activity(state, msg)
+        else:
+            await callback.message.answer(
+                "✅ Отлично! Вы подписаны на наш канал. Там будет информация о новых раздачах 🙃",
+            )
+            await spreadsheet.update_buyer_button_and_time(
+                telegram_id=telegram_id,
+                button_name="subscribe",
+                value="Да",
+                is_tap_to_keyboard=True
+            )
+        # 👉 Начинаем пошаговый диалог
+        msg = await callback.message.answer(
+            f"📦 Вы заказали товар {nm_id}?",  
+            reply_markup=get_yes_no_keyboard("order", "заказал(а)")
+        )
+        await state.set_state(ClientStates.waiting_for_order)
+        await update_last_activity(state, msg)
+        return 
     else:
-        try:
-            msg = await callback.message.edit_text(
-                "Без согласия участие невозможно. Вы согласны на условия?",
-                reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
+        if messages_ids_to_delete:
+            await callback.bot.delete_business_messages(
+                business_connection_id=business_connection_id,
+                message_ids=messages_ids_to_delete
             )
-        except:
-            msg = await callback.message.edit_text(
-                "Вы согласны на условия?",
-                reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
-            )
+            await state.update_data(last_messages_ids=[])
+        msg = await callback.message.answer(
+            "Без согласия , кэшбек невозможен 😔 Вы согласны на наши условия?",
+            reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
+        )
         await state.set_state(ClientStates.waiting_for_agreement)
         await update_last_activity(state, msg)
         return 

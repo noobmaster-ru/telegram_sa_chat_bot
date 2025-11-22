@@ -101,6 +101,7 @@ async def handle_first_message(
         nm_id_amount=nm_id_amount,
         nm_id_name=product_title,
         telegram_id=telegram_id,
+        full_name=full_name,
         business_connection_id=business_connection_id,
         last_messages_ids=[]
     )
@@ -196,9 +197,8 @@ async def handle_first_message(
     
     await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     # Отправляем бота! и отправляем кнопки "Согласны на условия?"
-    msg = await message.answer("Здравствуйте!")
-    await message.answer(
-        f"Я - 🤖-помощник {constants.MANAGER_NAME}.\nВы согласны на наши условия кэшбека?",
+    msg = await message.answer(
+        f"Здравствуйте! Я - 🤖-помощник {constants.MANAGER_NAME}.\nВы согласны на наши условия кэшбека?",
         reply_markup=get_yes_no_keyboard("agree", "согласен(на)")
     )
     # ставим состояние ожидания нажатие на кнопки в поле "Согласны на условия?"

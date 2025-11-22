@@ -83,10 +83,10 @@ class OpenAiRequestClass:
                             "type": "input_text", 
                             "text": (
                                 "Ты — эксперт по визуальному сравнению изображений.\n"
-                                f"Первая фотография — это наш товар (артикул `{nm_id}`; название товара `{nm_id_name}` должно быть на скриншоте).\n"
-                                "Вторая — фото(или скриншот) пользователя.\n\n"
-                                f"{prefix_message}\n\n"
-                                "Если не можешь определить по скриншоту , можно использовать веб-поиск(web_search), чтобы сверить внешний вид товара на сайте Wildberries.\n"
+                                "Первая фотография — наш товар\n"
+                                "Вторая — фото(или скриншот) клиента.\n"
+                                f"{prefix_message}\n"
+                                "(Если не можешь определить по скриншоту, есть ли ОТЗЫВ или ЗАКАЗ именно НАШЕГО ТОВАРА, то можешь использовать веб-поиск(web_search), чтобы сверить внешний вид товара на сайте Wildberries.)\n\n"
                                 "Ответь строго одним словом: Да или Нет"
                             ),
                         },
@@ -137,7 +137,7 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message="Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries.",
+            prefix_message=f"Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries. Название товара `{nm_id_name}` должно быть на скриншоте клиента.",
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,
@@ -155,7 +155,7 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message="Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries.",
+            prefix_message=f"Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries. Название товара `{nm_id_name}` и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента.",
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,
@@ -173,7 +173,7 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message="Подумай и скажи есть ли на фотографии разрезанные этикетки (Штрихкода) Wildberries нашего товара.",
+            prefix_message="Подумай и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ ЭТИКЕТКИ (Штрихкода) Wildberries нашего товара.",
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,

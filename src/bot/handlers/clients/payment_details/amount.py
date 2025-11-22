@@ -103,10 +103,64 @@ async def handle_amount(
                 await state.set_state(ClientStates.confirming_requisites)
                 await update_last_activity(state, msg)
                 return
+    elif data.get('phone_number'):
+        # нет банка, но есть телефон
+        if data.get('card_number'):
+            # сумма , телефон, карта
+            msg = await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{data.get('phone_number')}`\n"
+                f"Номер карты: `{data.get('card_number')}`\n"
+                f"Сумма: `{data.get('amount')}`\n\n"
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                parse_mode="Markdown"
+            )
+            await state.set_state(ClientStates.waiting_for_bank)
+            await update_last_activity(state, msg)
+            return
+        else:
+            # сумма, телефон
+            msg = await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{data.get('phone_number')}`\n"
+                f"Сумма: `{data.get('amount')}`\n\n"
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                parse_mode="Markdown"
+            )
+            await state.set_state(ClientStates.waiting_for_bank)
+            await update_last_activity(state, msg)
+            return
+    elif data.get('card_number'):
+        # нет банка, но есть карта
+        if data.get('phone_number'):
+            # сумма , телефон, карта
+            msg = await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{data.get('phone_number')}`\n"
+                f"Номер карты: `{data.get('card_number')}`\n"
+                f"Сумма: `{data.get('amount')}`\n\n"
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                parse_mode="Markdown"
+            )
+            await state.set_state(ClientStates.waiting_for_bank)
+            await update_last_activity(state, msg)
+            return
+        else:
+            # сумма, карта
+            msg = await message.answer(
+                f"📩 Получены реквизиты:\n"
+                f"Номер карты: `{data.get('card_number')}`\n"
+                f"Сумма: `{data.get('amount')}`\n\n"
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                parse_mode="Markdown"
+            )
+            await state.set_state(ClientStates.waiting_for_bank)
+            await update_last_activity(state, msg)
+            return
     else:
         msg = await message.answer(
-            f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+            f"💬 Пожалуйста, отправьте реквизиты ещё раз",
             parse_mode="Markdown"
         )  
-        await state.set_state(ClientStates.waiting_for_bank)
+        await state.set_state(ClientStates.waiting_for_requisites)
         await update_last_activity(state, msg)

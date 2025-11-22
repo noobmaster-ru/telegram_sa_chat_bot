@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
 from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
 from redis.asyncio import Redis
+from typing import List, Dict
 
 import logging
 
@@ -296,9 +297,60 @@ class GoogleSheetClass:
 
         safe_text = escape_md_except_links(filled)
         
-        # # 4️⃣ Подставляем безопасную ссылку
-        # safe_text = safe_text.replace(
-        #     f"[{nm_id}](https://www.wildberries.ru/catalog/{nm_id}/detail.aspx?targetUrl=SP)",
-        #     f"[{nm_id}]({safe_url})"
-        # )
         return safe_text
+
+    async def get_all_telegram_id(self) -> List[int]:
+        sheet = self.sheet or await self.get_sheet()
+        all_values = await sheet.get_all_values() 
+        telegram_ids = []
+        
+        # Проходим по всем строкам, начиная со второй (индекс 1 в Python), чтобы пропустить заголовок
+        for row_values in all_values[1:]:
+
+            # Проверяем, что строка не пустая и содержит нужный столбец
+            if row_values:
+                try:
+                    # Пытаемся преобразовать значение в целое число
+                    tg_id = int(row_values[1])
+                    telegram_ids.append(tg_id)
+                except ValueError:
+                    # Игнорируем строки, где значение не является числом
+                    continue
+                    
+        return telegram_ids
+    
+    async def update_subscriptions(self, all_subscription_statuses: Dict[int, bool]):
+        """
+        Пакетно обновляет статусы подписок в Google Sheets на основе словаря {telegram_id: bool}.
+        """
+        sheet = self.sheet or await self.get_sheet()
+        
+        # Получаем все данные из листа (предполагаем, что у вас много строк)
+        # Это может быть ресурсоемко, но нужно для сопоставления telegram_id со строками
+        all_values = await sheet.get_all_values() 
+
+        updates = []
+        
+        col_index = self._header_cache[self.header_row[8]] # Подписка на канал
+        # Конвертация номера столбца в букву (например 14 → N)
+        col_letter = chr(64 + col_index)
+        for row_index, row_values in enumerate(all_values[1:], start=2):
+            try:
+
+                sheet_telegram_id = int(row_values[1]) # telegram_id
+
+                if sheet_telegram_id in all_subscription_statuses:
+                    new_value = "Да" if all_subscription_statuses[sheet_telegram_id] else "Не подписан"
+        
+                    cell_range = f"{col_letter}{row_index}"
+                    updates.append({"range": cell_range, "values": [[new_value]]})
+
+                    del all_subscription_statuses[sheet_telegram_id]
+
+            except ValueError:
+                continue 
+
+        # Выполняем пакетное обновление, если есть что обновлять
+        if updates:
+            await sheet.batch_update(updates)
+            logging.info(f"Batch updated {len(updates)} subscription statuses in Google Sheets.")

@@ -1,6 +1,8 @@
 import asyncio
 import base64
 import filetype
+from typing import List, Optional
+
 from pathlib import Path
 from aiogram import F
 from aiogram.types import Message
@@ -29,7 +31,8 @@ async def handle_photo_shk(
     message: Message,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    client_gpt_5: OpenAiRequestClass
+    client_gpt_5: OpenAiRequestClass,
+    album: Optional[List[Message]] = None
 ):
     await state.set_state(constants.SKIP_MESSAGE_STATE)
     user_data = await state.get_data()
@@ -38,35 +41,51 @@ async def handle_photo_shk(
         await state.update_data(
             business_connection_id=business_connection_id
         )
-    # === 1. Проверяем, не отправил ли пользователь альбом(несколько фоток) ===
-    if message.media_group_id is not None:
-
-        last_media_group = user_data.get("last_media_group_id")
+    if album:    
+        # Отправляем ТОЛЬКО ОДНО предупреждение 
+        # (этот хэндлер вызовется только один раз для всего альбома благодаря middleware)
+        msg = await message.answer(
+            "Пожалуйста, отправьте *только одну* фотографию: фотографию *разрезанных этикеток* товара",
+            parse_mode="MarkdownV2"
+        )
+        await update_last_activity(state, msg)
+        # Остаемся в том же состоянии, чтобы он отправил одну фотографию
+        await state.set_state(ClientStates.waiting_for_photo_shk)
+        return
+    # # === 1. Проверяем, не отправил ли пользователь альбом(несколько фоток) ===
+    # if message.media_group_id is not None:
+    #     processed_albums = user_data.get("processed_albums", set())
+    #     # # если этот альбом уже обрабатывали — выходим
+    #     if message.media_group_id in processed_albums:
+    #         return
         
-        # если этот альбом уже обрабатывали — выходим
-        if last_media_group == message.media_group_id:
-            return
+    #     # # иначе сохраняем ID альбома и показываем сообщение
+    #     processed_albums.add(message.media_group_id)
+    #     await state.update_data(processed_albums=processed_albums)
         
-        # иначе сохраняем ID альбома и показываем сообщение
-        await state.update_data(last_media_group_id=message.media_group_id)
-        photo_type = user_data.get("photo_type", "order") 
-        
-        if photo_type == "order":
-            msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот заказа товара.")
-            await update_last_activity(state, msg)
-            return
-        elif photo_type == "feedback":
-            msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот отзыва товара.")
-            await update_last_activity(state, msg)
-            return
-        elif photo_type == "shk":
-            msg = await message.answer("Пожалуйста, отправьте только одну фотографию: фотографию разрезанных этикеток товара.")
-            await update_last_activity(state, msg)
-            return
-        else:
-            msg = await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")
-            await update_last_activity(state, msg)
-            return
+    #     msg = await message.answer(
+    #         "Пожалуйста, отправьте только одну фотографию: фотографию *разрезанных этикеток* товара",
+    #         parse_mode="MarkdownV2"
+    #     )
+    #     await update_last_activity(state, msg)
+    #     await state.set_state(ClientStates.waiting_for_photo_shk)
+    #     return
+        # if photo_type == "order":
+        #     msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот заказа товара.")
+        #     await update_last_activity(state, msg)
+        #     return
+        # elif photo_type == "feedback":
+        #     msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот отзыва товара.")
+        #     await update_last_activity(state, msg)
+        #     return
+        # elif photo_type == "shk":
+        #     msg = await message.answer("Пожалуйста, отправьте только одну фотографию: фотографию разрезанных этикеток товара.")
+        #     await update_last_activity(state, msg)
+        #     return
+        # else:
+        #     msg = await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")
+        #     await update_last_activity(state, msg)
+        #     return
 
     # === 2. Извлекаем данные из FSM ===
     telegram_id = message.from_user.id
