@@ -95,6 +95,7 @@ async def handle_feedback_answer(
             )
             await state.update_data(last_messages_ids=[])
         except: 
+            await state.update_data(last_messages_ids=[])
             logging.info("cant delete message in q4")
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,

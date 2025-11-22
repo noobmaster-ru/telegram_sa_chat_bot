@@ -108,6 +108,7 @@ async def handle_receive_answer(
             )
             await state.update_data(last_messages_ids=[])
         except:
+            await state.update_data(last_messages_ids=[])
             logging.info(' cant delete message in q3')
     
     if value == "Нет":

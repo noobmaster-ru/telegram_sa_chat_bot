@@ -106,6 +106,7 @@ async def handle_agreement(
                 )
                 await state.update_data(last_messages_ids=[])
             except:
+                await state.update_data(last_messages_ids=[])
                 logging.info("cant delete message in q1")
         # check subscribe to channel 
         member = await bot.get_chat_member(
@@ -145,6 +146,7 @@ async def handle_agreement(
                 )
                 await state.update_data(last_messages_ids=[])
             except: 
+                await state.update_data(last_messages_ids=[])
                 logging.info("cant delete messages in q1")
         msg = await callback.message.answer(
             "Без согласия , кэшбек невозможен 😔 Вы согласны на наши условия?",

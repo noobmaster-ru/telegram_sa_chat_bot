@@ -107,6 +107,7 @@ async def handle_order_answer(
             )
             await state.update_data(last_messages_ids=[])
         except:
+            await state.update_data(last_messages_ids=[])
             logging.info("cant delete messages in q2")
     if value == "Нет":
         msg = await callback.message.answer(
