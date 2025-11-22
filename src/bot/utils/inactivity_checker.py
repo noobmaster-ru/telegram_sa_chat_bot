@@ -5,7 +5,7 @@ import logging
 from typing import Dict
 from aiogram import Bot
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.exceptions import TelegramBadRequest, AiogramError # Импортируем нужные исключения
+from aiogram.exceptions import TelegramBadRequest, AiogramError , TelegramForbiddenError# Импортируем нужные исключения
 
 from src.bot.states.client import ClientStates
 from src.core.config import constants
@@ -110,14 +110,46 @@ async def inactivity_checker(
                 text = REMINDER_TEXTS.get(state)
                 msg = None
                 if text:
-                    try:
-                        await bot.delete_business_messages(
-                            business_connection_id=business_connection_id,
-                            message_ids=messages_ids_to_delete
-                        )
-                        # logging.info(f"bot delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
-                    except:
-                        logging.info(f"bot can't delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
+                    if messages_ids_to_delete:
+                        
+                        # Перебираем все ID по одному
+                        for msg_id in messages_ids_to_delete:
+                            try:
+                                # Используем delete_message для стандартных чатов или delete_business_message для бизнес-чатов
+                                if business_connection_id:
+                                    await bot.delete_business_messages(
+                                        business_connection_id=business_connection_id,
+                                        chat_id=telegram_id,
+                                        message_id=[msg_id]
+                                    )
+                                else:
+                                     # Если это обычный чат с ботом
+                                    await bot.delete_message(
+                                        chat_id=telegram_id,
+                                        message_id=msg_id
+                                    )
+
+                            except TelegramBadRequest as e:
+                                # Это ошибка, которая обычно возникает при превышении 48 часов
+                                if "message can't be deleted" in str(e) or "message is too old" in str(e):
+                                    logging.warning(f"Message {msg_id} in chat {telegram_id} is too old to delete (48h limit).")
+                                else:
+                                    logging.error(f"Telegram BadRequest for msg {msg_id}: {e}")
+                            
+                            except TelegramForbiddenError as e:
+                                # Бот не имеет прав удалить сообщение (например, не админ в группе)
+                                logging.warning(f"Bot forbidden to delete message {msg_id}: {e}")
+
+                            except Exception as e:
+                                logging.error(f"An unexpected error occurred deleting msg {msg_id}: {e}")
+                    # try:
+                    #     await bot.delete_business_messages(
+                    #         business_connection_id=business_connection_id,
+                    #         message_ids=messages_ids_to_delete
+                    #     )
+                    #     # logging.info(f"bot delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
+                    # except:
+                    #     logging.info(f"bot can't delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
                     if state in REPLY_MARKUP_REMIND:
                         callback_prefix = None
                         statement = None
