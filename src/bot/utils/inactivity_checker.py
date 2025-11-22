@@ -115,7 +115,7 @@ async def inactivity_checker(
                             business_connection_id=business_connection_id,
                             message_ids=messages_ids_to_delete
                         )
-                        logging.info(f"bot delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
+                        # logging.info(f"bot delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
                     except:
                         logging.info(f"bot can't delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
                     if state in REPLY_MARKUP_REMIND:
