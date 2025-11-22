@@ -99,11 +99,14 @@ async def handle_agreement(
     if callback.data == "agree_yes":
         await callback.message.answer("Спасибо!")
         if messages_ids_to_delete:
-            await callback.bot.delete_business_messages(
-                business_connection_id=business_connection_id,
-                message_ids=messages_ids_to_delete
-            )
-            await state.update_data(last_messages_ids=[])
+            try:
+                await callback.bot.delete_business_messages(
+                    business_connection_id=business_connection_id,
+                    message_ids=messages_ids_to_delete
+                )
+                await state.update_data(last_messages_ids=[])
+            except:
+                logging.info("cant delete message in q1")
         # check subscribe to channel 
         member = await bot.get_chat_member(
             chat_id=constants.CHANNEL_USERNAME_STR,
@@ -135,11 +138,14 @@ async def handle_agreement(
         return 
     else:
         if messages_ids_to_delete:
-            await callback.bot.delete_business_messages(
-                business_connection_id=business_connection_id,
-                message_ids=messages_ids_to_delete
-            )
-            await state.update_data(last_messages_ids=[])
+            try:
+                await callback.bot.delete_business_messages(
+                    business_connection_id=business_connection_id,
+                    message_ids=messages_ids_to_delete
+                )
+                await state.update_data(last_messages_ids=[])
+            except: 
+                logging.info("cant delete messages in q1")
         msg = await callback.message.answer(
             "Без согласия , кэшбек невозможен 😔 Вы согласны на наши условия?",
             reply_markup=get_yes_no_keyboard("agree", "согласен(на)")

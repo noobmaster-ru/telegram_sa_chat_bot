@@ -1,3 +1,4 @@
+import logging
 from aiogram import F, types, Bot
 from aiogram.enums import ChatAction
 from aiogram.types import  CallbackQuery
@@ -87,11 +88,14 @@ async def handle_feedback_answer(
     nm_id = client_data.get("nm_id")
     messages_ids_to_delete = client_data["last_messages_ids"]
     if messages_ids_to_delete:
-        await callback.bot.delete_business_messages(
-            business_connection_id=business_connection_id,
-            message_ids=messages_ids_to_delete
-        )
-        await state.update_data(last_messages_ids=[])
+        try:
+            await callback.bot.delete_business_messages(
+                business_connection_id=business_connection_id,
+                message_ids=messages_ids_to_delete
+            )
+            await state.update_data(last_messages_ids=[])
+        except: 
+            logging.info("cant delete message in q4")
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name=key,

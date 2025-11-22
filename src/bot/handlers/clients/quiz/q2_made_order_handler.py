@@ -1,3 +1,4 @@
+import logging
 from aiogram import F,  types, Bot
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -99,11 +100,14 @@ async def handle_order_answer(
     msg = None
     messages_ids_to_delete = client_data["last_messages_ids"]
     if messages_ids_to_delete:
-        await callback.bot.delete_business_messages(
-            business_connection_id=business_connection_id,
-            message_ids=messages_ids_to_delete
-        )
-        await state.update_data(last_messages_ids=[])
+        try:
+            await callback.bot.delete_business_messages(
+                business_connection_id=business_connection_id,
+                message_ids=messages_ids_to_delete
+            )
+            await state.update_data(last_messages_ids=[])
+        except:
+            logging.info("cant delete messages in q2")
     if value == "Нет":
         msg = await callback.message.answer(
             f"Когда закажете товар {nm_id}, нажмите, пожалуйста, на кнопку ниже",
