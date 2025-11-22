@@ -119,8 +119,7 @@ async def inactivity_checker(
                                 if business_connection_id:
                                     await bot.delete_business_messages(
                                         business_connection_id=business_connection_id,
-                                        chat_id=telegram_id,
-                                        message_id=[msg_id]
+                                        message_ids=[msg_id]
                                     )
                                 else:
                                      # Если это обычный чат с ботом
