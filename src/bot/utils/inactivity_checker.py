@@ -12,7 +12,6 @@ from src.core.config import constants
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.core.config import constants
 from src.services.google_sheets_class import GoogleSheetClass
-
 # 60 - 1 min
 # 3600 - 1 hour
 # 21600 - 6 hour
@@ -111,23 +110,14 @@ async def inactivity_checker(
                 msg = None
                 if text:
                     if messages_ids_to_delete:
-                        
                         # Перебираем все ID по одному
                         for msg_id in messages_ids_to_delete:
                             try:
                                 # Используем delete_message для стандартных чатов или delete_business_message для бизнес-чатов
-                                if business_connection_id:
-                                    await bot.delete_business_messages(
-                                        business_connection_id=business_connection_id,
-                                        message_ids=[msg_id]
-                                    )
-                                else:
-                                     # Если это обычный чат с ботом
-                                    await bot.delete_message(
-                                        chat_id=telegram_id,
-                                        message_id=msg_id
-                                    )
-
+                                await bot.delete_business_messages(
+                                    business_connection_id=business_connection_id,
+                                    message_ids=[msg_id]
+                                )
                             except TelegramBadRequest as e:
                                 # Это ошибка, которая обычно возникает при превышении 48 часов
                                 if "message can't be deleted" in str(e) or "message is too old" in str(e):
