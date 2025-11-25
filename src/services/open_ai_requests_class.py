@@ -137,7 +137,7 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message=f"Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries. Название товара `{nm_id_name}` должно быть на скриншоте клиента.",
+            prefix_message=f"Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries. Название товара `{nm_id_name}` должно быть на скриншоте клиента. Также там могут быть надписи под названием: 'Оформляется', 'Вы оформили заказ', а на самом товаре надписи: 'Оплачен'(зелёным цветом) , 'НЕ ОПЛАЧЕН'(красным цветом)",
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,
@@ -155,7 +155,7 @@ class OpenAiRequestClass:
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message=f"Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries. Название товара `{nm_id_name}` и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента.",
+            prefix_message=f"Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries. Название товара `{nm_id_name}` и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента. Звёзды могут быть прямо на фотографии товара.",
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,
@@ -228,7 +228,7 @@ class OpenAiRequestClass:
         # logging usage of tokens per prompt
         usage = response.usage
         self.logger.info(
-            f"  GPT usage — input tokens: {usage.prompt_tokens}, output tokens: {usage.completion_tokens}, total tokens: {usage.total_tokens}"
+            f"  GPT usage — input tokens: {usage.prompt_tokens}, output tokens: {usage.completion_tokens}"
         )
         return response.choices[0].message.content
 
