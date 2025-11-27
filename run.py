@@ -63,7 +63,7 @@ async def main():
     dp = Dispatcher(storage=storage)
     
     # middlewate to skip media_group(many photos in one message)
-    dp.business_message.middleware(MediaGroupMiddleware(latency=2.5))
+    dp.business_message.middleware(MediaGroupMiddleware(latency=0.5))
 
     # middlerware to check is user in redis store
     middleware_check_redis = CheckRedisUserMiddleware(redis, constants.REDIS_KEY_SET_TELEGRAM_IDS)
@@ -101,11 +101,11 @@ async def main():
     # check subscribtion to channel for all users in google sheets
     asyncio.create_task(google_sheets_sub_updater(bot, spreadsheet))
     
-    # seller routers 
-    dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router, add_nm_id_router, last_router)
-    
     # clients routers
     dp.include_routers(text_router, quiz_router, photo_router, payment_router) 
+    
+    # seller routers 
+    dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router, add_nm_id_router, last_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from aiogram.types import Message, ContentType
 class MediaGroupMiddleware(BaseMiddleware):
     album_data: Dict[str, List[Message]] = {}
 
-    def __init__(self, latency: int = 0.5):
+    def __init__(self, latency: int = 0.3):
         """
         :param latency: Задержка в секундах для сбора всех сообщений медиагруппы.
         """

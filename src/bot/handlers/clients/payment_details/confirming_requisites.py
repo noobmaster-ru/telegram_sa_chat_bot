@@ -89,7 +89,6 @@ async def confirm_requisites_yes(
     # записываем данные в гугл-таблицу и однвременно обновим последнее время записи
     await spreadsheet.write_requisites_into_google_sheets_and_update_last_time_message(
         telegram_id=telegram_id,
-        card_number=data.get('card_number', '-'),
         phone_number=data.get('phone_number','-'),
         bank=data.get('bank','-'),
         amount=data.get('amount','-'),
@@ -98,11 +97,10 @@ async def confirm_requisites_yes(
 
     await callback.message.edit_text(
         f"📩 Реквизиты записаны:\n"
-        f"Номер карты: `{data.get('card_number', '-')}`\n"
         f"Номер телефона: `{data.get('phone_number', '-')}`\n"
         f"Банк: {data.get('bank', '-')}\n"
         f"Сумма: `{data.get('amount', '-')}`\n\n"
-        f"Ожидайте выплату в ближайшее время, спасибо ☺️",
+        f"Ожидайте выплату в ближайшее время(в течение 10 дней), спасибо ☺️",
         parse_mode="Markdown"
     )
     

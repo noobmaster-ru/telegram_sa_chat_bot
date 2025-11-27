@@ -15,18 +15,6 @@ from .router import router
 from src.core.config import constants
 
 
-# @router.business_message(StateFilter("generating"))
-# async def wait_response(message: Message):
-#     business_connection_id = message.business_connection_id
-#     await message.bot(
-#         ReadBusinessMessage(
-#             business_connection_id=business_connection_id,
-#             chat_id=message.chat.id,
-#             message_id=message.message_id
-#         )
-#     )
-#     await message.answer("Ожидайте ответа, пожалуйста ...")
-
 
 @router.business_message(StateFilter(ClientStates.continue_dialog))
 async def handle_messages_after_requisites(

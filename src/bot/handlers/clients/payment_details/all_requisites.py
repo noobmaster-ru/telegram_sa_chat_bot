@@ -67,6 +67,7 @@ async def handle_requisites_message(
     card_number = cards[0] if cards else None
     amount = amounts[0] if amounts else None
     phone_number = phones[0] if phones else None
+    logging.info(phone_number)
     bank = bank_match.group(0).capitalize() if bank_match else None
 
 
@@ -79,7 +80,7 @@ async def handle_requisites_message(
     if amount:
         data["amount"] = amount
     if phone_number:
-        data["phone_number"] = re.sub(r"^\+?8", "8", phone_number)  # нормализуем формат
+        data["phone_number"] = phone_number  # нормализуем формат
     if bank:
         data["bank"] = bank
     await state.update_data(**data)
@@ -92,6 +93,20 @@ async def handle_requisites_message(
     bank_name = data.get("bank")
     logging.info(f"  user: {telegram_id} gave requisites: card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
     
+    # ============== MAIN FLOW =============
+    # если только номер телефона
+    if phone_number and not bank_name and not card_number and not amt:
+        msg = await message.answer(
+            f"📩 Получены реквизиты:\n"
+            f"Номер телефона: `{phone}`\n\n"
+            f"💬 Пожалуйста, отправьте сумму перевода, например: *500*",
+            parse_mode="MarkdownV2"
+        )
+        await state.set_state(ClientStates.waiting_for_amount)
+        await update_last_activity(state, msg)
+        return
+    # ============== MAIN FLOW =============    
+
     # если банк, карта, телефон и сумма
     if bank_name and card_number and  phone_number and amt:
         msg = await message.answer(
@@ -108,17 +123,6 @@ async def handle_requisites_message(
         await update_last_activity(state, msg)
         return
     
-    # если только номер телефона
-    if not bank_name and not card_number and phone_number and not amt:
-        msg = await message.answer(
-            f"📩 Получены реквизиты:\n"
-            f"Номер телефона: `{phone}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
-            parse_mode="Markdown"
-        )
-        await state.set_state(ClientStates.waiting_for_amount)
-        await update_last_activity(state, msg)
-        return
     
     # если только банк
     if bank_name and not card_number and not phone_number and not amt:

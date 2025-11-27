@@ -120,7 +120,7 @@ class GoogleSheetClass:
         new_row[4] = now # дата последнего сообщения
         new_row[5] = '' # дата последнего нажатия на кнопку
         new_row[6] = str(nm_id) # артикул
-        new_row[20] = str(full_name) # полное имя юзера
+        new_row[19] = str(full_name) # полное имя юзера
 
         await sheet.append_row(new_row)  
 
@@ -188,7 +188,6 @@ class GoogleSheetClass:
     async def write_requisites_into_google_sheets_and_update_last_time_message(
         self,
         telegram_id: int,
-        card_number: str,
         phone_number: str,
         bank: str,
         amount: str,
@@ -196,13 +195,15 @@ class GoogleSheetClass:
         """Обновляет реквизиты (карта, сумма, телефон, банк) одной операцией."""
         sheet = self.sheet or await self.get_sheet()
         row_index = await self.get_user_row(telegram_id)
-
+        
+        # чтобы Google Sheets сохранил +7, добавляем апостроф
+        fixed_phone = f"'{phone_number}" if phone_number else "-"
+        
         # Маппинг из логических имен в заголовки
         fields = {
-            self.header_row[16]: card_number or '-', # номер карты
-            self.header_row[17]: phone_number or '-', # столбец Номер телефона
-            self.header_row[18]: bank or '-', # столбец Банк
-            self.header_row[19]: amount or '-', # столбец Сумма
+            self.header_row[16]: fixed_phone, # столбец Номер телефона
+            self.header_row[17]: bank or '-', # столбец Банк
+            self.header_row[18]: amount or '-', # столбец Сумма
             self.header_row[4]: self._get_now_str() # столбец Последнее сообщение
         }
 
@@ -213,10 +214,23 @@ class GoogleSheetClass:
             # Конвертация номера столбца в букву (например 14 → N)
             col_letter = chr(64 + col_index)
             cell_range = f"{col_letter}{row_index}"
-            updates.append({"range": cell_range, "values": [[value]]})
-        logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {card_number}, {phone_number}, {bank}, {amount}")
+            if column_name == self.header_row[16]:  # это столбец "Номер телефона"
+                updates.append({
+                    "range": cell_range,
+                    "values": [[value]],
+                    "userEnteredFormat": {
+                        "numberFormat": {"type": "TEXT"}
+                    }
+                })
+            else:
+                updates.append({
+                    "range": cell_range,
+                    "values": [[value]]
+                })
+            # updates.append({"range": cell_range, "values": [[value]]})
+        logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {phone_number}, {bank}, {amount}")
         # Один батч-запрос к API
-        await sheet.batch_update(updates)
+        await sheet.batch_update(updates, value_input_option="RAW")
     
     async def load_nm_ids_ordered_list_into_redis(
         self,
@@ -352,5 +366,5 @@ class GoogleSheetClass:
 
         # Выполняем пакетное обновление, если есть что обновлять
         if updates:
-            await sheet.batch_update(updates)
-            logging.info(f"Batch updated {len(updates)} subscription statuses in Google Sheets.")
+            await sheet.batch_update(updates) # чтобы оставить один апостроф
+            logging.info(f" Batch updated {len(updates)} subscription statuses in Google Sheets.")

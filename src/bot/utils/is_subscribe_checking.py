@@ -43,14 +43,14 @@ async def google_sheets_sub_updater(
     """
     while True:
         try:
-            logging.info(f"Starting batch update for users in Google Sheets.")
+            logging.info(f" Starting batch update for users is_sub to tg channel in Google Sheets.")
             telegram_ids_list = await spreadsheet.get_all_telegram_id()
             all_subscription_statuses: Dict[int, bool] = {}
 
             for telegram_id in telegram_ids_list:
                 all_subscription_statuses[telegram_id] = await is_subscribed(bot,telegram_id)
             await spreadsheet.update_subscriptions(all_subscription_statuses)
-            logging.info("Finished batch update for Google Sheets.")
+            logging.info(" Finished batch update for users is_sub to tg channel Google Sheets.")
         except Exception as e:
             logging.error(f" in inactivity_checker in spreadsheet.update_subscriptions part: {e}")
         # sleep time for a new epoch checking

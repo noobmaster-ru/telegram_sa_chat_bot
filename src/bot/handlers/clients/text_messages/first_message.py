@@ -18,23 +18,23 @@ from src.core.config import constants
 from .router import router
 
 
-# @router.business_message(StateFilter(constants.SKIP_MESSAGE_STATE))
-# async def skip_message(message: Message, bot: Bot):
-#     logging.info(f"  user {message.from_user.id} text when we're processing him")
-#     business_connection_id = message.business_connection_id
-#     await message.bot(
-#         ReadBusinessMessage(
-#             business_connection_id=business_connection_id,
-#             chat_id=message.chat.id,
-#             message_id=message.message_id
-#         )
-#     )
-#     await bot.send_chat_action(
-#         chat_id=message.chat.id,
-#         action=ChatAction.TYPING,
-#         business_connection_id = business_connection_id
-#     )
-#     return
+@router.business_message(StateFilter(constants.SKIP_MESSAGE_STATE))
+async def skip_message(message: Message, bot: Bot):
+    logging.info(f"  user {message.from_user.id} text when we're processing him")
+    # business_connection_id = message.business_connection_id
+    # await message.bot(
+    #     ReadBusinessMessage(
+    #         business_connection_id=business_connection_id,
+    #         chat_id=message.chat.id,
+    #         message_id=message.message_id
+    #     )
+    # )
+    # await bot.send_chat_action(
+    #     chat_id=message.chat.id,
+    #     action=ChatAction.TYPING,
+    #     business_connection_id = business_connection_id
+    # )
+    # return
 
 
 # business_message - only for bussines account, handler for first message from clients

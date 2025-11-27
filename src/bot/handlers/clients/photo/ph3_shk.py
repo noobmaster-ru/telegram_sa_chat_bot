@@ -52,40 +52,7 @@ async def handle_photo_shk(
         # Остаемся в том же состоянии, чтобы он отправил одну фотографию
         await state.set_state(ClientStates.waiting_for_photo_shk)
         return
-    # # === 1. Проверяем, не отправил ли пользователь альбом(несколько фоток) ===
-    # if message.media_group_id is not None:
-    #     processed_albums = user_data.get("processed_albums", set())
-    #     # # если этот альбом уже обрабатывали — выходим
-    #     if message.media_group_id in processed_albums:
-    #         return
-        
-    #     # # иначе сохраняем ID альбома и показываем сообщение
-    #     processed_albums.add(message.media_group_id)
-    #     await state.update_data(processed_albums=processed_albums)
-        
-    #     msg = await message.answer(
-    #         "Пожалуйста, отправьте только одну фотографию: фотографию *разрезанных этикеток* товара",
-    #         parse_mode="MarkdownV2"
-    #     )
-    #     await update_last_activity(state, msg)
-    #     await state.set_state(ClientStates.waiting_for_photo_shk)
-    #     return
-        # if photo_type == "order":
-        #     msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот заказа товара.")
-        #     await update_last_activity(state, msg)
-        #     return
-        # elif photo_type == "feedback":
-        #     msg = await message.answer("Пожалуйста, отправьте только один скриншот: скриншот отзыва товара.")
-        #     await update_last_activity(state, msg)
-        #     return
-        # elif photo_type == "shk":
-        #     msg = await message.answer("Пожалуйста, отправьте только одну фотографию: фотографию разрезанных этикеток товара.")
-        #     await update_last_activity(state, msg)
-        #     return
-        # else:
-        #     msg = await message.answer("Вы прислали все фотографии, которые были нам нужны. Спасибо! Пожалуйста, напишите ваш вопрос текстом.")
-        #     await update_last_activity(state, msg)
-        #     return
+
 
     # === 2. Извлекаем данные из FSM ===
     telegram_id = message.from_user.id
@@ -153,12 +120,12 @@ async def handle_photo_shk(
         )
         await message.answer("☺️ Вы прислали все фотографии, которые были нам нужны. Спасибо!")
         msg = await message.answer(
-            "Отправьте теперь нам, пожалуйста, свои реквизиты в формате:\nНомер карты в формате:\nAAAA BBBB CCCC DDDD\n   *ИЛИ*\nНомер телефона в формате: 8910XXXXXXX\n\nСпасибо",
+            "Отправьте теперь нам, пожалуйста, свой номер телефона в формате:\n\n*\\+7910XXXXXXX*\n\nСпасибо",
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_requisites)
         await update_last_activity(state, msg)
     else:
         await state.set_state(ClientStates.waiting_for_photo_shk)
-        msg = await message.answer("❌ Фото разрезанных штрихкодов не принято. Попробуйте прислать корректное фото разрезанных штрихкодов")
+        msg = await message.answer("❌ Фото разрезанных штрихкодов не принято. Пожалуйста, разрежьте этикетки и пришлите фото ещё раз☺️")
         await update_last_activity(state, msg)
