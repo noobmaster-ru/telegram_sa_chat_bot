@@ -124,7 +124,7 @@ async def handle_photo_order(
         )
         # записали фотку заказа - теперь идем дальше по сценарию - спрашиваем получили ли заказ
         msg = await message.answer(
-            f"📬 Вы получили товар {nm_id}?", 
+            f"📬 Вы получили {nm_id_name}?", 
             reply_markup=get_yes_no_keyboard("receive", "получил(а)")
         )
         await state.set_state(ClientStates.waiting_for_order_receive)

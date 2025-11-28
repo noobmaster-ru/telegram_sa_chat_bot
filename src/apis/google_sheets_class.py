@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
+from src.tools.string_converter_class import StringConverter
 from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
 from redis.asyncio import Redis
 from typing import List, Dict
@@ -196,8 +197,9 @@ class GoogleSheetClass:
         sheet = self.sheet or await self.get_sheet()
         row_index = await self.get_user_row(telegram_id)
         
+        phone_number_hash = StringConverter.convert_phone_to_hash_format(phone_number)
         # чтобы Google Sheets сохранил +7, добавляем апостроф
-        fixed_phone = f"'{phone_number}" if phone_number else "-"
+        fixed_phone = f"'{phone_number_hash}" if phone_number_hash else "-"
         
         # Маппинг из логических имен в заголовки
         fields = {
@@ -214,23 +216,11 @@ class GoogleSheetClass:
             # Конвертация номера столбца в букву (например 14 → N)
             col_letter = chr(64 + col_index)
             cell_range = f"{col_letter}{row_index}"
-            if column_name == self.header_row[16]:  # это столбец "Номер телефона"
-                updates.append({
-                    "range": cell_range,
-                    "values": [[value]],
-                    "userEnteredFormat": {
-                        "numberFormat": {"type": "TEXT"}
-                    }
-                })
-            else:
-                updates.append({
-                    "range": cell_range,
-                    "values": [[value]]
-                })
-            # updates.append({"range": cell_range, "values": [[value]]})
+            updates.append({"range": cell_range, "values": [[value]]})
+        
         logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {phone_number}, {bank}, {amount}")
         # Один батч-запрос к API
-        await sheet.batch_update(updates, value_input_option="RAW")
+        await sheet.batch_update(updates)#, value_input_option="RAW")
     
     async def load_nm_ids_ordered_list_into_redis(
         self,

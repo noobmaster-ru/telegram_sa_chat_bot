@@ -91,6 +91,8 @@ async def handle_shk_answer(
     
     client_data = await state.get_data()
     nm_id = client_data.get("nm_id")
+    nm_id_name = client_data.get("nm_id_name")
+    
     messages_ids_to_delete = client_data["last_messages_ids"]
     if messages_ids_to_delete:
         try:
@@ -113,7 +115,7 @@ async def handle_shk_answer(
     # если ответ "Нет" → задаём тот же вопрос ещё раз
     if value == "Нет":  
         msg = await callback.message.answer(
-            f"Когда разрежете этикетки от {nm_id}, нажмите, пожалуйста, на кнопку ниже", 
+            f"Когда разрежете этикетки от {nm_id_name}, нажмите, пожалуйста, на кнопку ниже", 
             reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
         )
         await state.set_state(ClientStates.waiting_for_shk)

@@ -89,7 +89,7 @@ async def handle_receive_answer(
 
     client_data = await state.get_data()
     nm_id = client_data.get("nm_id")
- 
+    nm_id_name = client_data.get("nm_id_name")
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
         button_name=key,
@@ -113,7 +113,7 @@ async def handle_receive_answer(
     
     if value == "Нет":
         msg = await callback.message.answer(
-            f"Когда получите товар {nm_id}, нажмите, пожалуйста, на кнопку ниже", 
+            f"Когда получите товар {nm_id_name}, нажмите, пожалуйста, на кнопку ниже", 
             reply_markup=get_yes_no_keyboard("receive", "получил(а)")
         )
         await state.set_state(ClientStates.waiting_for_order_receive)
@@ -122,7 +122,7 @@ async def handle_receive_answer(
 
     # ✅ Следующий вопрос
     msg = await callback.message.answer(
-        f"💬 Вы оставили отзыв на {nm_id}?", 
+        f"💬 Вы оставили отзыв на {nm_id_name}?", 
         reply_markup=get_yes_no_keyboard("feedback", "оставил(а)")
     )
     await state.set_state(ClientStates.waiting_for_feedback)

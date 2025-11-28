@@ -88,7 +88,7 @@ async def handle_order_answer(
 
     client_data = await state.get_data()
     nm_id = client_data.get("nm_id")
-    
+    nm_id_name = client_data.get("nm_id_name")
 
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
@@ -111,7 +111,7 @@ async def handle_order_answer(
             logging.info("cant delete messages in q2")
     if value == "Нет":
         msg = await callback.message.answer(
-            f"Когда закажете товар {nm_id}, нажмите, пожалуйста, на кнопку ниже",
+            f"Когда закажете товар {nm_id_name}, нажмите, пожалуйста, на кнопку ниже",
             reply_markup=get_yes_no_keyboard("order", "заказал(а)")
         )
         await state.set_state(ClientStates.waiting_for_order)

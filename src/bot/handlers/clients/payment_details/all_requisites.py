@@ -67,7 +67,7 @@ async def handle_requisites_message(
     card_number = cards[0] if cards else None
     amount = amounts[0] if amounts else None
     phone_number = phones[0] if phones else None
-    logging.info(phone_number)
+    # logging.info(phone_number)
     bank = bank_match.group(0).capitalize() if bank_match else None
 
 

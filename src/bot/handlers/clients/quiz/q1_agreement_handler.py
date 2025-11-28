@@ -38,7 +38,6 @@ async def handle_unexpected_text_waiting_for_agreement(
     nm_id = user_data.get("nm_id")
     nm_id_amount = user_data.get("nm_id_amount")
     
-    
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -88,6 +87,7 @@ async def handle_agreement(
     value = "Да" if callback.data == "agree_yes" else "Нет"
     client_data = await state.get_data()
     nm_id = client_data.get("nm_id")
+    nm_id_name = client_data.get("nm_id_name")
     messages_ids_to_delete = client_data["last_messages_ids"]
 
     await spreadsheet.update_buyer_button_and_time(
@@ -131,7 +131,7 @@ async def handle_agreement(
             )
         # 👉 Начинаем пошаговый диалог
         msg = await callback.message.answer(
-            f"📦 Вы заказали товар {nm_id}?",  
+            f"📦 Вы заказали {nm_id_name}?",  
             reply_markup=get_yes_no_keyboard("order", "заказал(а)")
         )
         await state.set_state(ClientStates.waiting_for_order)

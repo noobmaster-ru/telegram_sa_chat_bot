@@ -126,7 +126,7 @@ async def handle_photo_feedback(
         )
         #  Следующий вопрос - разрезали ли ШК
         msg = await message.answer(
-            f"✂️ Этикетки разрезали на {nm_id}?", 
+            f"✂️ Этикетки разрезали на {nm_id_name}?", 
             reply_markup=get_yes_no_keyboard("shk", "разрезал(а)")
         )
         await state.set_state(ClientStates.waiting_for_shk)

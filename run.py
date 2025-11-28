@@ -32,7 +32,7 @@ async def main():
     storage = RedisStorage(redis) 
     
     spreadsheet = GoogleSheetClass(
-        service_account_json=settings.SERVICE_ACCOUNT_JSON, 
+        service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI, 
         table_url=settings.GOOGLE_SHEETS_URL,
         buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
         redis_client=redis,

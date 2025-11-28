@@ -14,3 +14,12 @@ class StringConverter:
     @staticmethod
     def get_today_date() -> str:
         return datetime.now().strftime("%Y-%m-%d")
+    
+    @staticmethod
+    def convert_phone_to_hash_format(phone_number: str) -> str:
+        # 1. Убираем всё, кроме цифр
+        digits = re.sub(r'\D', '', phone_number)
+        # 2. Если номер начинается с 8 — заменяем на 7
+        if digits.startswith("8"):
+            digits = "7" + digits[1:]
+        return f"#00{digits}"

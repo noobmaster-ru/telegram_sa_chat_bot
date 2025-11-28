@@ -57,7 +57,7 @@ phone_pattern = r"(?:\+7|8|7)[\s\-()]?\d{3}[\s\-()]?\d{3}[\s\-()]?\d{2}[\s\-()]?
 bank_pattern = (
     r"(?<!\w)("
     r"сбер(?:банк)?|тинькофф|тинькоф|тиньков|т[-\s]?банк|альфа(?:банк)?|"
-    r"втб|газпромбанк|райф+айзен|росбанк|открытие|почтабанк|отп|совкомбанк|мтс(?:банк)?|яндекс(?:банк)?"
+    r"втб|озон|газпромбанк|райф+айзен|росбанк|открытие|почтабанк|отп|совкомбанк|мтс(?:банк)?|яндекс(?:банк)?"
     r")(?!\w)"
 )
 
@@ -65,9 +65,9 @@ bank_pattern = (
 # Open AI
 GPT_MODEL_NAME='chatgpt-4o-latest'
 GPT_MODEL_NAME_PHOTO_ANALYSIS="gpt-5.1"
-GPT_MAX_TOKENS=130
-GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=800
-GPT_TEMPERATURE=0.95
+GPT_MAX_TOKENS=120
+GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=850
+GPT_TEMPERATURE=1.2
 GPT_REASONING="medium" # "low" | "medium" | "high"
 
 # Google Sheets
