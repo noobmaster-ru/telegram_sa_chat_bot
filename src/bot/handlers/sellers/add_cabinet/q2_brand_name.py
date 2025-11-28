@@ -6,7 +6,7 @@ from aiogram.types import ReplyKeyboardRemove, FSInputFile, InputMediaPhoto, Mes
 
 from src.bot.states.seller import SellerStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
-from src.services.string_converter_class import StringConverter
+from src.tools.string_converter_class import StringConverter
 from src.core.config import constants, settings
 
 from .router import router

@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.filters import  Command
 from aiogram.fsm.context import FSMContext
 
-from src.services.google_sheets_class import GoogleSheetClass
+from src.apis.google_sheets_class import GoogleSheetClass
 from .router import router
 
 # reset command for admins

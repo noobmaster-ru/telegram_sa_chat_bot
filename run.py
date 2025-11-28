@@ -18,8 +18,8 @@ from src.bot.handlers.sellers.delete_cabinet import router as delete_cabinet_rou
 from src.bot.handlers.sellers.last_router import router as last_router
 from src.bot.handlers.sellers.add_extra_nm_id import router as add_nm_id_router
 
-from src.services.google_sheets_class import GoogleSheetClass
-from src.services.open_ai_requests_class import OpenAiRequestClass
+from src.apis.google_sheets_class import GoogleSheetClass
+from src.apis.open_ai_requests_class import OpenAiRequestClass
 
 from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware

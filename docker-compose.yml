@@ -9,7 +9,7 @@ services:
   get-remains:
     build: .
     container_name: get-remains
-    command: ["python", "-m", "src.get_remains"]
+    command: ["python", "-m", "src.micro_services.get_remains"]
     env_file:
       - .env
     depends_on:

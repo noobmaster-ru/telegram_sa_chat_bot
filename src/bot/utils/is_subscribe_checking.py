@@ -11,7 +11,7 @@ from src.bot.states.client import ClientStates
 from src.core.config import constants
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.core.config import constants
-from src.services.google_sheets_class import GoogleSheetClass
+from src.apis.google_sheets_class import GoogleSheetClass
 
 
 # Вспомогательная функция для проверки подписки

@@ -8,8 +8,8 @@ from aiogram.filters import StateFilter
 
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.states.client import ClientStates
-from src.services.google_sheets_class import GoogleSheetClass
-from src.services.open_ai_requests_class import OpenAiRequestClass
+from src.apis.google_sheets_class import GoogleSheetClass
+from src.apis.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
 from src.core.config import constants
 from .router import router

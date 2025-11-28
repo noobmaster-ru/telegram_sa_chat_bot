@@ -9,8 +9,8 @@ from aiogram.methods import ReadBusinessMessage
 
 from src.bot.states.client import ClientStates
 from src.core.constants import card_pattern, phone_pattern, bank_pattern, amount_pattern
-from src.services.open_ai_requests_class import OpenAiRequestClass
-from src.services.google_sheets_class import GoogleSheetClass
+from src.apis.open_ai_requests_class import OpenAiRequestClass
+from src.apis.google_sheets_class import GoogleSheetClass
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.last_activity import update_last_activity
 from src.core.config import constants

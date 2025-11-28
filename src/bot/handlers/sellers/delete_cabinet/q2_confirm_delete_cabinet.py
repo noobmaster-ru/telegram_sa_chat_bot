@@ -12,7 +12,7 @@ from sqlalchemy.sql import func
 from src.db.models import CabinetORM, UserORM, ArticleORM
 from src.bot.states.seller import SellerStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
-from src.services.string_converter_class import StringConverter
+from src.tools.string_converter_class import StringConverter
 from src.core.config import constants, settings
 from src.bot.keyboards.reply.menu import kb_menu
 

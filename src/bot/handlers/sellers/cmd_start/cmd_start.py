@@ -8,7 +8,8 @@ from sqlalchemy import select
 from src.bot.keyboards.reply.menu import kb_menu
 from src.db.models import UserORM
 from src.bot.states.seller import SellerStates
-from ..add_cabinet.router import router
+from .router import router
+
 
 @router.message(CommandStart())
 async def cmd_start(

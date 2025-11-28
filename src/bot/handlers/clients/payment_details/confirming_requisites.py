@@ -6,7 +6,7 @@ from aiogram.methods import ReadBusinessMessage
 
 
 from src.bot.states.client import ClientStates
-from src.services.google_sheets_class import GoogleSheetClass
+from src.apis.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
 from src.bot.keyboards.inline.get_sub_to_channel_keyboard import get_sub_to_channel
 
