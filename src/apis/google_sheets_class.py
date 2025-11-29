@@ -79,11 +79,7 @@ class GoogleSheetClass:
             self._header_cache = {header: idx + 1 for idx, header in enumerate(self.header_row)}
         return self.sheet 
     
-    # === Утилиты ===
-    @staticmethod
-    def _get_now_str() -> str:
-        return str(datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S"))
-    
+
     async def get_user_row(self, telegram_id: int) -> int:
         """Возвращает индекс строки из Redis или ищет в таблице, если в кэше нет."""
         key = f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{telegram_id}"
@@ -111,7 +107,7 @@ class GoogleSheetClass:
         sheet = self.sheet or await self.get_sheet()
         new_row = [''] * len(self._header_cache)
         
-        now = self._get_now_str()
+        now = StringConverter.get_now_str()
         user_link = f"https://t.me/{username}" if username != "без username" else "—"
 
         new_row[0] = user_link # ссылка на ник
@@ -139,7 +135,7 @@ class GoogleSheetClass:
         row_index = await self.get_user_row(telegram_id)
         column_header_name = self.last_tap_column_name if is_tap_to_keyboard else self.last_message_column_name
         col_index = self._header_cache.get(column_header_name) 
-        await sheet.update_cell(row_index, col_index, self._get_now_str())
+        await sheet.update_cell(row_index, col_index, StringConverter.get_now_str())
 
     async def update_buyer_button_and_time(
         self,
@@ -173,7 +169,7 @@ class GoogleSheetClass:
         updates = []
         for column_name, val in [
             (button_col_name, value),
-            (time_col_name, self._get_now_str())
+            (time_col_name, StringConverter.get_now_str())
         ]:
             col_index = self._header_cache[column_name]
             col_letter = chr(64 + col_index)
@@ -196,13 +192,12 @@ class GoogleSheetClass:
         row_index = await self.get_user_row(telegram_id)
         
         phone_number_hash = StringConverter.convert_phone_to_hash_format(phone_number)
-        
         # чтобы Google Sheets сохранил +7, добавляем апостроф
         fixed_phone = f"'{phone_number_hash}" if phone_number_hash else "-"
         
         # Маппинг из логических имен в заголовки
         fields = {
-            self.header_row[4]: self._get_now_str(), # столбец Последнее сообщение
+            self.header_row[4]: StringConverter.get_now_str(), # столбец Последнее сообщение
             self.header_row[15]: phone_number_hash, # столбец Номер телефона
             self.header_row[16]: bank or '-', # столбец Банк
             self.header_row[17]: amount or '-', # столбец Сумма
@@ -219,27 +214,9 @@ class GoogleSheetClass:
         
         logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {phone_number}, {bank}, {amount}")
         # Один батч-запрос к API
-        await sheet.batch_update(updates)# value_input_option="RAW")
+        await sheet.batch_update(updates)#, value_input_option="RAW")
     
-    async def load_nm_ids_ordered_list_into_redis(
-        self,
-        sheet_name: str,
-        REDIS_KEY_NM_IDS_ORDERED_LIST: str,
-    ) -> None:
-        """
-        Загружает пары артикул-количество из Google Sheets в Redis с префиксом nm_id_in_articles_sheet
-        """
-        sheet = await (await self.get_spreadsheet()).worksheet(sheet_name)
-        values = await sheet.get_all_values()
 
-        # Пропускаем заголовок
-        pipe = self.redis.pipeline(transaction=True)
-        for row in values[1:]:
-            article = row[0].strip() # nm_id
-            pipe.rpush(REDIS_KEY_NM_IDS_ORDERED_LIST, article) 
-        await pipe.execute()
-        logging.info(f"✅ Put {len(values)-1} nm_ids into {REDIS_KEY_NM_IDS_ORDERED_LIST}")
-    
     async def get_instruction_template(self, sheet_instruction: str) -> str:
         """
         Возвращает шаблон инструкции из Google Sheets (ячейка A1).
@@ -251,65 +228,26 @@ class GoogleSheetClass:
     async def get_instruction(
         self,
         sheet_instruction: str,
-        nm_id: str, 
-        count: int,
         product_title: str
     ) -> str:
         sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
         instruction_cell = await sheet.acell("A1")
         instruction_str = instruction_cell.value
 
-        months = {
-            1: "января", 2: "февраля", 3: "марта", 4: "апреля",
-            5: "мая", 6: "июня", 7: "июля", 8: "августа",
-            9: "сентября", 10: "октября", 11: "ноября", 12: "декабря"
-        }
-
-        today = datetime.now(ZoneInfo("Europe/Moscow"))
-        today_date = f"{today.day}_{months[today.month]}"
-        
-        # ссылка на товар на вб
-        # safe_url = f"https://www\\.wildberries\\.ru/catalog/{nm_id}/detail\\.aspx\\?targetUrl=SP"
-        
         instruction_str = (
             instruction_str.replace("{", "{{").replace("}", "}}")
-            .replace("{{nm_id}}", "{nm_id}")
-            .replace("{{today_date}}", "{today_date}")
-            .replace("{{count}}", "{count}")
             .replace("{{product_title}}", "{product_title}")
-        )
+        ).format(product_title=product_title)
 
-        filled = instruction_str.format(
-            nm_id=nm_id, 
-            count=count,
-            today_date=today_date,
-            product_title=product_title
-        )
-        # 3️⃣ Экранируем MarkdownV2 спецсимволы в остальном тексте
-        # но НЕ внутри конструкции [текст](ссылка)
-        def escape_md_except_links(text: str) -> str:
-            pattern = r"([_\[\]()~#+\-=|{}.!])"
-            parts = re.split(r"(\[.*?\]\(.*?\))", text)  # разбиваем по ссылкам
-            escaped_parts = []
-            for part in parts:
-                if part.startswith("[") and "](" in part:
-                    escaped_parts.append(part)  # не трогаем ссылки
-                else:
-                    escaped_parts.append(re.sub(pattern, r"\\\1", part))
-            return "".join(escaped_parts)
-
-        safe_text = escape_md_except_links(filled)
-        
-        return safe_text
+        safe_text_instruction = StringConverter.escape_markdown_v2(instruction_str)
+        return safe_text_instruction
 
     async def get_all_telegram_id(self) -> List[int]:
         sheet = self.sheet or await self.get_sheet()
         all_values = await sheet.get_all_values() 
-        telegram_ids = []
-        
+        telegram_ids = []    
         # Проходим по всем строкам, начиная со второй (индекс 1 в Python), чтобы пропустить заголовок
         for row_values in all_values[1:]:
-
             # Проверяем, что строка не пустая и содержит нужный столбец
             if row_values:
                 try:
@@ -318,42 +256,5 @@ class GoogleSheetClass:
                     telegram_ids.append(tg_id)
                 except ValueError:
                     # Игнорируем строки, где значение не является числом
-                    continue
-                    
+                    continue            
         return telegram_ids
-    
-    async def update_subscriptions(self, all_subscription_statuses: Dict[int, bool]):
-        """
-        Пакетно обновляет статусы подписок в Google Sheets на основе словаря {telegram_id: bool}.
-        """
-        sheet = self.sheet or await self.get_sheet()
-        
-        # Получаем все данные из листа (предполагаем, что у вас много строк)
-        # Это может быть ресурсоемко, но нужно для сопоставления telegram_id со строками
-        all_values = await sheet.get_all_values() 
-
-        updates = []
-        
-        col_index = self._header_cache[self.header_row[8]] # Подписка на канал
-        # Конвертация номера столбца в букву (например 14 → N)
-        col_letter = chr(64 + col_index)
-        for row_index, row_values in enumerate(all_values[1:], start=2):
-            try:
-
-                sheet_telegram_id = int(row_values[1]) # telegram_id
-
-                if sheet_telegram_id in all_subscription_statuses:
-                    new_value = "Да" if all_subscription_statuses[sheet_telegram_id] else "Не подписан"
-        
-                    cell_range = f"{col_letter}{row_index}"
-                    updates.append({"range": cell_range, "values": [[new_value]]})
-
-                    del all_subscription_statuses[sheet_telegram_id]
-
-            except ValueError:
-                continue 
-
-        # Выполняем пакетное обновление, если есть что обновлять
-        if updates:
-            await sheet.batch_update(updates) # чтобы оставить один апостроф
-            logging.info(f" Batch updated {len(updates)} subscription statuses in Google Sheets.")

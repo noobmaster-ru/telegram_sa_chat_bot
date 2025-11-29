@@ -35,8 +35,6 @@ async def handle_unexpected_text_waiting_for_agreement(
         await state.update_data(business_connection_id=business_connection_id)
     
     user_data = await state.get_data()
-    nm_id = user_data.get("nm_id")
-    nm_id_amount = user_data.get("nm_id_amount")
     nm_id_name = user_data.get("nm_id_name")
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
@@ -58,8 +56,6 @@ async def handle_unexpected_text_waiting_for_agreement(
     )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(
         new_prompt=text,
-        nm_id=nm_id,
-        count=nm_id_amount,
         product_title=nm_id_name
     )
     await state.set_state(ClientStates.waiting_for_agreement)
@@ -75,8 +71,6 @@ async def handle_agreement(
     callback: CallbackQuery,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    CHANNEL_USERNAME: str,
-    bot: Bot
 ):
     await callback.answer()
     telegram_id = callback.from_user.id
@@ -87,7 +81,6 @@ async def handle_agreement(
         )
     value = "Да" if callback.data == "agree_yes" else "Нет"
     client_data = await state.get_data()
-    nm_id = client_data.get("nm_id")
     nm_id_name = client_data.get("nm_id_name")
     messages_ids_to_delete = client_data["last_messages_ids"]
 

@@ -56,7 +56,6 @@ async def handle_photo_shk(
 
     # === 2. Извлекаем данные из FSM ===
     telegram_id = message.from_user.id
-    photo_type = user_data.get("photo_type", "order")  # по умолчанию ждём фото заказа
     nm_id = user_data.get("nm_id")
     nm_id_name = user_data.get("nm_id_name")
     

@@ -20,7 +20,9 @@ ADMIN_ID_LIST = [694144143, 547299317]
 
 
 # Wildberries
-TIME_SLEEP_API_GET_REMAINS = 3600 #3600*1 # 3600s = 1 hour * 23 = 23 hours
+# ET_REMAINS = 3600 #3600*1 # 3600s = 1 hour * 23 = 23 hours
+NM_IDS_FOR_CASHBACK = [555620866]
+PRODUCT_TITLE = "Фонарики для лупы"
 
 # Aiogram
 SKIP_MESSAGE_STATE="skip_msg"
@@ -65,9 +67,9 @@ bank_pattern = (
 # Open AI
 GPT_MODEL_NAME='chatgpt-4o-latest'
 GPT_MODEL_NAME_PHOTO_ANALYSIS="gpt-5.1"
-GPT_MAX_TOKENS=120
+GPT_MAX_TOKENS=100
 GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=850
-GPT_TEMPERATURE=1.2
+GPT_TEMPERATURE=1.3
 GPT_REASONING="medium" # "low" | "medium" | "high"
 
 # Google Sheets
@@ -77,7 +79,6 @@ INSTRUCTION_SHEET_NAME_STR="Инструкция"
 BUYERS_SHEET_NAME_STR="Покупатели"
 
 # Redis
-NM_IDS_FOR_CASHBACK = [555620866]
 REDIS_KEY_SET_TELEGRAM_IDS="TELEGRAM_USERS_IDS" # нужен для проверки новых/старых юзеров, кто писал акку
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
 REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"

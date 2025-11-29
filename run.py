@@ -40,12 +40,8 @@ async def main():
         REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST
     )
     
-    # загружаем упорядоченный список артикулов для кэшбека из google_sheets в redis
-    await spreadsheet.load_nm_ids_ordered_list_into_redis(
-        sheet_name=constants.ARTICLES_SHEET_STR,
-        REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST,
-    )
     instruction_template = await spreadsheet.get_instruction_template(constants.INSTRUCTION_SHEET_NAME_STR)
+    
     client_gpt_5 = OpenAiRequestClass(
         OPENAI_API_KEY=settings.OPENAI_TOKEN, 
         GPT_MODEL_NAME=constants.GPT_MODEL_NAME, 

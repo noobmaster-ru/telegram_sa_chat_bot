@@ -34,8 +34,6 @@ async def handle_unexpected_text_waiting_for_order_receive(
             business_connection_id=business_connection_id
         )
     user_data = await state.get_data()
-    nm_id = user_data.get("nm_id")
-    nm_id_amount = user_data.get("nm_id_amount")
     nm_id_name = user_data.get("nm_id_name")
     
     # обновляем время последнего сообщения
@@ -58,8 +56,6 @@ async def handle_unexpected_text_waiting_for_order_receive(
     )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(
         new_prompt=text,
-        nm_id=nm_id,
-        count=nm_id_amount,
         product_title=nm_id_name
     )
     await state.set_state(ClientStates.waiting_for_order_receive)
@@ -90,7 +86,6 @@ async def handle_receive_answer(
     value = "Да" if data.endswith("_yes") else "Нет"
 
     client_data = await state.get_data()
-    nm_id = client_data.get("nm_id")
     nm_id_name = client_data.get("nm_id_name")
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,

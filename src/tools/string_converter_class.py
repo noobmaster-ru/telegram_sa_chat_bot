@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 class StringConverter:
     @staticmethod
@@ -23,3 +24,7 @@ class StringConverter:
         if digits.startswith("8"):
             digits = "7" + digits[1:]
         return f"#00{digits}"
+    
+    @staticmethod
+    def get_now_str() -> str:
+        return str(datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S"))

@@ -47,9 +47,8 @@ async def handle_requisites_message(
             business_connection_id=business_connection_id
         )
     
-    nm_id = user_data.get("nm_id")
-    nm_id_amount = user_data.get("nm_id_amount")
-    
+
+    nm_id_name = user_data.get("nm_id_name")
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -99,7 +98,7 @@ async def handle_requisites_message(
         msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{phone}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода для перевода, например: *500*",
+            f"💬 Пожалуйста, отправьте сумму перевода, например: *500*",
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_amount)
@@ -308,8 +307,7 @@ async def handle_requisites_message(
     await state.set_state(constants.SKIP_MESSAGE_STATE)
     gpt5_response_text = await client_gpt_5.create_gpt_5_response_requisites(
         new_prompt=text,
-        nm_id=nm_id,
-        count=nm_id_amount
+        product_title=nm_id_name
     )
     await state.set_state(ClientStates.waiting_for_requisites)
     await message.answer(gpt5_response_text)

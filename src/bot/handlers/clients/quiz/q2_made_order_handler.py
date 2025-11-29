@@ -34,8 +34,6 @@ async def handle_unexpected_text_waiting_for_order(
             business_connection_id=business_connection_id
         )
     user_data = await state.get_data()
-    nm_id = user_data.get("nm_id")
-    nm_id_amount = user_data.get("nm_id_amount")
     nm_id_name = user_data.get("nm_id_name")
     
     # обновляем время последнего сообщения
@@ -57,8 +55,6 @@ async def handle_unexpected_text_waiting_for_order(
     )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_subscription_and_before_order_point(
         new_prompt=text,
-        nm_id=nm_id,
-        count=nm_id_amount,
         product_title=nm_id_name
     )
     await state.set_state(ClientStates.waiting_for_order)

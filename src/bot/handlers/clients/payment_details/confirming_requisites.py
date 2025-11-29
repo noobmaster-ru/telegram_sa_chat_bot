@@ -62,9 +62,7 @@ async def confirm_requisites_no(
 async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
-    spreadsheet: GoogleSheetClass,
-    CHANNEL_USERNAME: str,
-    bot: Bot
+    spreadsheet: GoogleSheetClass
 ):
     await callback.answer()
     """

@@ -2,9 +2,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import quote_plus
 
 class EnvSettings(BaseSettings):
-    # Wildberries
-    WB_TOKEN: str
-
     # Telegram
     TG_BOT_TOKEN: str
 
