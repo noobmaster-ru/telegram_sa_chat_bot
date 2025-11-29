@@ -1,4 +1,4 @@
-# develop: redis + get_remains + bot
+# develop: redis + clients_bot + sellers_bot
 services:
   redis:
     image: redis:7
@@ -6,15 +6,25 @@ services:
     restart: always
     ports:
       - "6380:6379"
-
-  telegram-ai-agent:
+  clients_bot:
+      build: .
+      container_name: clients_bot
+      command: python -m src.bots.clients_bot.run
+      env_file: 
+        - .env
+      depends_on:
+        - redis
+      volumes:
+      - .:/app
+      - ./logs:/app/logs
+      restart: always
+  sellers_bot:
     build: .
-    container_name: telegram-ai-agent
-    command: ["python", "-m", "run"]
+    container_name: sellers_bot
+    command: python -m src.bots.sellers_bot.run
     env_file: 
       - .env
     depends_on:
-      # - get-remains
       - redis
     volumes:
       - .:/app
