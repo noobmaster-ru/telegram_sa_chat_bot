@@ -37,7 +37,7 @@ async def handle_unexpected_text_waiting_for_agreement(
     user_data = await state.get_data()
     nm_id = user_data.get("nm_id")
     nm_id_amount = user_data.get("nm_id_amount")
-    
+    nm_id_name = user_data.get("nm_id_name")
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -59,7 +59,8 @@ async def handle_unexpected_text_waiting_for_agreement(
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(
         new_prompt=text,
         nm_id=nm_id,
-        count=nm_id_amount
+        count=nm_id_amount,
+        product_title=nm_id_name
     )
     await state.set_state(ClientStates.waiting_for_agreement)
     msg = await message.answer(
@@ -97,7 +98,7 @@ async def handle_agreement(
         is_tap_to_keyboard=True
     )
     if callback.data == "agree_yes":
-        await callback.message.answer("Спасибо!")
+        await callback.message.answer("Спасибо за согласие с нашими условиями!")
         if messages_ids_to_delete:
             try:
                 await callback.bot.delete_business_messages(
@@ -108,27 +109,7 @@ async def handle_agreement(
             except:
                 await state.update_data(last_messages_ids=[])
                 logging.info("cant delete message in q1")
-        # check subscribe to channel 
-        member = await bot.get_chat_member(
-            chat_id=constants.CHANNEL_USERNAME_STR,
-            user_id=callback.from_user.id
-        )
-        if not member.status in ("member", "administrator", "creator"):
-            # Не подписан
-            await callback.message.answer(
-                f"Подпишитесь на наш канал {CHANNEL_USERNAME}, там будет информация о новых раздачах 🙃",
-                reply_markup=get_sub_to_channel()
-            )
-        else:
-            await callback.message.answer(
-                "✅ Отлично! Вы подписаны на наш канал. Там будет информация о новых раздачах 🙃",
-            )
-            await spreadsheet.update_buyer_button_and_time(
-                telegram_id=telegram_id,
-                button_name="subscribe",
-                value="Да",
-                is_tap_to_keyboard=True
-            )
+
         # 👉 Начинаем пошаговый диалог
         msg = await callback.message.answer(
             f"📦 Вы заказали {nm_id_name}?",  

@@ -99,7 +99,7 @@ async def handle_requisites_message(
         msg = await message.answer(
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{phone}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода, например: *500*",
+            f"💬 Пожалуйста, отправьте сумму перевода для перевода, например: *500*",
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_amount)

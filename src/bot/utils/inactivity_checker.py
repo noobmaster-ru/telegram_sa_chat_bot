@@ -109,53 +109,53 @@ async def inactivity_checker(
                 if text:
                     updated_message_ids_list = []
                     if messages_ids_to_delete:
-                        # Перебираем все ID по одному
-                        for msg_id in messages_ids_to_delete:
-                            try:
-                                # Используем delete_message для стандартных чатов или delete_business_message для бизнес-чатов
-                                await bot.delete_business_messages(
-                                    business_connection_id=business_connection_id,
-                                    message_ids=[msg_id]
-                                )
-                                logging.info(f" Successfully deleted message {msg_id}.")
-                            except TelegramBadRequest as e:
-                                # ЭТО ВАЖНО: Если ошибка 48 часов или другая ошибка BadRequest
-                                if "message can't be deleted" in str(e) or "message is too old" in str(e):
-                                    logging.warning(f"Message {msg_id} in chat {telegram_id} is too old to delete (48h limit). ID will be removed from Redis list.")
-                                    # Мы не добавляем этот ID в updated_message_ids_list -> он будет удален из Redis
-                                else:
-                                    logging.error(f"Telegram BadRequest for msg {msg_id}: {e}")
-                                    # Если другая ошибка, которая может быть временной, оставляем ID в списке для попытки в следующий раз
-                                    updated_message_ids_list.append(msg_id)
-                            except TelegramForbiddenError as e:
-                                # Бот не имеет прав удалить сообщение (например, не админ в группе)
-                                logging.warning(f"Bot forbidden to delete message {msg_id}: {e}. ID will be kept for now.")
-                                updated_message_ids_list.append(msg_id)
-            
-                            except Exception as e:
-                                logging.error(f"An unexpected error occurred deleting msg {msg_id}: {e}")
-                                updated_message_ids_list.append(msg_id)
-                        # Сохраняем обновленный список обратно в Redis
-                        # Обновляем словарь данных клиента в Python
-                        new_data = client_data.copy()
-                        new_data["last_messages_ids"] = updated_message_ids_list
-                        
-                        # Сериализуем обратно в JSON и записываем в Redis
+                        # пробуем удалить пачкой
                         try:
-                            await redis.set(redis_key, json.dumps(new_data))
-                            # print(f"Redis key {redis_key} updated with {len(updated_message_ids_list)} remaining message IDs.")
-                        except Exception as e:
-                            logging.error(f"Failed to save updated client data to Redis for key {redis_key}: {e}")
-                   
-                    # try:
-                    #     await bot.delete_business_messages(
-                    #         business_connection_id=business_connection_id,
-                    #         message_ids=messages_ids_to_delete
-                    #     )
-                    #     # logging.info(f"bot delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
-                    # except:
-                    #     logging.info(f"bot can't delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
+                            await bot.delete_business_messages(
+                                business_connection_id=business_connection_id,
+                                message_ids=messages_ids_to_delete
+                            )
+                            logging.info(f"bot delete messages_ids {messages_ids_to_delete} in dialog with user: {telegram_id}, user state: {state}")
+                        except:
+                            # Перебираем все ID по одному
+                            for msg_id in messages_ids_to_delete:
+                                try:
+                                    # Используем delete_message для стандартных чатов или delete_business_message для бизнес-чатов
+                                    await bot.delete_business_messages(
+                                        business_connection_id=business_connection_id,
+                                        message_ids=[msg_id]
+                                    )
+                                    logging.info(f" Successfully deleted message {msg_id}.")
+                                except TelegramBadRequest as e:
+                                    # ЭТО ВАЖНО: Если ошибка 48 часов или другая ошибка BadRequest
+                                    if "message can't be deleted" in str(e) or "message is too old" in str(e):
+                                        logging.warning(f"Message {msg_id} in chat {telegram_id} is too old to delete (48h limit). ID will be removed from Redis list.")
+                                        # Мы не добавляем этот ID в updated_message_ids_list -> он будет удален из Redis
+                                    else:
+                                        logging.error(f"Telegram BadRequest for msg {msg_id}: {e}")
+                                        # Если другая ошибка, которая может быть временной, оставляем ID в списке для попытки в следующий раз
+                                        updated_message_ids_list.append(msg_id)
+                                except TelegramForbiddenError as e:
+                                    # Бот не имеет прав удалить сообщение (например, не админ в группе)
+                                    logging.warning(f"Bot forbidden to delete message {msg_id}: {e}. ID will be kept for now.")
+                                    updated_message_ids_list.append(msg_id)
+                
+                                except Exception as e:
+                                    logging.error(f"An unexpected error occurred deleting msg {msg_id}: {e}")
+                                    updated_message_ids_list.append(msg_id)
+                            # Сохраняем обновленный список обратно в Redis
+                            # Обновляем словарь данных клиента в Python
+                            new_data = client_data.copy()
+                            new_data["last_messages_ids"] = updated_message_ids_list
+                            
+                            # Сериализуем обратно в JSON и записываем в Redis
+                            try:
+                                await redis.set(redis_key, json.dumps(new_data))
+                                # print(f"Redis key {redis_key} updated with {len(updated_message_ids_list)} remaining message IDs.")
+                            except Exception as e:
+                                logging.error(f"Failed to save updated client data to Redis for key {redis_key}: {e}")
                     
+   
                     
                     # отправляем напоминалки
                     if state in REPLY_MARKUP_REMIND:
@@ -193,6 +193,12 @@ async def inactivity_checker(
                             new_data = client_data.copy()
                             new_data["last_time_activity"] = time.time()
                             new_data["last_messages_ids"] = [msg.message_id]
+                            if state == REPLY_MARKUP_REMIND[2]:
+                                await bot.send_message(
+                                    chat_id=telegram_id,
+                                    text="ОТЗЫВ БЕЗ ФОТО И БЕЗ ВИДЕО!",
+                                    business_connection_id=business_connection_id,
+                                )
                             await redis.set(redis_key, json.dumps(new_data))
                             logging.info(f" send message to user {telegram_id}, in state {state}")
                         except TelegramBadRequest as e:

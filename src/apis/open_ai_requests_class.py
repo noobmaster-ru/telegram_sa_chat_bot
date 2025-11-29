@@ -184,7 +184,8 @@ class OpenAiRequestClass:
         self,
         context_message: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         """
         Базовый метод для общения с GPT — принимает текст подсказки (context_message),
@@ -205,7 +206,8 @@ class OpenAiRequestClass:
             .replace("{{nm_id}}", "{nm_id}")
             .replace("{{today_date}}", "{today_date}")
             .replace("{{count}}", "{count}")
-        ).format(nm_id=nm_id, count=count ,today_date=today_date)
+            .replace("{{product_title}}", "{product_title}")
+        ).format(nm_id=nm_id, count=count ,today_date=today_date, product_title=product_title)
         
         # 🧹 экранируем markdown-символы
         instruction_str = re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", instruction_str)
@@ -237,13 +239,15 @@ class OpenAiRequestClass:
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title:str
     ) -> str:
         return await self._create_response(
             f"Покупатель уже выполнил наши правила: получил товар, оставил отзыв, "
             f"разрезал этикетки, отправил реквизиты. Ответь вежливо на вопрос: '{new_prompt}'",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
    
     
@@ -251,13 +255,15 @@ class OpenAiRequestClass:
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int 
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, покупатель должен согласиться с нашими правилами. "
             f"Ответь на его вопрос: '{new_prompt}' и попроси нажать на кнопку 'Да, согласен' в Telegram.",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
 
 
@@ -266,13 +272,15 @@ class OpenAiRequestClass:
         new_prompt: str, 
         CHANNEL_NAME: str,
         nm_id: str,
-        count: int 
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, покупатель должен подписаться на канал {CHANNEL_NAME}. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать на кнопку 'Да, подписался'.",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
     
     
@@ -280,13 +288,15 @@ class OpenAiRequestClass:
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно проверить, заказал ли покупатель товар. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, заказал'.",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
 
 
@@ -294,13 +304,15 @@ class OpenAiRequestClass:
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно убедиться, что покупатель получил товар. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, получил'.",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
 
 
@@ -308,13 +320,15 @@ class OpenAiRequestClass:
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно проверить, оставил ли покупатель отзыв. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, оставил'.",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
 
 
@@ -322,20 +336,23 @@ class OpenAiRequestClass:
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно убедиться, что покупатель разрезал этикетки (ШК). "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, разрезал(а) ШК'.",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )
         
     async def create_gpt_5_response_requisites(
         self, 
         new_prompt: str,
         nm_id: str,
-        count: int
+        count: int,
+        product_title: str
     ) -> str:
         return await self._create_response(
             f"Покупатель уже выполнил наши правила: получил товар, оставил отзыв, "
@@ -343,5 +360,6 @@ class OpenAiRequestClass:
             f"- Номер карты: AAAA BBBB CCCC DDDD или\n- Номер телефона: 8910XXXXXXX"
             f"Ответь вежливо на вопрос и попроси отправить реквизиты описанном выше формате: '{new_prompt}'",
             nm_id=nm_id,
-            count=count
+            count=count,
+            product_title=product_title
         )

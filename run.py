@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as asyncredis
 from src.bot.utils.inactivity_checker import inactivity_checker
-from src.bot.utils.is_subscribe_checking import google_sheets_sub_updater
+# from src.bot.utils.is_subscribe_checking import google_sheets_sub_updater
 
 from src.bot.handlers.clients.text_messages import router as text_router
 from src.bot.handlers.clients.quiz import router as quiz_router 
@@ -99,7 +99,7 @@ async def main():
     asyncio.create_task(inactivity_checker(bot, dp.storage))
     
     # check subscribtion to channel for all users in google sheets
-    asyncio.create_task(google_sheets_sub_updater(bot, spreadsheet))
+    # asyncio.create_task(google_sheets_sub_updater(bot, spreadsheet))
     
     # clients routers
     dp.include_routers(text_router, quiz_router, photo_router, payment_router) 

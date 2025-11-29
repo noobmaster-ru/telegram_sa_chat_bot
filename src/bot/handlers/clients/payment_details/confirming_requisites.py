@@ -104,27 +104,6 @@ async def confirm_requisites_yes(
         parse_mode="Markdown"
     )
     
-    # check subscribe to channel 
-    member = await bot.get_chat_member(
-        chat_id=CHANNEL_USERNAME,
-        user_id=callback.from_user.id
-    )
-    if not member.status in ("member", "administrator", "creator"):
-        # Не подписан
-        await callback.message.answer(
-            f"Подпишитесь на наш канал {CHANNEL_USERNAME}, там будет информация о новых раздачах 🙃",
-            reply_markup=get_sub_to_channel()
-        )
-    else:
-        await callback.message.answer(
-            "✅ Отлично! Вы подписаны на наш канал. Там будет информация о новых раздачах 🙃",
-        )
-        await spreadsheet.update_buyer_button_and_time(
-            telegram_id=telegram_id,
-            button_name="subscribe",
-            value="Да",
-            is_tap_to_keyboard=True
-        )
     await state.set_state(ClientStates.continue_dialog)
     # удаляем данные из состояния и из redis (но можно и оставить так-то)
     # await state.set_data({})

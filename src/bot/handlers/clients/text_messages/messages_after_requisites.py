@@ -30,6 +30,7 @@ async def handle_messages_after_requisites(
     user_data = await state.get_data()
     nm_id = user_data.get("nm_id")
     nm_id_amount = user_data.get("nm_id_amount")
+    nm_id_name = user_data.get("nm_id_name")
     
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
@@ -66,7 +67,8 @@ async def handle_messages_after_requisites(
             gpt5_response_text = await client_gpt_5.create_gpt_5_response(
                 new_prompt=text,
                 nm_id=nm_id,
-                count=nm_id_amount
+                count=nm_id_amount,
+                product_title=nm_id_name
             )
             await state.set_state(ClientStates.continue_dialog)
             await message.answer(gpt5_response_text)    

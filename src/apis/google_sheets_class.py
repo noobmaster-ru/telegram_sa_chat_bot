@@ -121,7 +121,7 @@ class GoogleSheetClass:
         new_row[4] = now # дата последнего сообщения
         new_row[5] = '' # дата последнего нажатия на кнопку
         new_row[6] = str(nm_id) # артикул
-        new_row[19] = str(full_name) # полное имя юзера
+        new_row[18] = str(full_name) # полное имя юзера
 
         await sheet.append_row(new_row)  
 
@@ -153,18 +153,16 @@ class GoogleSheetClass:
         # Маппинг логических имён на реальные заголовки
         button_to_column = {
             "agree": self.header_row[7], # Условия , дальше по порядку
-            "subscribe": self.header_row[8], # подписка на канал
-            "order": self.header_row[9], # заказ сделан
-            "photo_order": self.header_row[10], # скрин заказа GPT
-            "receive": self.header_row[11], # заказ получен
-            "feedback": self.header_row[12], # отзыв оставлен
-            "photo_feedback": self.header_row[13], # скрин отзыва GPT
-            "shk": self.header_row[14], # ШК разрезаны  
-            "photo_shk": self.header_row[15], # фото разрезанных ШК GPT
-            "requisites": self.header_row[16], # номер карты
-            "phone_number": self.header_row[17], # номер телефона
-            "bank": self.header_row[17], # банк 
-            "amount": self.header_row[18] # сумма
+            "order": self.header_row[8], # заказ сделан
+            "photo_order": self.header_row[9], # скрин заказа GPT
+            "receive": self.header_row[10], # заказ получен
+            "feedback": self.header_row[11], # отзыв оставлен
+            "photo_feedback": self.header_row[12], # скрин отзыва GPT
+            "shk": self.header_row[13], # ШК разрезаны  
+            "photo_shk": self.header_row[14], # фото разрезанных ШК GPT
+            "phone_number": self.header_row[15], # номер телефона
+            "bank": self.header_row[16], # банк 
+            "amount": self.header_row[17] # сумма
         }
         button_col_name = button_to_column.get(button_name)
         time_col_name = (
@@ -198,15 +196,16 @@ class GoogleSheetClass:
         row_index = await self.get_user_row(telegram_id)
         
         phone_number_hash = StringConverter.convert_phone_to_hash_format(phone_number)
+        
         # чтобы Google Sheets сохранил +7, добавляем апостроф
         fixed_phone = f"'{phone_number_hash}" if phone_number_hash else "-"
         
         # Маппинг из логических имен в заголовки
         fields = {
-            self.header_row[16]: fixed_phone, # столбец Номер телефона
-            self.header_row[17]: bank or '-', # столбец Банк
-            self.header_row[18]: amount or '-', # столбец Сумма
-            self.header_row[4]: self._get_now_str() # столбец Последнее сообщение
+            self.header_row[4]: self._get_now_str(), # столбец Последнее сообщение
+            self.header_row[15]: phone_number_hash, # столбец Номер телефона
+            self.header_row[16]: bank or '-', # столбец Банк
+            self.header_row[17]: amount or '-', # столбец Сумма
         }
 
         # Подготавливаем все апдейты для batch_update
@@ -220,7 +219,7 @@ class GoogleSheetClass:
         
         logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {phone_number}, {bank}, {amount}")
         # Один батч-запрос к API
-        await sheet.batch_update(updates)#, value_input_option="RAW")
+        await sheet.batch_update(updates)# value_input_option="RAW")
     
     async def load_nm_ids_ordered_list_into_redis(
         self,
