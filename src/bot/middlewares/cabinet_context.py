@@ -96,7 +96,7 @@ class CabinetContextMiddleware(BaseMiddleware):
                 spreadsheet_id=cashback_table.table_id,
                 buyers_sheet_name=self.buyers_sheet_name,
                 redis_client=self.redis_client,
-                REDIS_KEY_USER_ROW_POSITION_STRING=self.REDIS_KEY_USER_ROW_POSITION_STRING,
+                REDIS_KEY_USER_ROW_POSITION_STRING=f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{business_connection_id}"
             )
             self._sheets_cache[business_connection_id] = spreadsheet
 

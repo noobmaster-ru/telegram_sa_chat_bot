@@ -88,7 +88,8 @@ async def handle_first_message(
 
     available_nm_id = article_obj.article  # nm_id из ArticleORM
     product_title = cabinet.organization_name  # название магазина/ИП
-
+    nm_id_name = cabinet.nm_id_name
+    
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
@@ -104,7 +105,8 @@ async def handle_first_message(
     await state.update_data(
         clients_bot_id=bot_id,
         nm_id=available_nm_id,
-        nm_id_name=product_title,
+        product_title=product_title,
+        nm_id_name=nm_id_name,
         telegram_id=telegram_id,
         full_name=full_name,
         business_connection_id=business_connection_id,

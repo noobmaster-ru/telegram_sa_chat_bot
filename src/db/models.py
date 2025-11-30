@@ -73,6 +73,12 @@ class CabinetORM(Base):
     # organization_id — внешний идентификатор организации (если понадобится привязка к WB/OZON и т.п.)
     organization_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    
+    nm_id_name: Mapped[str] = mapped_column(
+        String(128),
+        comment="Название ИП / магазина, вводимое пользователем",
+    )
+    
     # вместо brand_name → organization_name
     organization_name: Mapped[str] = mapped_column(
         String(128),
