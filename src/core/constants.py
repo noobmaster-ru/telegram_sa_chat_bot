@@ -9,7 +9,6 @@ SELLER_MENU_TEXT = [
 ]
 
 MANAGER_NAME = 'Евгения' # в родительном падеже надо
-CHANNEL_USERNAME_STR="@viktoriya_cash"  # username канала
 
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",

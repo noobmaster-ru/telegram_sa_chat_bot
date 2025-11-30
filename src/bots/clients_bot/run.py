@@ -81,17 +81,12 @@ async def main():
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
-            # "WB_TOKEN": settings.WB_TOKEN,
             "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": constants.BUYERS_SHEET_NAME_STR,
             "INSTRUCTION_SHEET_NAME": constants.INSTRUCTION_SHEET_NAME_STR,
-            "CHANNEL_USERNAME": constants.CHANNEL_USERNAME_STR,
             "ADMIN_ID_LIST": constants.ADMIN_ID_LIST,
             "client_gpt_5": client_gpt_5,
-            "redis": redis_client,
-            "REDIS_KEY_NM_IDS_ORDERED_LIST": constants.REDIS_KEY_NM_IDS_ORDERED_LIST,
-            "REDIS_KEY_NM_IDS_REMAINS_HASH": constants.REDIS_KEY_NM_IDS_REMAINS_HASH,
-            "REDIS_KEY_NM_IDS_TITLES_HASH": constants.REDIS_KEY_NM_IDS_TITLES_HASH
+            "redis": redis_client
         }
     )
     # check last time activity and send reminder message if user too late inactive

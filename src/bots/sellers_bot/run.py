@@ -57,12 +57,8 @@ async def main():
         {
             "BUYERS_SHEET_NAME": constants.BUYERS_SHEET_NAME_STR,
             "INSTRUCTION_SHEET_NAME": constants.INSTRUCTION_SHEET_NAME_STR,
-            "CHANNEL_USERNAME": constants.CHANNEL_USERNAME_STR,
             "ADMIN_ID_LIST": constants.ADMIN_ID_LIST,
             "redis": redis_client,
-            "REDIS_KEY_NM_IDS_ORDERED_LIST": constants.REDIS_KEY_NM_IDS_ORDERED_LIST,
-            "REDIS_KEY_NM_IDS_REMAINS_HASH": constants.REDIS_KEY_NM_IDS_REMAINS_HASH,
-            "REDIS_KEY_NM_IDS_TITLES_HASH": constants.REDIS_KEY_NM_IDS_TITLES_HASH
         }
     )
     
