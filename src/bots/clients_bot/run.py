@@ -1,10 +1,10 @@
 import asyncio
-from aiogram import Bot, Dispatcher
-
-from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 import redis.asyncio as asyncredis
-from src.bot.utils.inactivity_checker import inactivity_checker
 
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
+
+from src.bot.utils.inactivity_checker import inactivity_checker
 
 from src.bot.handlers.clients.text_messages import router as text_router
 from src.bot.handlers.clients.quiz import router as quiz_router 
@@ -17,20 +17,31 @@ from src.apis.open_ai_requests_class import OpenAiRequestClass
 from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.bot.middlewares.media_group import MediaGroupMiddleware
+
 from src.core.config import settings, constants
 
+
 async def main():
-    redis = await asyncredis.from_url(settings.REDIS_URL)
-    storage = RedisStorage(
-        redis=redis,
-        # key_builder=DefaultKeyBuilder(with_bot_id=True)
-    ) 
+    # Один Redis-клиент, одна DB (например /0)
+    redis_client = await asyncredis.from_url(settings.REDIS_URL)
+    
+
+    clients_storage = RedisStorage(
+        redis=redis_client,
+        key_builder=DefaultKeyBuilder(
+            with_bot_id=True,
+            with_business_connection_id=True,   # вот это главное - каждая связка "чат-бот <-> бизнес-акк" уникальна
+            # опционально:
+            # with_destiny=True,  # если будешь использовать разные destiny для сложных сценариев
+        ),
+    )
+    
     
     spreadsheet = GoogleSheetClass(
         service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI, 
         table_url=settings.GOOGLE_SHEETS_URL,
         buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
-        redis_client=redis,
+        redis_client=redis_client,
         REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING,
         REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST
     )
@@ -50,14 +61,14 @@ async def main():
     )
 
     # ============ START =============
-    bot = Bot(token=settings.TG_BOT_TOKEN_CLIENTS)
-    dp = Dispatcher(storage=storage)
+    bot = Bot(token=settings.CLIENTS_BOT_TOKEN)
+    dp = Dispatcher(storage=clients_storage)
     
     # middlewate to skip media_group(many photos in one message)
     dp.business_message.middleware(MediaGroupMiddleware(latency=0.5))
 
     # middlerware to check is user in redis store
-    middleware_check_redis = CheckRedisUserMiddleware(redis, constants.REDIS_KEY_SET_TELEGRAM_IDS)
+    middleware_check_redis = CheckRedisUserMiddleware(redis_client, constants.REDIS_KEY_SET_TELEGRAM_IDS)
     dp.business_message.middleware(middleware_check_redis)
     dp.callback_query.middleware(middleware_check_redis)
     
@@ -77,7 +88,7 @@ async def main():
             "CHANNEL_USERNAME": constants.CHANNEL_USERNAME_STR,
             "ADMIN_ID_LIST": constants.ADMIN_ID_LIST,
             "client_gpt_5": client_gpt_5,
-            "redis": redis,
+            "redis": redis_client,
             "REDIS_KEY_NM_IDS_ORDERED_LIST": constants.REDIS_KEY_NM_IDS_ORDERED_LIST,
             "REDIS_KEY_NM_IDS_REMAINS_HASH": constants.REDIS_KEY_NM_IDS_REMAINS_HASH,
             "REDIS_KEY_NM_IDS_TITLES_HASH": constants.REDIS_KEY_NM_IDS_TITLES_HASH

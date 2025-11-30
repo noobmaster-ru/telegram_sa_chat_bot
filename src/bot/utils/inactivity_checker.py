@@ -76,7 +76,7 @@ async def inactivity_checker(
     while True:
         # Сканируем все FSM-ключи
         redis = storage.redis
-        async for redis_key in redis.scan_iter(match="fsm:*:*:data"):
+        async for redis_key in redis.scan_iter(match="fsm:*:data"):
             raw_data = await redis.get(redis_key)
             if not raw_data:
                 continue
@@ -90,10 +90,12 @@ async def inactivity_checker(
             last_time_activity = client_data.get("last_time_activity", time.time())
             business_connection_id = client_data.get("business_connection_id")
             telegram_id = client_data.get("telegram_id")# chat_id == telegram_id
+            clients_bot_id = client_data.get("clients_bot_id")
             messages_ids_to_delete: list[int] = client_data.get("last_messages_ids", [])
 
             # теперь читаем состояние
-            state_key = f"fsm:{telegram_id}:{telegram_id}:state"
+            # fsm:8589013306:42Qu8Nd_WUhzFgAAmBI4TmqDJzU:8108843318:8108843318:state
+            state_key = f"fsm:{clients_bot_id}:{business_connection_id}:{telegram_id}:{telegram_id}:state"
             raw_state = await redis.get(state_key)
             state = None
             if raw_state:

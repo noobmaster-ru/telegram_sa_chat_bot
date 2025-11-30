@@ -39,7 +39,7 @@ async def handle_first_message(
     full_name = message.from_user.full_name or "-"
     text = message.text if message.text else "-"
     business_connection_id = message.business_connection_id
-    
+    bot_id = message.bot.id
     # first message from user
     logging.info(
         f"FIRST MESSAGE from (@{username}, {full_name}), id={telegram_id}: {text} ..."
@@ -49,6 +49,7 @@ async def handle_first_message(
     product_title = constants.PRODUCT_TITLE
     # ========== Сохраняем артикул, остаток товара,название товара в FSM - чтобы для каждого юзера был свой контекст =====
     await state.update_data(
+        clients_bot_id=bot_id,
         nm_id=available_nm_id,
         nm_id_name=product_title,
         telegram_id=telegram_id,

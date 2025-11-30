@@ -37,10 +37,11 @@ TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 60 #3600*23 # in production
 TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 60  # in production - every hour check users last time activitys
 TIME_DELTA_CHECK_SUB_TO_CHANNEL = 60
 
+# SELLER_ID = 8312986751
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks
-    8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
+    # 8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
 }
 
 # reqular expressions for parsing requisites
