@@ -7,13 +7,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 from aiogram.filters import StateFilter
 
-
+from src.db.models import CabinetORM
 from src.bot.states.client import ClientStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.keyboards.inline.get_sub_to_channel_keyboard import get_sub_to_channel
+from src.bot.utils.last_activity import update_last_activity
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass
-from src.bot.utils.last_activity import update_last_activity
 from src.core.config import constants
 from .router import router
 
@@ -23,20 +23,22 @@ from .router import router
 async def handle_unexpected_text_waiting_for_agreement(
     message: types.Message,
     spreadsheet: GoogleSheetClass,
+    cabinet: CabinetORM,
     client_gpt_5: OpenAiRequestClass,
     state: FSMContext,
     bot: Bot
 ):
     await state.set_state(constants.SKIP_MESSAGE_STATE)
+
+    
     telegram_id = message.from_user.id
     text = message.text
     business_connection_id = message.business_connection_id
-    if business_connection_id:
-        await state.update_data(business_connection_id=business_connection_id)
     
     user_data = await state.get_data()
-    nm_id_name = user_data.get("nm_id_name")
-    # обновляем время последнего сообщения
+    nm_id_name = user_data.get("nm_id_name") # мы положили его в первом хэндлере
+    
+    # Обновляем время последнего сообщения в ТАБЛИЦЕ КОНКРЕТНОГО КАБИНЕТА
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False
@@ -54,6 +56,8 @@ async def handle_unexpected_text_waiting_for_agreement(
         action=ChatAction.TYPING,
         business_connection_id = business_connection_id
     )
+    
+    # GPT-ответ с учётом конкретного продукта (nm_id_name для данного кабинета)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(
         new_prompt=text,
         product_title=nm_id_name
@@ -71,18 +75,24 @@ async def handle_agreement(
     callback: CallbackQuery,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
+    cabinet: CabinetORM,              # <- тоже можем принять, чтобы при необходимости работать по кабинету
 ):
     await callback.answer()
+    
+    if cabinet is None or spreadsheet is None:
+        await callback.message.answer("Техническая ошибка: кабинет ещё не привязан, попробуйте позже.")
+        return
+    
     telegram_id = callback.from_user.id
     business_connection_id = callback.message.business_connection_id
+    
     if business_connection_id:
-        await state.update_data(
-            business_connection_id=business_connection_id
-        )
+        await state.update_data(business_connection_id=business_connection_id)
+    
     value = "Да" if callback.data == "agree_yes" else "Нет"
     client_data = await state.get_data()
     nm_id_name = client_data.get("nm_id_name")
-    messages_ids_to_delete = client_data["last_messages_ids"]
+    messages_ids_to_delete = client_data.get("last_messages_ids",[])
 
     await spreadsheet.update_buyer_button_and_time(
         telegram_id=telegram_id,
@@ -90,6 +100,7 @@ async def handle_agreement(
         value=value,
         is_tap_to_keyboard=True
     )
+    # ====== ВЕТКА "СОГЛАСЕН" ======
     if callback.data == "agree_yes":
         await callback.message.answer("Спасибо за согласие с нашими условиями!")
         if messages_ids_to_delete:
@@ -111,6 +122,8 @@ async def handle_agreement(
         await state.set_state(ClientStates.waiting_for_order)
         await update_last_activity(state, msg)
         return 
+    
+    # ====== ВЕТКА "НЕ СОГЛАСЕН" ======
     else:
         if messages_ids_to_delete:
             try:

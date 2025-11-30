@@ -13,7 +13,6 @@ from src.bot.handlers.sellers.last_router import router as last_router
 from src.bot.handlers.sellers.add_extra_nm_id import router as add_nm_id_router
 
 
-from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.bot.middlewares.media_group import MediaGroupMiddleware
 
@@ -38,10 +37,6 @@ async def main():
     # middlewate to skip media_group(many photos in one message)
     dp.business_message.middleware(MediaGroupMiddleware(latency=0.5))
 
-    # middlerware to check is user in redis store
-    middleware_check_redis = CheckRedisUserMiddleware(redis_client, constants.REDIS_KEY_SET_TELEGRAM_IDS)
-    dp.business_message.middleware(middleware_check_redis)
-    dp.callback_query.middleware(middleware_check_redis)
     
     # middleware to ignore messages from us(manager) from bussiness account (BUSSINESS_ACCOUNTS_IDS)
     middleware_ignore_bussiness_messages = IgnoreBusinessMessagesMiddleware()

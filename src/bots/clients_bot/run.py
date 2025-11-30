@@ -14,12 +14,13 @@ from src.bot.handlers.clients.payment_details import router as payment_router
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass
 
-from src.bot.middlewares.check_redis_telegram_id import CheckRedisUserMiddleware
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.bot.middlewares.media_group import MediaGroupMiddleware
+from src.bot.middlewares.cabinet_context import CabinetContextMiddleware
 
 from src.core.config import settings, constants
 
+from src.db.base import on_shutdown, on_startup
 
 async def main():
     # Один Redis-клиент, одна DB (например /0)
@@ -37,17 +38,18 @@ async def main():
     )
     
     
-    spreadsheet = GoogleSheetClass(
-        service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI, 
-        table_url=settings.GOOGLE_SHEETS_URL,
-        buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
-        redis_client=redis_client,
-        REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING,
-        REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST
-    )
+    # spreadsheet = GoogleSheetClass(
+    #     service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI, 
+    #     table_url=settings.GOOGLE_SHEETS_URL,
+    #     buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
+    #     redis_client=redis_client,
+    #     REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING,
+    #     REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST
+    # )
     
-    instruction_template = await spreadsheet.get_instruction_template(constants.INSTRUCTION_SHEET_NAME_STR)
-    
+    # instruction_template = await spreadsheet.get_instruction_template(constants.INSTRUCTION_SHEET_NAME_STR)
+    instruction_template = "..."  # поставь свою реализацию
+
     client_gpt_5 = OpenAiRequestClass(
         OPENAI_API_KEY=settings.OPENAI_TOKEN, 
         GPT_MODEL_NAME=constants.GPT_MODEL_NAME, 
@@ -64,24 +66,34 @@ async def main():
     bot = Bot(token=settings.CLIENTS_BOT_TOKEN)
     dp = Dispatcher(storage=clients_storage)
     
-    # middlewate to skip media_group(many photos in one message)
+    # Регистрируем хуки БД (они заполнят dp.workflow_data["db_session_factory"])
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+    
+    # === MIDDLEWARES ===
+    
+    # 1) групповые медиа
     dp.business_message.middleware(MediaGroupMiddleware(latency=0.5))
 
-    # middlerware to check is user in redis store
-    middleware_check_redis = CheckRedisUserMiddleware(redis_client, constants.REDIS_KEY_SET_TELEGRAM_IDS)
-    dp.business_message.middleware(middleware_check_redis)
-    dp.callback_query.middleware(middleware_check_redis)
-    
-    # middleware to ignore messages from us(manager) from bussiness account (BUSSINESS_ACCOUNTS_IDS)
+    # 2) игнор сообщений от менеджера (бизнес-аккаунта)
     middleware_ignore_bussiness_messages = IgnoreBusinessMessagesMiddleware()
     dp.business_message.middleware(middleware_ignore_bussiness_messages)
     dp.callback_query.middleware(middleware_ignore_bussiness_messages)
     
+    # 3) НОВЫЙ middleware: подставляем cabinet + spreadsheet по business_connection_id
+    cabinet_ctx_middleware = CabinetContextMiddleware(
+        redis_client=redis_client,
+        service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI,
+        buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
+        REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING
+    )
+    dp.business_message.middleware(cabinet_ctx_middleware)
+    dp.callback_query.middleware(cabinet_ctx_middleware)
 
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
-            "spreadsheet": spreadsheet,
+            # "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": constants.BUYERS_SHEET_NAME_STR,
             "INSTRUCTION_SHEET_NAME": constants.INSTRUCTION_SHEET_NAME_STR,
             "ADMIN_ID_LIST": constants.ADMIN_ID_LIST,

@@ -40,7 +40,7 @@ TIME_DELTA_CHECK_SUB_TO_CHANNEL = 60
 BUSINESS_ACCOUNTS_IDS={
     8312986751, # @eugene_saharov
     8239184408, # @viktoria_cashbacks
-    # 8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
+    8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
 }
 
 # reqular expressions for parsing requisites

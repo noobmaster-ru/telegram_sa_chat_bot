@@ -15,14 +15,13 @@ class GoogleSheetClass:
     def __init__(
         self, 
         service_account_json: str,
-        table_url: str, 
+        spreadsheet_id: str, 
         buyers_sheet_name: str,
         redis_client: Redis,
-        REDIS_KEY_USER_ROW_POSITION_STRING: str,
-        REDIS_KEY_NM_IDS_ORDERED_LIST: str
+        REDIS_KEY_USER_ROW_POSITION_STRING: str
     ):
         # Авторизация и получение объекта листа
-        self.table_url = table_url
+        self.spreadsheet_id = spreadsheet_id
         self.buyers_sheet_name = buyers_sheet_name
         self.service_account_json = service_account_json
         # ✅ Загружаем JSON сразу при инициализации
@@ -56,7 +55,7 @@ class GoogleSheetClass:
         # redis
         self.redis = redis_client
         self.REDIS_KEY_USER_ROW_POSITION_STRING = REDIS_KEY_USER_ROW_POSITION_STRING
-        self.REDIS_KEY_NM_IDS_ORDERED_LIST = REDIS_KEY_NM_IDS_ORDERED_LIST
+
     
     async def get_client(self):
         if self.client is None:
@@ -66,7 +65,7 @@ class GoogleSheetClass:
     async def get_spreadsheet(self) -> AsyncioGspreadSpreadsheet:
         if self.spreadsheet is None:
             client = await self.get_client()
-            self.spreadsheet = await client.open_by_url(self.table_url)
+            self.spreadsheet = await client.open_by_key(self.spreadsheet_id)
         return self.spreadsheet
     
     async def get_sheet(self):

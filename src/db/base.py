@@ -24,6 +24,7 @@ async def on_startup(dispatcher: Dispatcher):
         async_engine.echo = True
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    # async_engine.echo = True
     dispatcher.workflow_data["db_session_factory"] = async_session_factory
     print("[DB] connected and tables created")
 

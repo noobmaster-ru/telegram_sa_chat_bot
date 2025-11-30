@@ -63,7 +63,7 @@ async def callback_gs_url(
     await state.set_data(seller_data)
     if callback.data == "gs_url_yes":  
         await callback.message.answer(
-            "Теперь отправьте название вашего *бренда* на ВБ, *который видят покупатели, заказывая ваши товары*",
+            "Теперь отправьте название вашего *ИП/OOO* на ВБ",
             parse_mode="MarkdownV2"
         )
         await state.set_state(SellerStates.waiting_for_brand_name)

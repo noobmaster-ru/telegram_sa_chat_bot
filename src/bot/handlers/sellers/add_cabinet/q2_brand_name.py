@@ -2,7 +2,13 @@ import logging
 from aiogram import F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardRemove, FSInputFile, InputMediaPhoto, Message, CallbackQuery
+from aiogram.types import (
+    ReplyKeyboardRemove,
+    FSInputFile,
+    InputMediaPhoto,
+    Message,
+    CallbackQuery,
+)
 
 from src.bot.states.seller import SellerStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
@@ -16,24 +22,28 @@ async def handle_brand_name(
     message: Message,
     state: FSMContext,
 ):   
-    brand_name = message.text if message.text else "-"
+    # теперь это название магазина / ИП, но состояние оставляем старое
+    organization_name = message.text if message.text else "-"
     await state.update_data(
-        brand_name=brand_name
+        organization_name=organization_name,
     )
     msg = await message.answer(
-        f"Это название вашего бренда: *{brand_name}* ?",
+        f"Это название вашего магазина/ИП: *{organization_name}* ?",
         reply_markup=get_yes_no_keyboard(
-            callback_prefix="brand_name",
-            statement="название бренда"
+            callback_prefix="brand_name",  # префикс оставляем, чтобы не ломать остальную логику
+            statement="название магазина",
         ),
-        parse_mode="MarkdownV2"
+        parse_mode="MarkdownV2",
     )
     await state.update_data(
-        message_id_to_delete=msg.message_id
+        message_id_to_delete=msg.message_id,
     )
     await state.set_state(SellerStates.waiting_for_tap_to_keyboard_brand_name)
 
-@router.callback_query(F.data.startswith("brand_name_") , StateFilter(SellerStates.waiting_for_tap_to_keyboard_brand_name))  
+@router.callback_query(
+    F.data.startswith("brand_name_") , 
+    StateFilter(SellerStates.waiting_for_tap_to_keyboard_brand_name)
+)  
 async def callback_brand_name(
     callback: CallbackQuery,
     state: FSMContext
@@ -47,6 +57,7 @@ async def callback_brand_name(
     )
     del seller_data['message_id_to_delete']
     await state.set_data(seller_data)
+    
     if callback.data == "brand_name_yes":
         await callback.message.answer("Теперь необходимо добавить в таблице в редакторы наш сервисный аккаунт Google.")
         INSTRUCTION_PHOTOS_DIR = constants.INSTRUCTION_PHOTOS_DIR
@@ -59,7 +70,7 @@ async def callback_brand_name(
             f"Теперь *внимательно!*:\n\n"
             f"1. Откройте свою таблицу\n"
             f"2. В правом верхнем углу откройте настройки доступа *(фото1)*\n"
-            f"3. В поисковой строке вбейте вот этот email *(фото2)*:\n\n*{settings.SERVICE_ACCOUNT_AXIOMAI}*\n\n"
+            f"3. В поисковой строке вбейте вот этот email *(фото2)*:\n\n*{settings.SERVICE_ACCOUNT_AXIOMAI_EMAIL}*\n\n"
             f"4. Дайте доступ *Редактор* этому сервисному аккаунту Google *(фото3)*\n\n"
             f"Как сделаете, у вас должно получиться вот так, как на *(фото4)*"
         )

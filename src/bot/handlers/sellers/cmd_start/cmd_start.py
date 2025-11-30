@@ -19,6 +19,7 @@ async def cmd_start(
 ):
     telegram_id = message.from_user.id
     fullname = message.from_user.full_name 
+    user_name = message.from_user.username
     
     await state.update_data(
         telegram_id=telegram_id
@@ -37,7 +38,8 @@ async def cmd_start(
         if not user_exist:
             user = UserORM(
                 telegram_id=telegram_id,
-                fullname=fullname
+                fullname=fullname,
+                user_name=user_name
             )
             session.add(user)
             await session.commit()
