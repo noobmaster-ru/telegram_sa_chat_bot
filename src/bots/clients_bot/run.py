@@ -26,7 +26,6 @@ async def main():
     # Один Redis-клиент, одна DB (например /0)
     redis_client = await asyncredis.from_url(settings.REDIS_URL)
     
-
     clients_storage = RedisStorage(
         redis=redis_client,
         key_builder=DefaultKeyBuilder(

@@ -16,12 +16,6 @@ from src.core.config import constants
 
 from .router import router
 
-
-# Function to encode the image
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
-
 # ==== Получение фото от пользователя уже после скрина заказа/отзыва/шк ==== 
 @router.business_message(F.photo, StateFilter(ClientStates.waiting_for_requisites, ClientStates.continue_dialog))
 async def handle_photo_other_type(
@@ -46,7 +40,7 @@ async def handle_photo_other_type(
         )
     )
 
-    # обновляем время последнего сообщения юзера
+    # # обновляем время последнего сообщения юзера
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
         is_tap_to_keyboard=False

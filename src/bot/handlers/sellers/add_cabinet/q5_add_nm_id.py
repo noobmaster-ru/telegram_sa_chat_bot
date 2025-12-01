@@ -1,14 +1,20 @@
 import logging
+from redis.asyncio import Redis
+
 from aiogram import F
 from aiogram.filters import StateFilter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
+
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
 from src.db.models import ArticleORM
 from src.bot.keyboards.reply.menu import kb_menu
 from src.bot.states.seller import SellerStates
+from src.core.config import settings
+
 from .router import router
 
 
@@ -112,6 +118,7 @@ async def write_data_into_db(
     callback: CallbackQuery,
     state: FSMContext,
     db_session_factory: async_sessionmaker,
+    redis: Redis,
 ):
     await callback.answer()
     seller_data = await state.get_data()
@@ -131,6 +138,7 @@ async def write_data_into_db(
         file_id = seller_data["nm_id_photo_file_id"]
         organization_name = seller_data.get("organization_name", "-")
 
+        # 1. Сохраняем артикул в БД
         async with db_session_factory() as session:
             new_article = ArticleORM(
                 cabinet_id=cabinet_id,
@@ -140,6 +148,16 @@ async def write_data_into_db(
             )
             session.add(new_article)
             await session.commit()
+        
+        # 2. Сразу прогреваем кэш эталонного изображения в Redis
+        # (чтобы clients_bot больше не ходил в Telegram за этой фоткой)
+        await get_reference_image_data_url_cached(
+            db_session_factory=db_session_factory,
+            redis=redis,
+            cabinet_id=cabinet_id,
+            nm_id=nm_id,
+            seller_bot_token=settings.SELLERS_BOT_TOKEN,
+        )
 
         await callback.message.answer(
             f"Организация: *{organization_name}*\n"

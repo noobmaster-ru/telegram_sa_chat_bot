@@ -37,7 +37,7 @@ async def callback_brand_name(
         await state.set_data(seller_data)
         await callback.message.answer("✅ Отлично!")
         await callback.message.answer(
-            "Теперь давайте добавим артикулы для раздачи и количество раздач\n\n"
+            "Теперь давайте добавим артикул для раздачи и его фото\n\n"
             "Отправьте *артикул* товара на ВБ, *одно число*",
             parse_mode="MarkdownV2",
         )

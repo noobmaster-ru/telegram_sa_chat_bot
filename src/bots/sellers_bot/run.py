@@ -31,7 +31,7 @@ async def main():
         ),
     ) 
     # ============ START =============
-    bot = Bot(token=settings.SELLER_BOT_TOKEN)
+    bot = Bot(token=settings.SELLERS_BOT_TOKEN)
     dp = Dispatcher(storage=sellers_storage)
     
     # middlewate to skip media_group(many photos in one message)

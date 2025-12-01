@@ -5,6 +5,9 @@ from typing import List, Optional
 
 from pathlib import Path
 from aiogram import F
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
 from aiogram.types import Message
 from aiogram.enums import ChatAction
 from aiogram.filters import StateFilter
@@ -13,18 +16,15 @@ from aiogram.methods import ReadBusinessMessage
 
 from src.bot.states.client import ClientStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
+from src.db.models import CabinetORM
+
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass
 from src.bot.utils.last_activity import update_last_activity
-from src.core.config import constants
+from src.core.config import constants, settings
 
 from .router import router
-
-# Function to encode the image
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
-
 
 # ==== Получение скрина отзыва от пользователя ==== 
 @router.business_message(F.photo, StateFilter(ClientStates.waiting_for_photo_feedback))
@@ -33,6 +33,9 @@ async def handle_photo_feedback(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
+    redis: Redis,
+    db_session_factory: async_sessionmaker,
+    cabinet: CabinetORM,
     album: Optional[List[Message]] = None
 ):
     await state.set_state(constants.SKIP_MESSAGE_STATE)
@@ -72,20 +75,21 @@ async def handle_photo_feedback(
     reference_image_extension = filetype.guess(user_bytes).extension
     user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
 
-    # обновляем время последнего сообщения юзера
-    await spreadsheet.update_buyer_last_time_message(
-        telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+    # # обновляем время последнего сообщения юзера
+    # await spreadsheet.update_buyer_last_time_message(
+    #     telegram_id=telegram_id,
+    #     is_tap_to_keyboard=False
+    # )
+    
+    # 4. Берём эталон из кэша / TG
+    ref_image_url = await get_reference_image_data_url_cached(
+        db_session_factory=db_session_factory,
+        redis=redis,
+        cabinet_id=cabinet.id,
+        nm_id=nm_id,
+        seller_bot_token=settings.SELLERS_BOT_TOKEN,
     )
     
-    # Читаем байты изображения эталона
-    # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.{constants.PHOTO_FILE_TYPE}"
-    reference_image_extension = filetype.guess(reference_path).extension
-    base64_image_ref = encode_image(reference_path)
-    ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"
-    
-    # photo_type == "feedback"
     
     # отправляем в OpenAI для классификации
     model_response = await client_gpt_5.classify_photo_feedback(
@@ -101,6 +105,7 @@ async def handle_photo_feedback(
         value=model_response,
         is_tap_to_keyboard=False
     )
+    
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -113,7 +118,7 @@ async def handle_photo_feedback(
         action=ChatAction.TYPING,
         business_connection_id = message.business_connection_id
     )
-    await asyncio.sleep(3)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     
     if model_response == "Да":
         # теперь ждём скрин отзыва

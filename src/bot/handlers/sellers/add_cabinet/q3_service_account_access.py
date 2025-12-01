@@ -104,6 +104,7 @@ async def handle_add_service_account_into_gs(
                 callback_prefix="link_bot",  # префикс оставляем, чтобы не ломать остальную логику
                 statement="связал(а)",
             ),
+            parse_mode="MarkdownV2"
         )
         await state.update_data(
             message_id_to_delete=msg.message_id

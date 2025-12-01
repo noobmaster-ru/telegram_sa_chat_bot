@@ -3,7 +3,7 @@ from urllib.parse import quote_plus
 
 class EnvSettings(BaseSettings):
     # Telegram
-    SELLER_BOT_TOKEN: str
+    SELLERS_BOT_TOKEN: str
     CLIENTS_BOT_TOKEN: str
 
     # OpenAI

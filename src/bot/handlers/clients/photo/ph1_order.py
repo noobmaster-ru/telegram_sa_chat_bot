@@ -4,6 +4,9 @@ import filetype
 from typing import List, Optional
 
 from pathlib import Path
+
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from redis.asyncio import Redis
 from aiogram import F
 from aiogram.types import Message
 from aiogram.enums import ChatAction
@@ -13,17 +16,16 @@ from aiogram.methods import ReadBusinessMessage
 
 from src.bot.states.client import ClientStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
+from src.bot.utils.last_activity import update_last_activity
+from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
+
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass
-from src.bot.utils.last_activity import update_last_activity
-from src.core.config import constants
+
+from src.core.config import constants, settings
+from src.db.models import CabinetORM
 
 from .router import router
-
-# Function to encode the image
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
 
 
 # ==== Получение скрина заказа от пользователя ==== 
@@ -31,8 +33,11 @@ def encode_image(image_path):
 async def handle_photo_order(
     message: Message,
     state: FSMContext,
+    redis: Redis,
     spreadsheet: GoogleSheetClass,
     client_gpt_5: OpenAiRequestClass,
+    db_session_factory: async_sessionmaker,
+    cabinet: CabinetORM,
     album: Optional[List[Message]] = None
 ):
     await state.set_state(constants.SKIP_MESSAGE_STATE)
@@ -63,7 +68,7 @@ async def handle_photo_order(
     nm_id = user_data.get("nm_id")
     nm_id_name = user_data.get("nm_id_name")
     
-    # === 3. Получаем фото ===
+    # === 3. Получаем фото юзера ===
     photo = message.photo[-1]  # лучшее качество
     file = await message.bot.get_file(photo.file_id)
     file_bytes = await message.bot.download_file(file.file_path)
@@ -73,20 +78,29 @@ async def handle_photo_order(
     reference_image_extension = filetype.guess(user_bytes).extension
     user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
 
-    # обновляем время последнего сообщения юзера
-    await spreadsheet.update_buyer_last_time_message(
-        telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+    # # обновляем время последнего сообщения юзера
+    # await spreadsheet.update_buyer_last_time_message(
+    #     telegram_id=telegram_id,
+    #     is_tap_to_keyboard=False
+    # )
+    
+    # 4. Берём эталон из кэша / TG
+    ref_image_url = await get_reference_image_data_url_cached(
+        db_session_factory=db_session_factory,
+        redis=redis,
+        cabinet_id=cabinet.id,
+        nm_id=nm_id,
+        seller_bot_token=settings.SELLERS_BOT_TOKEN,
     )
+
+
+    if ref_image_url is None:
+        await message.answer(
+            "Не удалось найти эталонное изображение для этого артикула. "
+            "Попросите менеджера проверить настройки."
+        )
+        return
     
-    # Читаем байты изображения эталона
-    # 4. Загружаем эталонное изображение (например, из файла)
-    reference_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "resources" / f"{nm_id}.{constants.PHOTO_FILE_TYPE}"
-    reference_image_extension = filetype.guess(reference_path).extension
-    base64_image_ref = encode_image(reference_path)
-    ref_image_url = f"data:image/{reference_image_extension};base64,{base64_image_ref}"
-    
-    # photo_type == "order"
     # отправляем в OpenAI для классификации
     model_response = await client_gpt_5.classify_photo_order(
         ref_image_url=ref_image_url,
@@ -101,6 +115,7 @@ async def handle_photo_order(
         value=model_response,
         is_tap_to_keyboard=False
     )
+    
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -113,7 +128,8 @@ async def handle_photo_order(
         action=ChatAction.TYPING,
         business_connection_id = message.business_connection_id
     )
-    await asyncio.sleep(3)
+    await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
+    
     if model_response == "Да":
         # теперь ждём скрин отзыва
         await state.update_data(photo_type="feedback")
