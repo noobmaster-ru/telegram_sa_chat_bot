@@ -65,7 +65,6 @@ async def handle_first_message(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     cabinet: CabinetORM,
-    INSTRUCTION_SHEET_NAME: str,
     bot: Bot,
 ):
     # 0. Проверяем, что у нас есть кабинет и таблица
@@ -115,7 +114,7 @@ async def handle_first_message(
 
     # 3. Достаём инструкцию именно для этого товара/кабинета
     instruction_str = await spreadsheet.get_instruction(
-        sheet_instruction=INSTRUCTION_SHEET_NAME,
+        sheet_instruction=constants.INSTRUCTION_SHEET_NAME_STR,
         product_title=nm_id_name,
     )
 

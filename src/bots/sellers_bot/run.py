@@ -50,13 +50,9 @@ async def main():
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
-            "BUYERS_SHEET_NAME": constants.BUYERS_SHEET_NAME_STR,
-            "INSTRUCTION_SHEET_NAME": constants.INSTRUCTION_SHEET_NAME_STR,
-            "ADMIN_ID_LIST": constants.ADMIN_ID_LIST,
             "redis": redis_client,
         }
     )
-    
     # seller routers 
     dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router, add_nm_id_router, last_router)
     await dp.start_polling(bot)

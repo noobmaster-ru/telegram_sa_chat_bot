@@ -1,4 +1,5 @@
 from .router import router
 from . import (
-    cmd_start
+    cmd_start,
+    email
 )

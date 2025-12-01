@@ -1,6 +1,9 @@
 from aiogram.fsm.state import StatesGroup, State
 
 class SellerStates(StatesGroup):
+    email = State()
+    waiting_for_tap_to_keyboard_email = State()
+    
     waiting_for_tap_to_menu = State()
     
     waiting_for_organization_name = State()

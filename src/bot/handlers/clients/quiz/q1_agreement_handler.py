@@ -2,7 +2,6 @@ import logging
 from aiogram import F, types, Bot
 from aiogram.enums import ChatAction
 from aiogram.types import CallbackQuery
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 from aiogram.filters import StateFilter
@@ -10,7 +9,6 @@ from aiogram.filters import StateFilter
 from src.db.models import CabinetORM
 from src.bot.states.client import ClientStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
-from src.bot.keyboards.inline.get_sub_to_channel_keyboard import get_sub_to_channel
 from src.bot.utils.last_activity import update_last_activity
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass

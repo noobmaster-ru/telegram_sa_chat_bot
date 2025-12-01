@@ -2,7 +2,6 @@ import logging
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.filters import StateFilter
-from aiogram.methods import ReadBusinessMessage
 
 from src.core.config import constants
 from .router import router

@@ -11,7 +11,6 @@ from src.bot.states.client import ClientStates
 from src.core.config import constants
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.core.config import constants
-from src.apis.google_sheets_class import GoogleSheetClass
 # 60 - 1 min
 # 3600 - 1 hour
 # 21600 - 6 hour

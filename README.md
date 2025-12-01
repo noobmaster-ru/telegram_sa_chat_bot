@@ -26,4 +26,15 @@ alembic:
     alembic revision --autogenerate -m "..."
     alembic upgrade head
 ```
+
+очистка таблиц - для теста
+```
+    TRUNCATE TABLE
+        payments,
+        cashback_tables,
+        articles,
+        cabinets,
+        users
+    RESTART IDENTITY CASCADE;
+```
 > VSCodeCounter

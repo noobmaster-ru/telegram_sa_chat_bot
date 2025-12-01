@@ -81,7 +81,7 @@ async def view_cabinets(
                 for i, tbl in enumerate(cashback_tables, start=1):
                     # показываем table_id и статус
                     table_lines.append(
-                        f"{i}. table_id: `{tbl.table_id}` — статус: *{tbl.status.value}*"
+                        f"{i}. table_id: `{tbl.table_id}` , статус: *{tbl.status.value}*"
                     )
                 tables_text = "*Таблицы кэшбека:*\n" + "\n".join(table_lines) + "\n\n"
             else:
