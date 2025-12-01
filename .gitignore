@@ -15,6 +15,5 @@ pgdata/
 load_telegram_users_to_redis.py
 DataExport*
 .VSCodeCounter*
-*.png
+
 *.jpeg
-resources/

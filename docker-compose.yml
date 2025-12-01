@@ -9,7 +9,7 @@ services:
   clients_bot:
       build: .
       container_name: clients_bot
-      command: python -m src.bots.clients_bot.run
+      command: uv run python -m src.bots.clients_bot.run
       env_file: 
         - .env
       depends_on:
@@ -21,7 +21,7 @@ services:
   sellers_bot:
     build: .
     container_name: sellers_bot
-    command: python -m src.bots.sellers_bot.run
+    command: uv run python -m src.bots.sellers_bot.run
     env_file: 
       - .env
     depends_on:

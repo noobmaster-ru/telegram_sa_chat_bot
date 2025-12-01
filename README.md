@@ -12,6 +12,7 @@
     
     то есть разделяем сначала по seller_bot_id, затем по юзерам
 ```
+
 Для запуска от селлера нужно(в .env указать пока что):
 ```    
     - GOOGLE_SHEETS_URL (ссылка на гугл-таблицу + вставить туда SERVICE_ACCOUNT_JSON c доступом РЕДАКТОР)
@@ -20,4 +21,9 @@
     - фотографии артикулов для кэшбека (в src/resources/{nm_id}.png)
 ```
 
+alembic:
+```
+    alembic revision --autogenerate -m "..."
+    alembic upgrade head
+```
 > VSCodeCounter

@@ -5,7 +5,6 @@ from typing import List, Optional
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from pathlib import Path
 from aiogram import F
 from aiogram.types import Message
 from aiogram.enums import ChatAction
@@ -70,13 +69,6 @@ async def handle_photo_shk(
     base64_image_user = base64.b64encode(user_bytes).decode("utf-8")
     reference_image_extension = filetype.guess(user_bytes).extension
     user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
-
-    # # обновляем время последнего сообщения юзера
-    # await spreadsheet.update_buyer_last_time_message(
-    #     telegram_id=telegram_id,
-    #     is_tap_to_keyboard=False
-    # )
-    
 
     # 4. Берём эталон из кэша / TG
     ref_image_url = await get_reference_image_data_url_cached(

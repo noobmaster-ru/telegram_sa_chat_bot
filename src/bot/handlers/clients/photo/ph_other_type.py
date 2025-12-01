@@ -1,7 +1,4 @@
 import asyncio
-import base64
-import filetype
-from pathlib import Path
 from aiogram import F
 from aiogram.types import Message
 from aiogram.enums import ChatAction

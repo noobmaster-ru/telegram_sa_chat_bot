@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from src.apis.google_sheets_class import GoogleSheetClass
+from src.apis.open_ai_requests_class import OpenAiRequestClass
 from src.db.models import CabinetORM, CashbackTableORM, CashbackTableStatus
-
+from src.core.config import constants
 
 class CabinetContextMiddleware(BaseMiddleware):
     def __init__(
@@ -17,14 +18,36 @@ class CabinetContextMiddleware(BaseMiddleware):
         service_account_json: str,
         buyers_sheet_name: str,
         REDIS_KEY_USER_ROW_POSITION_STRING: str,
+
+        # Параметры для OpenAI-клиента
+        openai_api_key: str,
+        gpt_model_name: str,
+        gpt_model_name_photo: str,
+        proxy: str | None,
+        max_tokens: int,
+        max_output_tokens_photo: int,
+        temperature: float,
+        reasoning: str,
     ) -> None:
         self.redis_client = redis_client
         self.service_account_json = service_account_json
         self.buyers_sheet_name = buyers_sheet_name
         self.REDIS_KEY_USER_ROW_POSITION_STRING = REDIS_KEY_USER_ROW_POSITION_STRING
 
+        # OpenAI config
+        self.openai_api_key = openai_api_key
+        self.gpt_model_name = gpt_model_name
+        self.gpt_model_name_photo = gpt_model_name_photo
+        self.proxy = proxy
+        self.max_tokens = max_tokens
+        self.max_output_tokens_photo = max_output_tokens_photo
+        self.temperature = temperature
+        self.reasoning = reasoning
+        
         # кэш: business_connection_id -> GoogleSheetClass
         self._sheets_cache: dict[str, GoogleSheetClass] = {}
+        # кэш: business_connection_id -> OpenAiRequestClass
+        self._gpt_cache: dict[str, OpenAiRequestClass] = {}
 
     async def __call__(
         self,
@@ -51,10 +74,11 @@ class CabinetContextMiddleware(BaseMiddleware):
         if session_factory is None:
             data["cabinet"] = None
             data["spreadsheet"] = None
+            data["client_gpt_5"] = None
             return await handler(event, data)
 
-        # 3. Ищем кабинет по business_connection_id и
-        # сразу подгружаем cashback_tables и articles (eager load)
+
+        # 3. Ищем кабинет по business_connection_id (с подгруженными relations)
         async with session_factory() as session:
             stmt = (
                 select(CabinetORM)
@@ -70,12 +94,13 @@ class CabinetContextMiddleware(BaseMiddleware):
         if cabinet is None:
             data["cabinet"] = None
             data["spreadsheet"] = None
+            data["client_gpt_5"] = None
             return await handler(event, data)
 
         data["cabinet"] = cabinet
 
-        # 4. Выбираем таблицу кэшбека из уже загруженного списка
-        cashback_table = None
+        # 4. Выбираем актуальную таблицу кэшбека
+        cashback_table: Optional[CashbackTableORM] = None
         for t in cabinet.cashback_tables:
             if t.status not in (CashbackTableStatus.DISABLED, CashbackTableStatus.EXPIRED):
                 cashback_table = t
@@ -86,6 +111,7 @@ class CabinetContextMiddleware(BaseMiddleware):
 
         if cashback_table is None:
             data["spreadsheet"] = None
+            data["client_gpt_5"] = None
             return await handler(event, data)
 
         # 5. Берём/создаём GoogleSheetClass для этой таблицы
@@ -101,5 +127,28 @@ class CabinetContextMiddleware(BaseMiddleware):
             self._sheets_cache[business_connection_id] = spreadsheet
 
         data["spreadsheet"] = spreadsheet
+        
+        # 6. Берём/создаём OpenAiRequestClass c СВОИМ instruction_template
+        client_gpt_5 = self._gpt_cache.get(business_connection_id)
+        if client_gpt_5 is None:
+            # Тянем инструкцию ИМЕННО из таблицы этого кабинета
+            instruction_template = await spreadsheet.get_instruction_template(
+                constants.INSTRUCTION_SHEET_NAME_STR
+            )
 
+            client_gpt_5 = OpenAiRequestClass(
+                OPENAI_API_KEY=self.openai_api_key,
+                GPT_MODEL_NAME=self.gpt_model_name,
+                GPT_MODEL_NAME_PHOTO_ANALYSIS=self.gpt_model_name_photo,
+                PROXY=self.proxy,
+                instruction_template=instruction_template,
+                max_tokens=self.max_tokens,
+                max_output_tokens_photo_analysis=self.max_output_tokens_photo,
+                temperature=self.temperature,
+                reasoning=self.reasoning,
+            )
+            self._gpt_cache[business_connection_id] = client_gpt_5
+
+        data["client_gpt_5"] = client_gpt_5
+        
         return await handler(event, data)

@@ -3,7 +3,6 @@ import base64
 import filetype
 from typing import List, Optional
 
-from pathlib import Path
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from redis.asyncio import Redis
@@ -78,12 +77,7 @@ async def handle_photo_order(
     reference_image_extension = filetype.guess(user_bytes).extension
     user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
 
-    # # обновляем время последнего сообщения юзера
-    # await spreadsheet.update_buyer_last_time_message(
-    #     telegram_id=telegram_id,
-    #     is_tap_to_keyboard=False
-    # )
-    
+
     # 4. Берём эталон из кэша / TG
     ref_image_url = await get_reference_image_data_url_cached(
         db_session_factory=db_session_factory,

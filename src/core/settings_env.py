@@ -20,7 +20,7 @@ class EnvSettings(BaseSettings):
     # Redis
     REDIS_URL: str
 
-    # # Postgresql
+    # Postgresql
     POSTGRESQL_HOST: str
     POSTGRESQL_PORT: int
     POSTGRESQL_USER: str
@@ -28,10 +28,23 @@ class EnvSettings(BaseSettings):
     POSTGRESQL_DBNAME: str
     
     @property
-    def DATABASE_URL_asyncpg(self):
+    def DATABASE_URL_asyncpg(self) -> str:
+        """URL для async SQLAlchemy (postgresql+asyncpg://...)"""
         password = quote_plus(self.POSTGRESQL_PASSWORD)
-        return f"postgresql+asyncpg://{self.POSTGRESQL_USER}:{password}@{self.POSTGRESQL_HOST}:{self.POSTGRESQL_PORT}/{self.POSTGRESQL_DBNAME}"
-
+        return (
+            f"postgresql+asyncpg://"
+            f"{self.POSTGRESQL_USER}:{password}"
+            f"@{self.POSTGRESQL_HOST}:{self.POSTGRESQL_PORT}/{self.POSTGRESQL_DBNAME}"
+        )
+    @property
+    def DATABASE_URL_sync(self) -> str:
+        """URL для sync SQLAlchemy/Alembic (postgresql://...)"""
+        password = quote_plus(self.POSTGRESQL_PASSWORD)
+        return (
+            f"postgresql://"
+            f"{self.POSTGRESQL_USER}:{password}"
+            f"@{self.POSTGRESQL_HOST}:{self.POSTGRESQL_PORT}/{self.POSTGRESQL_DBNAME}"
+        )
 
     model_config = SettingsConfigDict(
         env_file=".env",

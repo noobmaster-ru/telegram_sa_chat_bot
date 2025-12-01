@@ -11,15 +11,12 @@ from src.bot.handlers.clients.quiz import router as quiz_router
 from src.bot.handlers.clients.photo import router as photo_router
 from src.bot.handlers.clients.payment_details import router as payment_router
 
-from src.apis.google_sheets_class import GoogleSheetClass
-from src.apis.open_ai_requests_class import OpenAiRequestClass
 
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.bot.middlewares.media_group import MediaGroupMiddleware
 from src.bot.middlewares.cabinet_context import CabinetContextMiddleware
 
 from src.core.config import settings, constants
-
 from src.db.base import on_shutdown, on_startup
 
 async def main():
@@ -36,31 +33,6 @@ async def main():
         ),
     )
     
-    
-    # spreadsheet = GoogleSheetClass(
-    #     service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI, 
-    #     table_url=settings.GOOGLE_SHEETS_URL,
-    #     buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
-    #     redis_client=redis_client,
-    #     REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING,
-    #     REDIS_KEY_NM_IDS_ORDERED_LIST=constants.REDIS_KEY_NM_IDS_ORDERED_LIST
-    # )
-    
-    # instruction_template = await spreadsheet.get_instruction_template(constants.INSTRUCTION_SHEET_NAME_STR)
-    instruction_template = "..."  # поставь свою реализацию
-
-    client_gpt_5 = OpenAiRequestClass(
-        OPENAI_API_KEY=settings.OPENAI_TOKEN, 
-        GPT_MODEL_NAME=constants.GPT_MODEL_NAME, 
-        GPT_MODEL_NAME_PHOTO_ANALYSIS=constants.GPT_MODEL_NAME_PHOTO_ANALYSIS,
-        PROXY=settings.PROXY,
-        instruction_template=instruction_template,
-        max_tokens=constants.GPT_MAX_TOKENS,
-        max_output_tokens_photo_analysis= constants.GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
-        temperature=constants.GPT_TEMPERATURE,
-        reasoning=constants.GPT_REASONING
-    )
-
     # ============ START =============
     bot = Bot(token=settings.CLIENTS_BOT_TOKEN)
     dp = Dispatcher(storage=clients_storage)
@@ -79,12 +51,20 @@ async def main():
     dp.business_message.middleware(middleware_ignore_bussiness_messages)
     dp.callback_query.middleware(middleware_ignore_bussiness_messages)
     
-    # 3) НОВЫЙ middleware: подставляем cabinet + spreadsheet по business_connection_id
+    # 3) НОВЫЙ middleware: подставляем cabinet + spreadsheet + client_gpt_5 по business_connection_id
     cabinet_ctx_middleware = CabinetContextMiddleware(
         redis_client=redis_client,
         service_account_json=settings.SERVICE_ACCOUNT_AXIOMAI,
         buyers_sheet_name=constants.BUYERS_SHEET_NAME_STR,
-        REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING
+        REDIS_KEY_USER_ROW_POSITION_STRING=constants.REDIS_KEY_USER_ROW_POSITION_STRING,
+        openai_api_key=settings.OPENAI_TOKEN, 
+        gpt_model_name=constants.GPT_MODEL_NAME, 
+        gpt_model_name_photo=constants.GPT_MODEL_NAME_PHOTO_ANALYSIS,
+        proxy=settings.PROXY,
+        max_tokens=constants.GPT_MAX_TOKENS,
+        max_output_tokens_photo=constants.GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+        temperature=constants.GPT_TEMPERATURE,
+        reasoning=constants.GPT_REASONING
     )
     dp.business_message.middleware(cabinet_ctx_middleware)
     dp.callback_query.middleware(cabinet_ctx_middleware)
@@ -92,11 +72,9 @@ async def main():
     # добавляем глобальные данные - чтобы все хэндлеры видели их
     dp.workflow_data.update(
         {
-            # "spreadsheet": spreadsheet,
             "BUYERS_SHEET_NAME": constants.BUYERS_SHEET_NAME_STR,
             "INSTRUCTION_SHEET_NAME": constants.INSTRUCTION_SHEET_NAME_STR,
             "ADMIN_ID_LIST": constants.ADMIN_ID_LIST,
-            "client_gpt_5": client_gpt_5,
             "redis": redis_client
         }
     )
