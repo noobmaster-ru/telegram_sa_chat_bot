@@ -42,7 +42,7 @@ async def link_cabinet(
 
         if cabinet is None:
             await message.answer(
-                "Кабинет с таким кодом не найден. Проверьте код в seller-боте."
+                f"Кабинет с таким кодом не найден. Проверьте код в {constants.SELLERS_BOT_USERNAME}"
             )
             return
 

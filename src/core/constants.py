@@ -24,7 +24,8 @@ PRODUCT_TITLE = "Фонарики для лупы"
 
 # Aiogram
 SKIP_MESSAGE_STATE="skip_msg"
-
+CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot"
+SELLERS_BOT_USERNAME = "@axiom_agi_bot"
 # Telegram
 MIN_LEN_TEXT = 12
 

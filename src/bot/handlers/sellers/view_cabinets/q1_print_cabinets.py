@@ -91,7 +91,7 @@ async def view_cabinets(
             if articles:
                 lines = []
                 for i, art in enumerate(articles, start=1):
-                    lines.append(f"{i}. {art.article} — {art.nm_id_name} раздач")
+                    lines.append(f"{i}. {art.article} — {art.nm_id_name}")
                 articles_text = "*Артикулы:*\n" + "\n".join(lines)
             else:
                 articles_text = "Артикулов пока нет."

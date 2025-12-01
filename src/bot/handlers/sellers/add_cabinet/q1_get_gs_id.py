@@ -10,18 +10,7 @@ from src.core.config import constants
 
 from .router import router
 
-# SELLER_MENU_TEXT[0] == '⚙️Добавить кабинет'
-@router.message(F.text == constants.SELLER_MENU_TEXT[0], StateFilter(SellerStates.waiting_for_tap_to_menu))
-async def add_cabinet(
-    message: Message,
-    state: FSMContext
-):
-    await message.answer(
-        text=f'Сделайте себе копию этой таблицы\n\n {constants.GOOGLE_SHEETS_TEMPLATE_URL}\n\n и пришлите мне ссылку на неё',
-        reply_markup=ReplyKeyboardRemove()
-    )
-    await state.set_state(SellerStates.waiting_for_new_google_sheets_url)
-    
+
 @router.message(
     F.text.startswith('http'), 
     StateFilter(SellerStates.waiting_for_new_google_sheets_url)

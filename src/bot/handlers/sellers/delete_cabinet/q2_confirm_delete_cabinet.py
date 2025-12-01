@@ -84,10 +84,6 @@ async def execute_deletion(
         stmt_delete_articles = delete(ArticleORM).where(ArticleORM.cabinet_id == cabinet_id)
         await session.execute(stmt_delete_articles)
 
-        # 2. Удаляем сам кабинет (или помечаем как удаленный, если используем soft-delete)
-        # Если вы хотите физически удалить строку:
-        # stmt_delete_cabinet = delete(CabinetORM).where(CabinetORM.id == cabinet_id)
-        # await session.execute(stmt_delete_cabinet)
         
         # Если используете soft-delete (у вас в модели есть deleted_at):
         stmt_soft_delete = update(CabinetORM).where(CabinetORM.id == cabinet_id).values(deleted_at=func.now())

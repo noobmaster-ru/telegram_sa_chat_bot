@@ -8,6 +8,8 @@ from sqlalchemy import select
 from src.bot.keyboards.reply.menu import kb_menu
 from src.db.models import UserORM
 from src.bot.states.seller import SellerStates
+from src.tools.string_converter_class import StringConverter
+
 from .router import router
 
 
@@ -20,14 +22,18 @@ async def cmd_start(
     telegram_id = message.from_user.id
     fullname = message.from_user.full_name 
     user_name = message.from_user.username
-    
+
     await state.update_data(
-        telegram_id=telegram_id
+        telegram_id=telegram_id,
+        fullname=fullname,
+        user_name=user_name
     )
     await message.answer(f"Здравствуйте!")
+    text = "Давайте зарегистрируем ваши кабинеты, выберите пункт *Добавить кабинет* в меню"
     await message.answer(
-        "Давайте зарегистрируем ваши кабинеты, выберите пункт 'Добавить кабинет' в меню",
-        reply_markup=kb_menu
+        text=StringConverter.escape_markdown_v2(text),
+        reply_markup=kb_menu,
+        parse_mode="MarkdownV2"
     )
     async with db_session_factory() as session:
         # Проверяем, есть ли пользователь в бд 

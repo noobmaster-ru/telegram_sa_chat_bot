@@ -85,23 +85,35 @@ async def handle_add_service_account_into_gs(
                 cabinet_id=new_cabinet.id,
                 cashback_table_id=cashback_table.id,
             )
-
+        text = f"✅ Магазин: *{organization_name}* успешно добавлен!"
         await callback.message.answer(
-            "1. Подключите @clients_bot как чат-бот к вашему бизнес-аккаунту.\n"
-            "2. В любом диалоге этого бизнес-аккаунта отправьте сообщение:\n\n"
+            text=StringConverter.escape_markdown_v2(text),
+            parse_mode="MarkdownV2"
+        )
+        text = (
+            f"1.Подключите {constants.CLIENTS_BOT_USERNAME} как чат-бот к вашему бизнес-аккаунту.\n"
+            "2. Отправьте от своего личного аккаунта вот такое сообщение бизнес-аккаунту:\n\n"
             f"/link_{link_code}"
-            "\n\nЭто нужно сделать один раз, чтобы привязать бот к кабинету."
+            "\n\nЭто нужно сделать один раз, чтобы связать бота с бизнес-аккаунтом."
+            "Если всё хорошо, то ваш бизнес-аккаунт должен отправить вам сообщение:\n\n"
+            "*Кабинет успешно привязан к бизнес-аккаунту ✅*"
         )
-        await callback.message.answer(
-            f"✅ Магазин/ИП: {organization_name} успешно добавлен!"
+        msg = await callback.message.answer(
+            text = StringConverter.escape_markdown_v2(text),
+            reply_markup=get_yes_no_keyboard(
+                callback_prefix="link_bot",  # префикс оставляем, чтобы не ломать остальную логику
+                statement="связал(а)",
+            ),
         )
-
-        await callback.message.answer(
-            "Теперь давайте добавим артикулы для раздачи и количество раздач\n\n"
-            "Отправьте *артикул* товара на ВБ, *одно число*",
-            parse_mode="MarkdownV2",
+        await state.update_data(
+            message_id_to_delete=msg.message_id
         )
-        await state.set_state(SellerStates.waiting_for_nm_id)
+        # await callback.message.answer(
+        #     "Теперь давайте добавим артикулы для раздачи и количество раздач\n\n"
+        #     "Отправьте *артикул* товара на ВБ, *одно число*",
+        #     parse_mode="MarkdownV2",
+        # )
+        await state.set_state(SellerStates.waiting_for_link_bot_to_bus_acc)
 
     else:
         await callback.message.answer(
