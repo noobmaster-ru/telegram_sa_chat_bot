@@ -30,32 +30,26 @@ async def handle_nm_id(message: Message, state: FSMContext):
     await message.answer(
         f"Организация: *{organization_name}*\n"
         f"Артикул: *{nm_id}*\n\n"
-        f"Введите количество раздач для этого артикула:",
+        f"Введите название товара\\(*ОЧЕНЬ ВАЖНО УКАЗАТЬ ИМЕННО ТАК, КАК ТОВАР НАЗЫВАЕТСЯ НА ВБ \\- AI БУДЕТ СРАВНИВАТЬ НАЗВАНИЕ ТОВАРА НА СКРИНШОТАХ*\\):",
         parse_mode="MarkdownV2",
     )
-    await state.set_state(SellerStates.waiting_for_nm_id_amount)
+    await state.set_state(SellerStates.waiting_for_nm_id_name)
 
 
-@router.message(F.text, StateFilter(SellerStates.waiting_for_nm_id_amount))
+@router.message(F.text, StateFilter(SellerStates.waiting_for_nm_id_name))
 async def handle_nm_id_amount(message: Message, state: FSMContext):
-    text = (message.text or "").strip()
+    nm_id_name = (message.text or "").capitalize()
     seller_data = await state.get_data()
     organization_name = seller_data.get("organization_name", "-")
     nm_id = seller_data.get("nm_id")
 
-    if not text.isdigit():
-        return await message.answer(
-            "Количество раздач должно быть целым *числом.*",
-            parse_mode="MarkdownV2",
-        )
 
-    amount = int(text)
-    await state.update_data(amount=amount)
+    await state.update_data(nm_id_name=nm_id_name)
 
     await message.answer(
         f"Организация: *{organization_name}*\n"
         f"Артикул: *{nm_id}*\n"
-        f"Количество раздач: *{amount}*\n\n"
+        f"Название товара: *{nm_id_name}*\n\n"
         f"Теперь отправьте фото товара, как изображение, не как файл\\.",
         parse_mode="MarkdownV2",
     )
@@ -86,7 +80,7 @@ async def handle_nm_id_photo(
         return
 
     nm_id = seller_data["nm_id"]
-    amount = seller_data["amount"]
+    nm_id_name = seller_data["nm_id_name"]
     organization_name = seller_data.get("organization_name", "-")
 
     # берём фото в лучшем качестве
@@ -99,7 +93,7 @@ async def handle_nm_id_photo(
         caption=(
             f"Организация: *{organization_name}*\n"
             f"Артикул: *{nm_id}*\n"
-            f"Количество для раздач: *{amount}*\n\n\n"
+            f"Название товара: *{nm_id_name}*\n\n\n"
             f"Данные заполнены верно?"
         ),
         reply_markup=get_yes_no_keyboard(
@@ -132,7 +126,7 @@ async def write_data_into_db(
 
     if callback.data == "data_verify_yes":
         nm_id = seller_data["nm_id"]
-        amount = seller_data["amount"]
+        nm_id_name = seller_data["nm_id_name"]
         cabinet_id = seller_data["cabinet_id"]  # установлен в q3_service_account_access
         file_id = seller_data["nm_id_photo_file_id"]
         organization_name = seller_data.get("organization_name", "-")
@@ -141,7 +135,7 @@ async def write_data_into_db(
             new_article = ArticleORM(
                 cabinet_id=cabinet_id,
                 article=nm_id,
-                giveaways=amount,
+                nm_id_name=nm_id_name,
                 photo_file_id=file_id,
             )
             session.add(new_article)
@@ -150,7 +144,7 @@ async def write_data_into_db(
         await callback.message.answer(
             f"Организация: *{organization_name}*\n"
             f"Артикул: *{nm_id}*\n"
-            f"Количество раздач: {amount}\n\n\n"
+            f"Название товара: *{nm_id_name}*\n\n\n"
             f"Успешно добавлен🎉",
             reply_markup=kb_menu,
             parse_mode="MarkdownV2",

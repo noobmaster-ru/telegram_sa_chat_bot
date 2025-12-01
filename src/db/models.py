@@ -73,7 +73,7 @@ class CabinetORM(Base):
     # organization_id — внешний идентификатор организации (если понадобится привязка к WB/OZON и т.п.)
     organization_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    
+
     nm_id_name: Mapped[str] = mapped_column(
         String(128),
         comment="Название ИП / магазина, вводимое пользователем",
@@ -141,7 +141,7 @@ class ArticleORM(Base):
     cabinet_id: Mapped[int] = mapped_column(ForeignKey("cabinets.id"), nullable=False)
 
     article: Mapped[int] = mapped_column(Integer)  # артикул товара
-    giveaways: Mapped[int] = mapped_column(Integer)  # количество раздач
+    nm_id_name: Mapped[str | None] = mapped_column(String(256))  # название товара
     photo_file_id: Mapped[str | None] = mapped_column(String(256))  # telegram file_id фото
 
     created_at: Mapped[datetime.datetime] = mapped_column(

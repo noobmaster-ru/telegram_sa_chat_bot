@@ -87,7 +87,7 @@ async def handle_first_message(
         return
 
     available_nm_id = article_obj.article  # nm_id из ArticleORM
-    product_title = cabinet.organization_name  # название магазина/ИП
+    organization_name = cabinet.organization_name  # название магазина/ИП
     nm_id_name = cabinet.nm_id_name
     
     telegram_id = message.from_user.id
@@ -105,7 +105,7 @@ async def handle_first_message(
     await state.update_data(
         clients_bot_id=bot_id,
         nm_id=available_nm_id,
-        product_title=product_title,
+        organization_name=organization_name,
         nm_id_name=nm_id_name,
         telegram_id=telegram_id,
         full_name=full_name,
@@ -116,7 +116,7 @@ async def handle_first_message(
     # 3. Достаём инструкцию именно для этого товара/кабинета
     instruction_str = await spreadsheet.get_instruction(
         sheet_instruction=INSTRUCTION_SHEET_NAME,
-        product_title=product_title,
+        product_title=nm_id_name,
     )
 
     # 4. Сохраняем покупателя в ТАБЛИЦУ КОНКРЕТНОГО КАБИНЕТА

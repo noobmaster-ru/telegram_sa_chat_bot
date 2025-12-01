@@ -19,7 +19,6 @@ ADMIN_ID_LIST = [694144143, 547299317]
 
 
 # Wildberries
-# ET_REMAINS = 3600 #3600*1 # 3600s = 1 hour * 23 = 23 hours
 NM_IDS_FOR_CASHBACK = [555620866]
 PRODUCT_TITLE = "Фонарики для лупы"
 
