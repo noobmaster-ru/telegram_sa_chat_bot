@@ -2,7 +2,7 @@ import asyncio
 from aiogram import F
 from aiogram.types import Message
 from aiogram.enums import ChatAction
-from aiogram.filters import StateFilter
+from aiogram.filters import StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
@@ -12,9 +12,13 @@ from src.bot.utils.last_activity import update_last_activity
 from src.core.config import constants
 
 from .router import router
+from src.bot.filters.image_document import ImageDocument
 
 # ==== Получение фото от пользователя уже после скрина заказа/отзыва/шк ==== 
-@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_requisites, ClientStates.continue_dialog))
+@router.business_message(
+    or_f(F.photo, ImageDocument()), 
+    StateFilter(ClientStates.waiting_for_requisites, ClientStates.continue_dialog)
+)
 async def handle_photo_other_type(
     message: Message,
     state: FSMContext,

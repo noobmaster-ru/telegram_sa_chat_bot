@@ -35,13 +35,9 @@ async def callback_brand_name(
         )
         del seller_data['message_id_to_delete']
         await state.set_data(seller_data)
-        await callback.message.answer("✅ Отлично!")
-        await callback.message.answer(
-            "Теперь давайте добавим артикул для раздачи и его фото\n\n"
-            "Отправьте *артикул* товара на ВБ, *одно число*",
-            parse_mode="MarkdownV2",
-        )
-        await state.set_state(SellerStates.waiting_for_nm_id)
+        await callback.message.answer("✅ Отлично! бот привязан к вашему бизнес-аккаунту😊🥳")
+        await callback.message.answer(f"Теперь пришлите мне ID , который вам выдал {constants.BOT_TO_GET_ID}")
+        await state.set_state(SellerStates.waiting_for_business_account_id)
     else:
         text = "Нужно связать бота и бизнес-аккаунт в телеграме, пожалуйста, сделайте то, что написано выше"
         await callback.message.answer(

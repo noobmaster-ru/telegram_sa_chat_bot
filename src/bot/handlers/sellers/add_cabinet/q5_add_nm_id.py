@@ -2,12 +2,13 @@ import logging
 from redis.asyncio import Redis
 
 from aiogram import F
-from aiogram.filters import StateFilter
+from aiogram.filters import StateFilter, or_f
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from src.bot.filters.image_document import ImageDocument
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
 from src.db.models import ArticleORM
@@ -34,7 +35,7 @@ async def handle_nm_id(message: Message, state: FSMContext):
     await state.update_data(nm_id=nm_id)
 
     await message.answer(
-        f"Организация: *{organization_name}*\n"
+        f"Магазин: *{organization_name}*\n"
         f"Артикул: *{nm_id}*\n\n"
         f"Введите название товара\\(*ОЧЕНЬ ВАЖНО УКАЗАТЬ ИМЕННО ТАК, КАК ТОВАР НАЗЫВАЕТСЯ НА ВБ \\- AI БУДЕТ СРАВНИВАТЬ НАЗВАНИЕ ТОВАРА НА СКРИНШОТАХ*\\):",
         parse_mode="MarkdownV2",
@@ -53,31 +54,32 @@ async def handle_nm_id_amount(message: Message, state: FSMContext):
     await state.update_data(nm_id_name=nm_id_name)
 
     await message.answer(
-        f"Организация: *{organization_name}*\n"
+        f"Магазин: *{organization_name}*\n"
         f"Артикул: *{nm_id}*\n"
         f"Название товара: *{nm_id_name}*\n\n"
-        f"Теперь отправьте фото товара, как изображение, не как файл\\.",
+        f"Теперь отправьте *первое* фото товара в карточке\\.",
         parse_mode="MarkdownV2",
     )
     await state.set_state(SellerStates.waiting_for_nm_id_photo)
 
 
-@router.message(F.photo, StateFilter(SellerStates.waiting_for_nm_id_photo))
+@router.message(
+    or_f(F.photo, ImageDocument()), 
+    StateFilter(SellerStates.waiting_for_nm_id_photo)
+)
 async def handle_nm_id_photo(
     message: Message,
     state: FSMContext,
 ):
     seller_data = await state.get_data()
 
-    # === 1. Проверяем, не отправил ли пользователь альбом (несколько фоток) ===
+    # 1. Проверка на альбом
     if message.media_group_id is not None:
         last_media_group = seller_data.get("last_media_group_id")
 
-        # если этот альбом уже обрабатывали — выходим
         if last_media_group == message.media_group_id:
             return
 
-        # иначе сохраняем ID альбома и показываем сообщение
         await state.update_data(last_media_group_id=message.media_group_id)
         await message.answer(
             "Пожалуйста, отправьте только одну фотографию: первую фотографию артикула\\.",
@@ -89,25 +91,55 @@ async def handle_nm_id_photo(
     nm_id_name = seller_data["nm_id_name"]
     organization_name = seller_data.get("organization_name", "-")
 
-    # берём фото в лучшем качестве
-    photo_file_id = message.photo[-1].file_id
-
+    # 2. Определяем file_id (фото или документ)
+    photo_file_id = None
+    is_photo = False
+    
+    if message.photo:
+        photo_file_id = message.photo[-1].file_id   # лучшее качество
+        is_photo = True
+    elif message.document:
+        photo_file_id = message.document.file_id
+        is_photo = False
+    else:
+        msg = await message.answer(
+            "Не удалось найти изображение в сообщении. Пришлите, пожалуйста, фото ещё раз."
+        )
+        await state.set_state(SellerStates.waiting_for_nm_id_photo)
+        return
+    
+    # 3. Сохраняем file_id как есть — не важно, photo это или document
     await state.update_data(nm_id_photo_file_id=photo_file_id)
-
-    msg = await message.answer_photo(
-        photo=photo_file_id,
-        caption=(
-            f"Организация: *{organization_name}*\n"
-            f"Артикул: *{nm_id}*\n"
-            f"Название товара: *{nm_id_name}*\n\n\n"
-            f"Данные заполнены верно?"
-        ),
-        reply_markup=get_yes_no_keyboard(
-            callback_prefix="data_verify",
-            statement="верно",
-        ),
-        parse_mode="MarkdownV2",
+    
+    caption = (
+        f"Магазин: *{organization_name}*\n"
+        f"Артикул: *{nm_id}*\n"
+        f"Название товара: *{nm_id_name}*\n\n\n"
+        f"Данные заполнены верно?"
     )
+    # 4. Отправляем превью в зависимости от типа
+    if is_photo:
+        msg = await message.answer_photo(
+            photo=photo_file_id,
+            caption=caption,
+            reply_markup=get_yes_no_keyboard(
+                callback_prefix="data_verify",
+                statement="верно",
+            ),
+            parse_mode="MarkdownV2",
+        )
+    else:
+        # документ (изображение без сжатия) — отправляем как документ
+        msg = await message.answer_document(
+            document=photo_file_id,
+            caption=caption,
+            reply_markup=get_yes_no_keyboard(
+                callback_prefix="data_verify",
+                statement="верно",
+            ),
+            parse_mode="MarkdownV2",
+        )  
+
     await state.update_data(
         message_id_to_delete=msg.message_id,
     )
@@ -160,10 +192,10 @@ async def write_data_into_db(
         )
 
         await callback.message.answer(
-            f"Организация: *{organization_name}*\n"
+            f"Магазин: *{organization_name}*\n"
             f"Артикул: *{nm_id}*\n"
             f"Название товара: *{nm_id_name}*\n\n\n"
-            f"Успешно добавлен🎉",
+            f"Успешно добавлен🎉 Теперь можно начинать раздачи😶‍🌫️ ваш бизнес аккаунт сам будет общаться со всеми покупателями и записывать их данные в гугл таблицу🤯",
             reply_markup=kb_menu,
             parse_mode="MarkdownV2",
         )

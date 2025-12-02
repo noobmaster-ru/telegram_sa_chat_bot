@@ -9,24 +9,29 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from aiogram.types import Message
 from aiogram.enums import ChatAction
-from aiogram.filters import StateFilter
+from aiogram.filters import StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
+from src.bot.filters.image_document import ImageDocument
 from src.bot.states.client import ClientStates
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
-from src.db.models import CabinetORM
+from src.bot.utils.last_activity import update_last_activity
 
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass
-from src.bot.utils.last_activity import update_last_activity
+
 from src.core.config import constants, settings
+from src.db.models import CabinetORM
 
 from .router import router
 
 # ==== Получение скрина отзыва от пользователя ==== 
-@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_photo_feedback))
+@router.business_message(
+    or_f(F.photo, ImageDocument()), 
+    StateFilter(ClientStates.waiting_for_photo_feedback)
+)
 async def handle_photo_feedback(
     message: Message,
     state: FSMContext,
@@ -44,17 +49,14 @@ async def handle_photo_feedback(
         await state.update_data(
             business_connection_id=business_connection_id
         )
-    # Middleware соберет все сообщения в album
-    # Если 'album' существует, значит, юзер отправил медиагруппу
+    
+    # 1. Проверяем медиагруппу
     if album:    
-        # Отправляем ТОЛЬКО ОДНО предупреждение 
-        # (этот хэндлер вызовется только один раз для всего альбома благодаря middleware)
         msg = await message.answer(
             "Пожалуйста, отправьте *только один* скриншот: скриншот *ОТЗЫВА* товара",
             parse_mode="MarkdownV2"
         )
         await update_last_activity(state, msg)
-        # Остаемся в том же состоянии, чтобы он отправил одну фотографию
         await state.set_state(ClientStates.waiting_for_photo_feedback)
         return
 
@@ -64,13 +66,30 @@ async def handle_photo_feedback(
     nm_id = user_data.get("nm_id")
     nm_id_name = user_data.get("nm_id_name")
     
-    # === 3. Получаем фото ===
-    photo = message.photo[-1]  # лучшее качество
-    file = await message.bot.get_file(photo.file_id)
+    # === 3. Получаем фото юзера (как photo ИЛИ как document) ===
+    # Если отправлено как обычное фото
+    if message.photo:
+        tg_file_id = message.photo[-1].file_id   # лучшее качество
+    # Если отправлено как файл "без сжатия" (image/*)
+    elif message.document:
+        tg_file_id = message.document.file_id
+    else:
+        # Теоретически сюда не попадём из-за фильтра, но на всякий случай
+        msg = await message.answer(
+            "Не удалось найти изображение в сообщении. Пришлите, пожалуйста, скриншот ещё раз."
+        )
+        await update_last_activity(state, msg)
+        await state.set_state(ClientStates.waiting_for_photo_feedback)
+        return
+
+    file = await message.bot.get_file(tg_file_id)
     file_bytes = await message.bot.download_file(file.file_path)
     user_bytes = file_bytes.read()
+    
     # 🔹 Конвертируем байты в base64-строку
     base64_image_user = base64.b64encode(user_bytes).decode("utf-8")
+    
+    # Определяем расширение по содержимому, а не по имени
     reference_image_extension = filetype.guess(user_bytes).extension
     user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
 
@@ -84,6 +103,12 @@ async def handle_photo_feedback(
         seller_bot_token=settings.SELLERS_BOT_TOKEN,
     )
     
+    if ref_image_url is None:
+        await message.answer(
+            "Не удалось найти эталонное изображение для этого артикула. "
+            "Попросите менеджера проверить настройки."
+        )
+        return
     
     # отправляем в OpenAI для классификации
     model_response = await client_gpt_5.classify_photo_feedback(
@@ -115,7 +140,7 @@ async def handle_photo_feedback(
     await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     
     if model_response == "Да":
-        # теперь ждём скрин отзыва
+        # теперь ждём фото этикеток
         await state.update_data(photo_type="shk")
         # отвечаем пользователю
         await message.answer(

@@ -93,7 +93,7 @@ async def callback_org_name(
                 # Сохраняем user_id в FSM
                 await state.update_data(user_id=user.id)
                 
-                await callback.message.answer("Спасибо! email записан")
+                await callback.message.answer("Спасибо! email и ваши данные telegram записаны😊")
         text = "Теперь давайте зарегистрируем ваши кабинеты, выберите пункт *Добавить кабинет* в меню"
         await callback.message.answer(
             text=StringConverter.escape_markdown_v2(text),

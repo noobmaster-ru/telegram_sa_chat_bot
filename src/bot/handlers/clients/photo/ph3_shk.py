@@ -8,10 +8,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from aiogram import F
 from aiogram.types import Message
 from aiogram.enums import ChatAction
-from aiogram.filters import StateFilter
+from aiogram.filters import StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import ReadBusinessMessage
 
+from src.bot.filters.image_document import ImageDocument
 from src.bot.states.client import ClientStates
 from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
 from src.bot.utils.last_activity import update_last_activity
@@ -24,67 +25,69 @@ from .router import router
 
 
 # ==== Получение фото от пользователя ==== 
-@router.business_message(F.photo, StateFilter(ClientStates.waiting_for_photo_shk))
+@router.business_message(
+    or_f(F.photo, ImageDocument()),
+    StateFilter(ClientStates.waiting_for_photo_shk)
+)
 async def handle_photo_shk(
     message: Message,
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
-    redis: Redis,
-    db_session_factory: async_sessionmaker,
-    cabinet: CabinetORM,
     client_gpt_5: OpenAiRequestClass,
     album: Optional[List[Message]] = None
 ):
     await state.set_state(constants.SKIP_MESSAGE_STATE)
-    user_data = await state.get_data()
     business_connection_id = message.business_connection_id
     if business_connection_id:
         await state.update_data(
             business_connection_id=business_connection_id
         )
+    
+    # 1. Проверяем медиагруппу
     if album:    
-        # Отправляем ТОЛЬКО ОДНО предупреждение 
-        # (этот хэндлер вызовется только один раз для всего альбома благодаря middleware)
         msg = await message.answer(
             "Пожалуйста, отправьте *только одну* фотографию: фотографию *разрезанных этикеток* товара",
             parse_mode="MarkdownV2"
         )
         await update_last_activity(state, msg)
-        # Остаемся в том же состоянии, чтобы он отправил одну фотографию
         await state.set_state(ClientStates.waiting_for_photo_shk)
         return
 
 
     # === 2. Извлекаем данные из FSM ===
     telegram_id = message.from_user.id
-    nm_id = user_data.get("nm_id")
-    nm_id_name = user_data.get("nm_id_name")
+
+    # === 3. Получаем фото юзера (как photo ИЛИ как document) ===
+    # Если отправлено как обычное фото
+    if message.photo:
+        tg_file_id = message.photo[-1].file_id   # лучшее качество
+    # Если отправлено как файл "без сжатия" (image/*)
+    elif message.document:
+        tg_file_id = message.document.file_id
+    else:
+        # Теоретически сюда не попадём из-за фильтра, но на всякий случай
+        msg = await message.answer(
+            "Не удалось найти изображение в сообщении. Пришлите, пожалуйста, скриншот ещё раз."
+        )
+        await update_last_activity(state, msg)
+        await state.set_state(ClientStates.waiting_for_photo_shk)
+        return
     
-    # === 3. Получаем фото ===
-    photo = message.photo[-1]  # лучшее качество
-    file = await message.bot.get_file(photo.file_id)
+    file = await message.bot.get_file(tg_file_id)
     file_bytes = await message.bot.download_file(file.file_path)
     user_bytes = file_bytes.read()
+    
     # 🔹 Конвертируем байты в base64-строку
     base64_image_user = base64.b64encode(user_bytes).decode("utf-8")
+    
+    # Определяем расширение по содержимому, а не по имени
     reference_image_extension = filetype.guess(user_bytes).extension
     user_image_url  = f"data:image/{reference_image_extension};base64,{base64_image_user}"
 
-    # 4. Берём эталон из кэша / TG
-    ref_image_url = await get_reference_image_data_url_cached(
-        db_session_factory=db_session_factory,
-        redis=redis,
-        cabinet_id=cabinet.id,
-        nm_id=nm_id,
-        seller_bot_token=settings.SELLERS_BOT_TOKEN,
-    )
     
     # отправляем в OpenAI для классификации
     model_response = await client_gpt_5.classify_photo_shk(
-        ref_image_url=ref_image_url,
-        user_image_url=user_image_url,
-        nm_id=nm_id,
-        nm_id_name=nm_id_name
+        user_image_url=user_image_url
     )
 
     await spreadsheet.update_buyer_button_and_time(

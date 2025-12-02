@@ -1,32 +1,57 @@
-# develop: redis + clients_bot + sellers_bot
+# prod: sellers_bot + clients_bot
 services:
-  redis:
-    image: redis:7
-    container_name: redis
-    restart: always
-    ports:
-      - "6380:6379"
   clients_bot:
-      build: .
-      container_name: clients_bot
-      command: uv run python -m src.bots.clients_bot.run
-      env_file: 
-        - .env
-      depends_on:
-        - redis
-      volumes:
-      - .:/app
-      - ./logs:/app/logs
-      restart: always
-  sellers_bot:
     build: .
-    container_name: sellers_bot
-    command: uv run python -m src.bots.sellers_bot.run
-    env_file: 
-      - .env
-    depends_on:
-      - redis
+    container_name: clients_bot
+    command: uv run python -m src.bots.clients_bot.run
+    env_file:
+      - .env        # на проде тут лежит REDIS_URL=redis://default:...@194.87.86.12:6379/2
     volumes:
       - .:/app
       - ./logs:/app/logs
     restart: always
+
+  sellers_bot:
+    build: .
+    container_name: sellers_bot
+    command: uv run python -m src.bots.sellers_bot.run
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    restart: always
+
+
+# # develop: redis + clients_bot + sellers_bot
+# services:
+#   redis:
+#     image: redis:7
+#     container_name: redis
+#     restart: always
+#     ports:
+#       - "6380:6379"
+#   clients_bot:
+#       build: .
+#       container_name: clients_bot
+#       command: uv run python -m src.bots.clients_bot.run
+#       env_file: 
+#         - .env
+#       depends_on:
+#         - redis
+#       volumes:
+#       - .:/app
+#       - ./logs:/app/logs
+#       restart: always
+#   sellers_bot:
+#     build: .
+#     container_name: sellers_bot
+#     command: uv run python -m src.bots.sellers_bot.run
+#     env_file: 
+#       - .env
+#     depends_on:
+#       - redis
+#     volumes:
+#       - .:/app
+#       - ./logs:/app/logs
+#     restart: always

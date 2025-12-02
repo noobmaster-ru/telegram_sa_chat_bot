@@ -35,24 +35,15 @@ async def main():
     dp = Dispatcher(storage=sellers_storage)
     
     # middlewate to skip media_group(many photos in one message)
-    dp.business_message.middleware(MediaGroupMiddleware(latency=0.5))
-
-    
-    # middleware to ignore messages from us(manager) from bussiness account (BUSSINESS_ACCOUNTS_IDS)
-    middleware_ignore_bussiness_messages = IgnoreBusinessMessagesMiddleware()
-    dp.business_message.middleware(middleware_ignore_bussiness_messages)
-    dp.callback_query.middleware(middleware_ignore_bussiness_messages)
+    dp.message.middleware(MediaGroupMiddleware(latency=0.5))
     
     # create poll connection to and close poll connection to db
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
     # добавляем глобальные данные - чтобы все хэндлеры видели их
-    dp.workflow_data.update(
-        {
-            "redis": redis_client,
-        }
-    )
+    dp.workflow_data.update({"redis": redis_client})
+    
     # seller routers 
     dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router, add_nm_id_router, last_router)
     await dp.start_polling(bot)

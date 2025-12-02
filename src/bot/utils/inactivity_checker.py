@@ -181,6 +181,12 @@ async def inactivity_checker(
                             callback_prefix = "confirm_requisites"
                             statement = "верно" 
                         try:
+                            if state == REPLY_MARKUP_REMIND[2]:
+                                await bot.send_message(
+                                    chat_id=telegram_id,
+                                    text="ОТЗЫВ БЕЗ ФОТО И БЕЗ ВИДЕО!",
+                                    business_connection_id=business_connection_id,
+                                )
                             msg = await bot.send_message(
                                 chat_id=telegram_id,
                                 text=text,
@@ -194,12 +200,6 @@ async def inactivity_checker(
                             new_data = client_data.copy()
                             new_data["last_time_activity"] = time.time()
                             new_data["last_messages_ids"] = [msg.message_id]
-                            if state == REPLY_MARKUP_REMIND[2]:
-                                await bot.send_message(
-                                    chat_id=telegram_id,
-                                    text="ОТЗЫВ БЕЗ ФОТО И БЕЗ ВИДЕО!",
-                                    business_connection_id=business_connection_id,
-                                )
                             await redis.set(redis_key, json.dumps(new_data))
                             logging.info(f" send message to user {telegram_id}, in state {state}")
                         except TelegramBadRequest as e:

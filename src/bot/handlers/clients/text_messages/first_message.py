@@ -16,6 +16,7 @@ from src.bot.states.client import ClientStates
 from src.apis.google_sheets_class import GoogleSheetClass
 from src.bot.utils.last_activity import update_last_activity
 from src.core.config import constants
+from src.tools.string_converter_class import StringConverter
 
 from .router import router
 
@@ -51,6 +52,12 @@ async def link_cabinet(
         await session.commit()
 
     await message.answer("Кабинет успешно привязан к бизнес-аккаунту ✅")
+    text = f"Теперь перешлите моё сообщение боту @username_to_id_bot, он вам выдаст мой ID (id: ...) затем перейдите в {constants.SELLERS_BOT_USERNAME} , нажмите на кнопку 'Да, связал(а)' и отправьте полученный ID 🙃"
+    await message.answer(
+        text=StringConverter.escape_markdown_v2(text),
+        parse_mode="MarkdownV2"
+    )
+
 
 
 @router.business_message(StateFilter(constants.SKIP_MESSAGE_STATE))
@@ -185,7 +192,7 @@ async def handle_first_message(
 
     await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     msg = await message.answer(
-        f"Здравствуйте! Я - 🤖-помощник {constants.MANAGER_NAME}.\n"
+        f"Здравствуйте! Я - 🤖-помощник.\n"
         f"Вы согласны на наши условия кэшбека?",
         reply_markup=get_yes_no_keyboard("agree", "согласен(на)"),
     )

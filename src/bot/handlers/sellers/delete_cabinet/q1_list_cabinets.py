@@ -57,7 +57,7 @@ async def delete_cabinet(
         buttons = []
         for cabinet in cabinets:
             button = InlineKeyboardButton(
-                text=cabinet.brand_name,
+                text=cabinet.organization_name,
                 # Используем префикс 'confirm_delete_' для идентификации запроса на удаление
                 callback_data=f"confirm_delete_{cabinet.id}" 
             )

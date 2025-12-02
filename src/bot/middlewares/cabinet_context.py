@@ -1,4 +1,9 @@
+import logging
+import json
+import time
 from typing import Any, Awaitable, Callable, Dict, Optional
+
+from redis.asyncio import Redis
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, CallbackQuery, Message
@@ -10,6 +15,8 @@ from src.apis.google_sheets_class import GoogleSheetClass
 from src.apis.open_ai_requests_class import OpenAiRequestClass
 from src.db.models import CabinetORM, CashbackTableORM, CashbackTableStatus
 from src.core.config import constants
+logger = logging.getLogger(__name__)
+
 
 class CabinetContextMiddleware(BaseMiddleware):
     def __init__(
@@ -48,7 +55,11 @@ class CabinetContextMiddleware(BaseMiddleware):
         self._sheets_cache: dict[str, GoogleSheetClass] = {}
         # кэш: business_connection_id -> OpenAiRequestClass
         self._gpt_cache: dict[str, OpenAiRequestClass] = {}
-
+        # кэш cabinet'ов: business_connection_id -> (timestamp, CabinetORM)
+        self._cabinet_cache: dict[str, tuple[float, CabinetORM]] = {}
+        # TTL для кабинета, например 120 секунд
+        self._cabinet_ttl_seconds = constants.CABINET_CONTEXT_TTL_SECONDS
+        
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
@@ -67,6 +78,7 @@ class CabinetContextMiddleware(BaseMiddleware):
             # не бизнес-апдейт, просто пробрасываем
             return await handler(event, data)
 
+
         # 2. Достаём session_factory из workflow_data
         session_factory: Optional[async_sessionmaker[AsyncSession]] = data.get(
             "db_session_factory"
@@ -76,27 +88,39 @@ class CabinetContextMiddleware(BaseMiddleware):
             data["spreadsheet"] = None
             data["client_gpt_5"] = None
             return await handler(event, data)
+        
+        now = time.time()
+        cached_entry = self._cabinet_cache.get(business_connection_id)
+        cabinet: Optional[CabinetORM] = None
 
-
-        # 3. Ищем кабинет по business_connection_id (с подгруженными relations)
-        async with session_factory() as session:
-            stmt = (
-                select(CabinetORM)
-                .options(
-                    selectinload(CabinetORM.cashback_tables),
-                    selectinload(CabinetORM.articles),
-                )
-                .where(CabinetORM.business_connection_id == business_connection_id)
-            )
-            result = await session.execute(stmt)
-            cabinet: Optional[CabinetORM] = result.scalar_one_or_none()
-
+        if cached_entry is not None:
+            ts, cached_cabinet = cached_entry
+            if now - ts < self._cabinet_ttl_seconds:
+                cabinet = cached_cabinet
+        
         if cabinet is None:
-            data["cabinet"] = None
-            data["spreadsheet"] = None
-            data["client_gpt_5"] = None
-            return await handler(event, data)
+            # 3. Ищем кабинет по business_connection_id (с подгруженными relations)
+            async with session_factory() as session:
+                stmt = (
+                    select(CabinetORM)
+                    .options(
+                        selectinload(CabinetORM.cashback_tables),
+                        selectinload(CabinetORM.articles),
+                    )
+                    .where(CabinetORM.business_connection_id == business_connection_id)
+                )
+                result = await session.execute(stmt)
+                cabinet: Optional[CabinetORM] = result.scalar_one_or_none()
 
+            if cabinet is None:
+                data["cabinet"] = None
+                data["spreadsheet"] = None
+                data["client_gpt_5"] = None
+                return await handler(event, data)
+            
+            # положили в кэш
+            self._cabinet_cache[business_connection_id] = (now, cabinet)
+        
         data["cabinet"] = cabinet
 
         # 4. Выбираем актуальную таблицу кэшбека

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from src.db.models import ArticleORM
-
+from src.core.config import constants
 
 async def get_reference_image_data_url_cached(
     db_session_factory: async_sessionmaker[AsyncSession],
@@ -22,7 +22,7 @@ async def get_reference_image_data_url_cached(
        кодирует в base64, кладёт в Redis и возвращает data:image/...;base64,...
     """
 
-    redis_key = f"NM_IDS_REF_IMAGES_FOR_GPT_CLASSIFICATION:{nm_id}"
+    redis_key = f"{constants.REDIS_KEY_NM_IDS_IMAGES}:{nm_id}"
 
     # 1. Пробуем взять из Redis
     cached = await redis.get(redis_key)

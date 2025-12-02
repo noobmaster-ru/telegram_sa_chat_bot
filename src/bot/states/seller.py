@@ -12,8 +12,11 @@ class SellerStates(StatesGroup):
     waiting_for_new_google_sheets_url = State()
     waiting_for_tap_to_keyboard_gs = State()
     
-    waiting_for_brand_name = State()
-    waiting_for_tap_to_keyboard_brand_name = State()
+    waiting_for_business_account_id = State()
+    waiting_for_tap_to_keyboard_bus_acc_id = State()
+    
+    # waiting_for_brand_name = State()
+    # waiting_for_tap_to_keyboard_brand_name = State()
     
     waiting_for_link_bot_to_bus_acc = State()
     

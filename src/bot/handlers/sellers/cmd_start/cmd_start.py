@@ -29,28 +29,7 @@ async def cmd_start(
     )
     await message.answer(f"Здравствуйте!")
 
-    # async with db_session_factory() as session:
-    #     # Проверяем, есть ли пользователь в бд 
-    #     result = await session.execute(
-    #         select(UserORM).where(UserORM.telegram_id == telegram_id)
-    #     )
-    #     user_exist = result.scalar_one_or_none()
-    #     if not user_exist:
-    #         user = UserORM(
-    #             telegram_id=telegram_id,
-    #             fullname=fullname,
-    #             user_name=user_name
-    #         )
-    #         session.add(user)
-    #         await session.commit()
-    #         logging.info(f"added {telegram_id} into 'users' table")
-            
-    #         # session.refresh(user) — подтянет user.id
-    #         await session.refresh(user)   
-        
-    #         # Сохраняем user_id в FSM
-    #         await state.update_data(user_id=user.id)
-    text = "Давайте зарегистрируем ваши кабинеты, но для начала скиньте ваш email(нужен для связи)"
+    text = "Скиньте ваш email(нужен для связи)"
     await message.answer(
         text=StringConverter.escape_markdown_v2(text),
         # reply_markup=kb_menu,

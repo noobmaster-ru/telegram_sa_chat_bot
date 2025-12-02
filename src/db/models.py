@@ -76,15 +76,14 @@ class CabinetORM(Base):
 
     nm_id_name: Mapped[str] = mapped_column(
         String(128),
-        comment="Название ИП / магазина, вводимое пользователем",
+        comment="Артикул",
     )
     
     # вместо brand_name → organization_name
     organization_name: Mapped[str] = mapped_column(
         String(128),
-        comment="Название ИП / магазина, вводимое пользователем",
+        comment="Название магазина/бренда на вб",
     )
-
     # business_connection_id и link_code — как и раньше, для привязки бизнес-акка к кабинету
     business_connection_id: Mapped[str | None] = mapped_column(
         String(128),

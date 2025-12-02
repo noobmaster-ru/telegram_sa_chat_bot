@@ -46,7 +46,7 @@ async def main():
     dp.business_message.middleware(MediaGroupMiddleware(latency=0.5))
 
     # 2) игнор сообщений от менеджера (бизнес-аккаунта)
-    middleware_ignore_bussiness_messages = IgnoreBusinessMessagesMiddleware()
+    middleware_ignore_bussiness_messages = IgnoreBusinessMessagesMiddleware(redis_client=redis_client)
     dp.business_message.middleware(middleware_ignore_bussiness_messages)
     dp.callback_query.middleware(middleware_ignore_bussiness_messages)
     
@@ -69,15 +69,11 @@ async def main():
     dp.callback_query.middleware(cabinet_ctx_middleware)
 
     # добавляем глобальные данные - чтобы все хэндлеры видели их
-    dp.workflow_data.update(
-        {
-            "redis": redis_client
-        }
-    )
+    dp.workflow_data.update({"redis": redis_client})
+    
     # check last time activity and send reminder message if user too late inactive
     asyncio.create_task(inactivity_checker(bot, dp.storage))
     
-
     # clients routers
     dp.include_routers(text_router, quiz_router, photo_router, payment_router) 
     await dp.start_polling(bot)

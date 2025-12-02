@@ -1,5 +1,4 @@
 # constants
-PHOTO_FILE_TYPE = "png"
 INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', 
@@ -7,43 +6,28 @@ SELLER_MENU_TEXT = [
     'ℹ️Посмотреть кабинеты',
     '⬆️Добавить артикул'
 ]
-
-MANAGER_NAME = 'Евгения' # в родительном падеже надо
-
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
     "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!",
     "окей!", "Хорошо, сейчас", "понял", "Ладно", "Окэй!"
 ]
+
+# Telegram
 ADMIN_ID_LIST = [694144143, 547299317]
-
-
-# Wildberries
-NM_IDS_FOR_CASHBACK = [555620866]
-PRODUCT_TITLE = "Фонарики для лупы"
-
-# Aiogram
 SKIP_MESSAGE_STATE="skip_msg"
 CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot"
 SELLERS_BOT_USERNAME = "@axiom_agi_bot"
-# Telegram
+BOT_TO_GET_ID = "@username_to_id_bot"
+
 MIN_LEN_TEXT = 12
+FIRST_MESSAGE_DELAY_SLEEP =  60 #in production 
+DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
+TIME_DURATION_BEETWEEN_REMINDER =  3600*12 #in production
+TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # in production
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 600  # in production - every hour check users last time activitys
 
-FIRST_MESSAGE_DELAY_SLEEP =  0.1 #20 #in production 
-DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.2 #5 #in production
-TIME_DURATION_BEETWEEN_REMINDER =  60 #3600*12 #in production
-TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 60 #3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 60  # in production - every hour check users last time activitys
-TIME_DELTA_CHECK_SUB_TO_CHANNEL = 60
 
-# SELLER_ID = 8312986751
-BUSINESS_ACCOUNTS_IDS={
-    8312986751, # @eugene_saharov
-    8239184408, # @viktoria_cashbacks
-    8108843318  # @solume_alisa_razdachi (Алиса Раздачи Solume)
-}
-
-# reqular expressions for parsing requisites
+# REGULAR EXPRESSIONS
 # 16 numbers or 4 for blocks with 4 numbers with hyphen
 card_pattern = r"\b(?:\d{16}|\d{4}(?:[ -]\d{4}){3})\b"
 
@@ -69,18 +53,18 @@ GPT_MODEL_NAME='chatgpt-4o-latest'
 GPT_MODEL_NAME_PHOTO_ANALYSIS="gpt-5.1"
 GPT_MAX_TOKENS=300
 GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS=850
-GPT_TEMPERATURE=1.4
+GPT_TEMPERATURE=1.45
 GPT_REASONING="medium" # "low" | "medium" | "high"
 
 # Google Sheets
 GOOGLE_SHEETS_TEMPLATE_URL='https://docs.google.com/spreadsheets/d/1KdSieYIl40NmbK8DBCfL2VJNbDFuK_ydJFirnT_XVkY/edit?gid=1585191033#gid=1585191033'
-ARTICLES_SHEET_STR="Артикулы"
 INSTRUCTION_SHEET_NAME_STR="Инструкция"
 BUYERS_SHEET_NAME_STR="Покупатели"
 
+# TTL
+CABINET_CONTEXT_TTL_SECONDS = 300
+
 # Redis
-REDIS_KEY_SET_TELEGRAM_IDS="TELEGRAM_USERS_IDS" # нужен для проверки новых/старых юзеров, кто писал акку
+REDIS_KEY_BUSINESS_ACCOUNTS_IDS = "BUSINESS_ACCOUNTS_IDS_TO_SKIP_MESSAGES_FROM_MANAGERS"
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
-REDIS_KEY_NM_IDS_REMAINS_HASH="NM_IDS_REMAINS_HASH" # хэш-таблица с количеством остатков каждого артикула из листа "Артикулы"
-REDIS_KEY_NM_IDS_ORDERED_LIST="NM_IDS_ORDERED_LIST_FOR_CASHBACK" # упорядоченный список артикулов из листа "Артикулы"
-REDIS_KEY_NM_IDS_TITLES_HASH="NM_IDS_NAMES_HASH"
+REDIS_KEY_NM_IDS_IMAGES = "NM_IDS_REF_IMAGES_FOR_GPT_CLASSIFICATION"

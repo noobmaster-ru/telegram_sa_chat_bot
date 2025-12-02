@@ -73,7 +73,7 @@ async def view_cabinets(
             # --- Формируем текстовую часть ---
 
             # Организация
-            header = f"*Организация:* {cabinet.organization_name}\n"
+            header = f"*Магазин:* {cabinet.organization_name}\n"
 
             # Таблицы кэшбека
             if cashback_tables:

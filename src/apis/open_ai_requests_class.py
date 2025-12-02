@@ -79,7 +79,7 @@ class OpenAiRequestClass:
                             "text": (
                                 "Ты — эксперт по визуальному сравнению изображений.\n"
                                 "Первая фотография - это наш товар\n"
-                                "Вторая — фото разрезынных этикеток (или скриншот ОТЗЫВА или ЗАКАЗА товара) клиента.\n"
+                                "Вторая фотография - скриншот ОТЗЫВА или ЗАКАЗА товара нашего клиента с Wildberries.\n"
                                 f"{prefix_message}\n"
                                 f"(Если не можешь классифицировать СКРИНШОТ: есть ли ОТЗЫВ или ЗАКАЗ именно НАШЕГО ТОВАРА, то можешь использовать веб-поиск(web_search), чтобы сверить внешний вид товара на сайте Wildberries. Находи на сайте Wilberries товар с таким id {nm_id}, название {nm_id_name})\n\n"
                                 "Ответь строго одним словом: Да или Нет"
@@ -159,21 +159,69 @@ class OpenAiRequestClass:
         
     async def classify_photo_shk(
         self, 
-        ref_image_url: str,
-        user_image_url: str,
-        nm_id: str,
-        nm_id_name: str 
+        user_image_url: str
     ) -> str:
         """
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
-        return await self._classify_photo(
-            prefix_message="Подумай и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ ЭТИКЕТКИ (Штрихкода) Wildberries нашего товара.",
-            ref_image_url=ref_image_url,
-            user_image_url=user_image_url,
-            nm_id=nm_id,
-            nm_id_name=nm_id_name
+        # формируем сообщение
+        response = await self.client.responses.create(
+            model=self.model_name_for_photo_analysis,  
+            reasoning={
+                "effort": self.reasoning
+            },
+            tool_choice="auto",
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text", 
+                            "text": (
+                                "Ты — эксперт по визуальному анализу изображений.\n"
+                                f"Подумай ДОЛГО и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ ЭТИКЕТКИ (Штрихкода) Wildberries нашего товара.\n"
+                                "Ответь строго одним словом: Да или Нет"
+                            ),
+                        },
+                        {
+                            "type": "input_image", 
+                            "image_url": user_image_url
+                        },
+                    ]
+                }
+            ],
+            max_output_tokens=self.max_output_tokens_photo_analysis
         )
+        # self.logger.info(response)
+        result = None
+        for item in response.output:
+            if getattr(item, "content", None):
+                for block in item.content:
+                    text = getattr(block, "text", None)
+                    if text:
+                        result = text.strip()
+                        break
+            if result:
+                break
+
+        if not result:
+            self.logger.error("❌ Не удалось извлечь текст из ответа GPT")
+            result = "Не удалось определить"
+        usage = response.usage
+        self.logger.info(
+            f"  GPT usage — input: {usage.input_tokens}, "
+            f"output: {usage.output_tokens}, "
+            f"total: {usage.total_tokens}"
+        )
+        return result
+    
+        # return await self._classify_photo(
+        #     prefix_message="Подумай и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ ЭТИКЕТКИ (Штрихкода) Wildberries нашего товара.",
+        #     ref_image_url=ref_image_url,
+        #     user_image_url=user_image_url,
+        #     nm_id=nm_id,
+        #     nm_id_name=nm_id_name
+        # )
         
     async def _create_response(
         self,
