@@ -9,7 +9,7 @@ __pycache__/
 test*
 data/
 .env
-
+logs/
 pgdata/
 
 load_telegram_users_to_redis.py
