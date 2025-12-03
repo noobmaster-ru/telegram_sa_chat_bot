@@ -7,8 +7,8 @@ KIRILL_CARD_NUMBER = "5536 9140 2640 7977"
 ADMIN_ID_LIST = [694144143, 547299317]
 ADMIN_USERNAME = "@noobmaster_rus"
 SKIP_MESSAGE_STATE="skip_msg"
-CLIENTS_BOT_USERNAME = "@axiomAI_business_test2_bot" #"@testing_ai_cashback_bot"
-SELLERS_BOT_USERNAME = "@axiomAI_test2_bot" #"@axiom_agi_bot"
+CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot" #"@axiomAI_business_test2_bot" #"@testing_ai_cashback_bot"
+SELLERS_BOT_USERNAME = "@axiom_agi_bot" #"@axiomAI_test2_bot" #"@axiom_agi_bot"
 BOT_TO_GET_ID = "@username_to_id_bot"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', # 0
