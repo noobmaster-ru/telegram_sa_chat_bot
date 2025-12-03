@@ -16,7 +16,7 @@ from src.bot.keyboards.reply.menu import kb_menu
 
 from .router import router
 
-# SELLER_MENU_TEXT[3] == ''⬆️Добавить артикул''
+# SELLER_MENU_TEXT[3] == '⬆️мой артикул'
 @router.message(F.text == constants.SELLER_MENU_TEXT[3], StateFilter(SellerStates.waiting_for_tap_to_menu))
 async def choose_cabinet(
     message: Message,

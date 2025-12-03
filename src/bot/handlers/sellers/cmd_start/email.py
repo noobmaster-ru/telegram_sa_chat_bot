@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy import select
-from src.bot.keyboards.reply.menu import kb_menu
+from src.bot.keyboards.reply.menu import kb_add_cabinet
 from src.db.models import UserORM
 from src.bot.states.seller import SellerStates
 from src.tools.string_converter_class import StringConverter
@@ -97,7 +97,7 @@ async def callback_org_name(
         text = "Теперь давайте зарегистрируем ваши кабинеты, выберите пункт *Добавить кабинет* в меню"
         await callback.message.answer(
             text=StringConverter.escape_markdown_v2(text),
-            reply_markup=kb_menu,
+            reply_markup=kb_add_cabinet,
             parse_mode="MarkdownV2"
         )
         

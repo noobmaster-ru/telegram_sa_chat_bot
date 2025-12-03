@@ -11,10 +11,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from src.bot.filters.image_document import ImageDocument
 from src.bot.keyboards.inline.get_yes_no_keyboard import get_yes_no_keyboard
 from src.bot.utils.get_reference_image import get_reference_image_data_url_cached
-from src.db.models import ArticleORM
-from src.bot.keyboards.reply.menu import kb_menu
+from src.db.models import ArticleORM, CabinetORM
+from src.bot.keyboards.reply.menu import kb_buy_leads
 from src.bot.states.seller import SellerStates
-from src.core.config import settings
+from src.core.config import settings, constants
 
 from .router import router
 
@@ -170,8 +170,20 @@ async def write_data_into_db(
         file_id = seller_data["nm_id_photo_file_id"]
         organization_name = seller_data.get("organization_name", "-")
 
-        # 1. Сохраняем артикул в БД
+
         async with db_session_factory() as session:
+            # 1. Загружаем кабинет и обновляем nm_id_name
+            cabinet = await session.get(CabinetORM, cabinet_id)
+            if cabinet is None:
+                # На всякий случай защита — если что-то пошло не так с FSM
+                await callback.message.answer(
+                    "Не удалось найти кабинет в базе. Попробуйте начать заново с /start."
+                )
+                return
+
+            cabinet.nm_id_name = nm_id_name  # тут мы перезатираем заглушку
+            
+            # 2. Сохраняем артикул в БД
             new_article = ArticleORM(
                 cabinet_id=cabinet_id,
                 article=nm_id,
@@ -180,6 +192,8 @@ async def write_data_into_db(
             )
             session.add(new_article)
             await session.commit()
+            await session.refresh(new_article)
+            await session.refresh(cabinet)
         
         # 2. Сразу прогреваем кэш эталонного изображения в Redis
         # (чтобы clients_bot больше не ходил в Telegram за этой фоткой)
@@ -191,15 +205,20 @@ async def write_data_into_db(
             seller_bot_token=settings.SELLERS_BOT_TOKEN,
         )
 
+
         await callback.message.answer(
             f"Магазин: *{organization_name}*\n"
             f"Артикул: *{nm_id}*\n"
             f"Название товара: *{nm_id_name}*\n\n\n"
-            f"Успешно добавлен🎉 Теперь можно начинать раздачи😶‍🌫️ ваш бизнес аккаунт сам будет общаться со всеми покупателями и записывать их данные в гугл таблицу🤯",
-            reply_markup=kb_menu,
+            f"Успешно добавлен🎉",
             parse_mode="MarkdownV2",
         )
-        await state.set_state(SellerStates.waiting_for_tap_to_menu)
+        await callback.message.answer(
+            f"Теперь необходимо купить лиды на кабинет, нажмите на клавиатуре {constants.SELLER_MENU_TEXT[1]}",
+            reply_markup=kb_buy_leads,
+            parse_mode="MarkdownV2",
+        )
+        await state.set_state(SellerStates.waiting_for_leads)
     else:
         await callback.message.answer(
             "Хорошо, давайте добавим артикул заново. Отправьте артикул товара на ВБ (число)."

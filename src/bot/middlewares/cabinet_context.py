@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 from redis.asyncio import Redis
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, CallbackQuery, Message
+from aiogram.types import TelegramObject, Message, CallbackQuery  # <-- ВАЖНО: здесь
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -35,6 +35,7 @@ class CabinetContextMiddleware(BaseMiddleware):
         max_output_tokens_photo: int,
         temperature: float,
         reasoning: str,
+        block_if_no_leads: bool,
     ) -> None:
         self.redis_client = redis_client
         self.service_account_json = service_account_json
@@ -59,6 +60,7 @@ class CabinetContextMiddleware(BaseMiddleware):
         self._cabinet_cache: dict[str, tuple[float, CabinetORM]] = {}
         # TTL для кабинета, например 120 секунд
         self._cabinet_ttl_seconds = constants.CABINET_CONTEXT_TTL_SECONDS
+        self.block_if_no_leads = block_if_no_leads  
         
     async def __call__(
         self,
@@ -99,7 +101,7 @@ class CabinetContextMiddleware(BaseMiddleware):
                 cabinet = cached_cabinet
         
         if cabinet is None:
-            # 3. Ищем кабинет по business_connection_id (с подгруженными relations)
+            # Ищем кабинет по business_connection_id (с подгруженными relations)
             async with session_factory() as session:
                 stmt = (
                     select(CabinetORM)
@@ -122,7 +124,45 @@ class CabinetContextMiddleware(BaseMiddleware):
             self._cabinet_cache[business_connection_id] = (now, cabinet)
         
         data["cabinet"] = cabinet
+        
+        # ЛОГ ДЛЯ ОТЛАДКИ
+        logger.info(
+            "CabinetContext: cabinet_id=%s, leads_balance_attr=%r",
+            cabinet.id,
+            getattr(cabinet, "leads_balance", None),
+        )
+        # === 3a. Блокировка, если закончились лиды ===
+        if self.block_if_no_leads:
+            leads_balance = getattr(cabinet, "leads_balance", 0) or 0
+            logger.info(
+                "CabinetContext: after normalizing leads_balance=%s",
+                leads_balance,
+            )
+            if leads_balance <= 0:
+                text = (
+                    "К сожалению, приём заявок на кэшбек временно приостановлен.\n"
+                    # "У продавца закончился лимит лидов.\n"
+                    "Попробуйте написать позже.\n"
+                    "Спасибо."
+                )
+                
+                if isinstance(event, Message):
+                    await event.answer(text)
+                elif isinstance(event, CallbackQuery) and event.message:
+                    await event.message.answer(text)
+                    await event.answer()
 
+                return  # не зовём handler → бот для клиентов молчит
+        
+        # === 3б. Списываем лид при первом обращении клиента ===
+        if self.block_if_no_leads and isinstance(event, Message):
+            await self._maybe_consume_lead(
+                message=event,
+                cabinet=cabinet,
+                session_factory=session_factory,
+                business_connection_id=business_connection_id,
+            )
+            
         # 4. Выбираем актуальную таблицу кэшбека
         cashback_table: Optional[CashbackTableORM] = None
         for t in cabinet.cashback_tables:
@@ -176,3 +216,56 @@ class CabinetContextMiddleware(BaseMiddleware):
         data["client_gpt_5"] = client_gpt_5
         
         return await handler(event, data)
+
+    ### NEW: функция списания лида
+    async def _maybe_consume_lead(
+        self,
+        message: Message,
+        cabinet: CabinetORM,
+        session_factory: async_sessionmaker[AsyncSession],
+        business_connection_id: str,
+    ) -> None:
+        """Списываем 1 лид при первом сообщении конкретного клиента в этот кабинет."""
+        if message.from_user is None:
+            return
+
+        client_id = message.from_user.id
+        bot_id = message.bot.id 
+        redis_key = f"fsm:{bot_id}:{business_connection_id}:{constants.REDIS_KEY_LEADS_USED}:{cabinet.id}"
+
+        # SADD вернёт 1, если client_id добавился впервые → это новый лид
+        try:
+            added = await self.redis_client.sadd(redis_key, client_id)
+        except Exception as e:
+            logger.exception("Ошибка при работе с Redis в _maybe_consume_lead: %s", e)
+            return
+
+        if added != 1:
+            # этого клиента уже считали как лид для этого кабинета - выходим
+            return
+
+        # Списываем лид в БД
+        async with session_factory() as session:
+            db_cabinet = await session.get(CabinetORM, cabinet.id)
+            if db_cabinet is None:
+                return
+
+            current_balance = (db_cabinet.leads_balance or 0)
+            if current_balance <= 0:
+                # на момент списания уже 0 — просто не уходим в минус
+                db_cabinet.leads_balance = 0
+            else:
+                db_cabinet.leads_balance = current_balance - 1
+
+            await session.commit()
+            await session.refresh(db_cabinet)
+
+        # Обновляем объект в кэше/памяти
+        cabinet.leads_balance = db_cabinet.leads_balance
+        self._cabinet_cache[business_connection_id] = (time.time(), cabinet)
+        logger.info(
+            " Lead consumed for cabinet %s, client %s, new balance=%s",
+            cabinet.id,
+            client_id,
+            cabinet.leads_balance,
+        )

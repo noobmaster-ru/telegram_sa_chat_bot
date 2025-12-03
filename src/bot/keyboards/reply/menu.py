@@ -7,3 +7,15 @@ kb_menu = ReplyKeyboardMarkup(keyboard=[
 	],
 	resize_keyboard=True,
 )
+
+kb_add_cabinet= ReplyKeyboardMarkup(keyboard=[
+	[KeyboardButton(text=constants.SELLER_MENU_TEXT[0])],
+	],
+	resize_keyboard=True,
+)
+
+kb_buy_leads = ReplyKeyboardMarkup(keyboard=[
+	[KeyboardButton(text=constants.SELLER_MENU_TEXT[1])],
+	],
+	resize_keyboard=True,
+)

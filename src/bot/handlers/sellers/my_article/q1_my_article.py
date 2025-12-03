@@ -15,9 +15,9 @@ from src.core.config import constants
 from .router import router
 
 
-# SELLER_MENU_TEXT[2] == 'ℹ️Мой кабинет'
+# SELLER_MENU_TEXT[3] == 'ℹ️Мой артикул'
 @router.message(
-    F.text == constants.SELLER_MENU_TEXT[2],
+    F.text == constants.SELLER_MENU_TEXT[3],
     StateFilter(SellerStates.waiting_for_tap_to_menu),
 )
 async def view_cabinets(
@@ -34,7 +34,7 @@ async def view_cabinets(
         user = result.scalar_one_or_none()
 
         if user is None:
-            await message.answer("Пользователь не найден. Нажмите /start")
+            await message.answer("Пользователь не найден в базе данных. Нажмите /start")
             return
 
         # Загружаем кабинеты юзера
@@ -47,7 +47,7 @@ async def view_cabinets(
 
         if not cabinets:
             await message.answer(
-                "У вас пока нет подключённых кабинетов.", reply_markup=kb_menu
+                "У вас пока нет подключённых артикулов, нажмите на кнопку Добавить кабинет", reply_markup=kb_menu
             )
             return
 
@@ -72,20 +72,20 @@ async def view_cabinets(
 
             # --- Формируем текстовую часть ---
 
-            # Организация
-            header = f"*Магазин:* {cabinet.organization_name}\n"
+            # # Организация
+            # header = f"*Магазин:* {cabinet.organization_name}\n"
 
-            # Таблицы кэшбека
-            if cashback_tables:
-                table_lines = []
-                for i, tbl in enumerate(cashback_tables, start=1):
-                    # показываем table_id и статус
-                    table_lines.append(
-                        f"{i}. google_sheets_id: `{tbl.table_id}` , статус: *{tbl.status.value}*"
-                    )
-                tables_text = "*Таблица кэшбека:*\n" + "\n".join(table_lines) + "\n\n"
-            else:
-                tables_text = "Таблица кэшбека пока не подключена.\n\n"
+            # # Таблицы кэшбека
+            # if cashback_tables:
+            #     table_lines = []
+            #     for i, tbl in enumerate(cashback_tables, start=1):
+            #         # показываем table_id и статус
+            #         table_lines.append(
+            #             f"{i}. google_sheets_id: `{tbl.table_id}` , статус: *{tbl.status.value}*"
+            #         )
+            #     tables_text = "*Таблица кэшбека:*\n" + "\n".join(table_lines) + "\n\n"
+            # else:
+            #     tables_text = "Таблица кэшбека пока не подключена.\n\n"
 
             # Артикулы
             if articles:
@@ -96,7 +96,7 @@ async def view_cabinets(
             else:
                 articles_text = "Артикула пока нет."
 
-            text_message = header + tables_text + articles_text
+            text_message = articles_text
             text_markdown2 = StringConverter.escape_markdown_v2(text_message)
 
             # Сначала отправляем текст
@@ -141,6 +141,6 @@ async def view_cabinets(
 
     # Возвращаем меню
     await message.answer(
-        "Вот ваша таблица кэшбека, артикул и название ☝️",
+        "Вот ваш артикул, название и фото артикула ☝️",
         reply_markup=kb_menu,
     )

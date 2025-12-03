@@ -50,7 +50,7 @@ async def handle_add_service_account_into_gs(
         google_sheets_url = seller_data["google_sheets_url"]
         user_id = seller_data["user_id"]
         organization_name = seller_data["organization_name"]
-        nm_id_name = "Фонарики для лупы" #seller_data["nm_id_name"]
+        nm_id_name = "" #seller_data["nm_id_name"]
         # Разбираем ссылку и достаём table_id (spreadsheet_id)
         part1 = google_sheets_url.split("/d/")[-1]
         table_id = part1.split("/edit")[0]
@@ -63,7 +63,8 @@ async def handle_add_service_account_into_gs(
                 user_id=user_id,
                 organization_name=organization_name,
                 link_code=link_code,
-                nm_id_name=nm_id_name
+                nm_id_name=nm_id_name,
+                leads_balance=0
             )
             session.add(new_cabinet)
             await session.flush()  # получим new_cabinet.id без коммита
@@ -110,11 +111,6 @@ async def handle_add_service_account_into_gs(
         await state.update_data(
             message_id_to_delete=msg.message_id
         )
-        # await callback.message.answer(
-        #     "Теперь давайте добавим артикулы для раздачи и количество раздач\n\n"
-        #     "Отправьте *артикул* товара на ВБ, *одно число*",
-        #     parse_mode="MarkdownV2",
-        # )
         await state.set_state(SellerStates.waiting_for_link_bot_to_bus_acc)
 
     else:

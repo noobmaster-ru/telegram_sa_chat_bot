@@ -63,7 +63,8 @@ async def main():
         max_tokens=constants.GPT_MAX_TOKENS,
         max_output_tokens_photo=constants.GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
         temperature=constants.GPT_TEMPERATURE,
-        reasoning=constants.GPT_REASONING
+        reasoning=constants.GPT_REASONING,
+        block_if_no_leads=True,   # <-- ВАЖНО: включаем блокировку
     )
     dp.business_message.middleware(cabinet_ctx_middleware)
     dp.callback_query.middleware(cabinet_ctx_middleware)

@@ -39,13 +39,10 @@ async def callback_brand_name(
         await callback.message.answer(f"Теперь пришлите мне ID , который вам выдал {constants.BOT_TO_GET_ID}")
         await state.set_state(SellerStates.waiting_for_business_account_id)
     else:
-        text = "Нужно связать бота и бизнес-аккаунт в телеграме, пожалуйста, сделайте то, что написано выше"
+        text = "Нужно связать бота и бизнес-аккаунт в телеграме, пожалуйста, сделайте то, что написано выше и нажмите на кнопку 'Да,связал'"
         await callback.message.answer(
             text = StringConverter.escape_markdown_v2(text),
-            reply_markup=get_yes_no_keyboard(
-                callback_prefix="link_bot",  # префикс оставляем, чтобы не ломать остальную логику
-                statement="связал(а)",
-            )
+            parse_mode="MarkdownV2"
         )
         await state.set_state(SellerStates.waiting_for_link_bot_to_bus_acc)
 

@@ -1,30 +1,33 @@
 # constants
 INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
+PRICE_PER_LEAD = 20  # руб/лид — пока константой
+KIRILL_CARD_NUMBER = "5536 9140 2640 7977"
+
+# Telegram
+ADMIN_ID_LIST = [694144143, 547299317]
+ADMIN_USERNAME = "@noobmaster_rus"
+SKIP_MESSAGE_STATE="skip_msg"
+CLIENTS_BOT_USERNAME = "@axiomAI_business_test2_bot" #"@testing_ai_cashback_bot"
+SELLERS_BOT_USERNAME = "@axiomAI_test2_bot" #"@axiom_agi_bot"
+BOT_TO_GET_ID = "@username_to_id_bot"
 SELLER_MENU_TEXT = [
-    '⚙️Добавить кабинет', 
-    '❌Удалить кабинет',
-    'ℹ️Посмотреть кабинеты',
-    '⬆️Добавить артикул'
+    '⚙️Добавить кабинет', # 0
+    '💰Купить лиды', # 1, constants.SELLER_MENU_TEXT[1]
+    'ℹ️Мой кабинет', # 2, редирект на сообщение с кабинетом
+    '⬆️Мой артикул', # 3, редирект на сообщение с артикулом
 ]
+
 OK_WORDS = [
     "ок", "Ок", "спасибо", "Спасибо", "спасибо!", "Спасибо!",
     "хорошо", "Хорошо", "ладно", "окей", "да", "ок.", "ок!",
     "окей!", "Хорошо, сейчас", "понял", "Ладно", "Окэй!"
 ]
-
-# Telegram
-ADMIN_ID_LIST = [694144143, 547299317]
-SKIP_MESSAGE_STATE="skip_msg"
-CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot"
-SELLERS_BOT_USERNAME = "@axiom_agi_bot"
-BOT_TO_GET_ID = "@username_to_id_bot"
-
 MIN_LEN_TEXT = 12
-FIRST_MESSAGE_DELAY_SLEEP =  60 #in production 
+FIRST_MESSAGE_DELAY_SLEEP = 60 #in production 
 DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
 TIME_DURATION_BEETWEEN_REMINDER =  3600*12 #in production
 TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # in production
-TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 600  # in production - every hour check users last time activitys
+TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  # in production - every hour check users last time activitys
 
 
 # REGULAR EXPRESSIONS
@@ -68,3 +71,4 @@ CABINET_CONTEXT_TTL_SECONDS = 300
 REDIS_KEY_BUSINESS_ACCOUNTS_IDS = "BUSINESS_ACCOUNTS_IDS_TO_SKIP_MESSAGES_FROM_MANAGERS"
 REDIS_KEY_USER_ROW_POSITION_STRING="USER_ROW_POSITION_IN_GOOGLE_SHEETS" # позиция юзера в гугл-таблице
 REDIS_KEY_NM_IDS_IMAGES = "NM_IDS_REF_IMAGES_FOR_GPT_CLASSIFICATION"
+REDIS_KEY_LEADS_USED = "LEADS_USED"

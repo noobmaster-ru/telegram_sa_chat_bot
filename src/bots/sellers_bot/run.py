@@ -8,10 +8,11 @@ from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 from src.bot.handlers.sellers.add_cabinet import router as add_cabinet_router
 from src.bot.handlers.sellers.cmd_start import router as start_router
 from src.bot.handlers.sellers.view_cabinets import router as view_cabinets_router
-from src.bot.handlers.sellers.delete_cabinet import router as delete_cabinet_router
+# from src.bot.handlers.sellers.delete_cabinet import router as delete_cabinet_router
 from src.bot.handlers.sellers.last_router import router as last_router
-from src.bot.handlers.sellers.add_extra_nm_id import router as add_nm_id_router
-
+# from src.bot.handlers.sellers.add_extra_nm_id import router as add_nm_id_router
+from src.bot.handlers.sellers.buy_leads import router as buy_leads_router
+from src.bot.handlers.sellers.my_article import router as my_article_router
 
 from src.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.bot.middlewares.media_group import MediaGroupMiddleware
@@ -45,7 +46,7 @@ async def main():
     dp.workflow_data.update({"redis": redis_client})
     
     # seller routers 
-    dp.include_routers(start_router, add_cabinet_router, delete_cabinet_router, view_cabinets_router, add_nm_id_router, last_router)
+    dp.include_routers(start_router, add_cabinet_router, buy_leads_router, view_cabinets_router, my_article_router, last_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# prod: sellers_bot + clients_bot
+# prod: sellers_bot 
 services:
   clients_bot:
     build: .
@@ -23,8 +23,20 @@ services:
     restart: always
 
 
-# # develop: redis + clients_bot + sellers_bot
+# # develop: redis + postgres + + clients_bot + sellers_bot
 # services:
+#   postgres:
+#     image: postgres:16
+#     container_name: local_postgres
+#     restart: always
+#     environment:
+#       POSTGRES_USER: axiomai
+#       POSTGRES_PASSWORD: axiomai_pass
+#       POSTGRES_DB: axiomai_dev
+#     ports:
+#       - "5435:5432"
+#     volumes:
+#       - ./pgdata_dev:/var/lib/postgresql/data
 #   redis:
 #     image: redis:7
 #     container_name: redis
@@ -39,6 +51,7 @@ services:
 #         - .env
 #       depends_on:
 #         - redis
+#         - postgres
 #       volumes:
 #       - .:/app
 #       - ./logs:/app/logs
@@ -51,6 +64,7 @@ services:
 #       - .env
 #     depends_on:
 #       - redis
+#       - postgres
 #     volumes:
 #       - .:/app
 #       - ./logs:/app/logs

@@ -79,3 +79,9 @@ async def callback_brand_name(
             parse_mode="MarkdownV2"
         )
         await state.set_state(SellerStates.waiting_for_business_account_id)
+
+
+@router.message(StateFilter(SellerStates.waiting_for_tap_to_keyboard_bus_acc_id))
+async def handle_unexpect_text_bus_acc(message: Message):
+    await message.answer("Пожалуйста, нажмите на кнопку выше")
+

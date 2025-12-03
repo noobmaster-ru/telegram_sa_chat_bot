@@ -25,6 +25,9 @@ alembic:
 ```
     alembic revision --autogenerate -m "..."
     alembic upgrade head
+
+    на тесте:
+    docker compose run --rm clients_bot uv run python -m alembic upgrade head
 ```
 
 очистка таблиц - для теста
@@ -38,3 +41,13 @@ alembic:
     RESTART IDENTITY CASCADE;
 ```
 > VSCodeCounter
+
+Полностью сбросить локальную БД и начать с нуля:
+```
+    docker compose down
+    rm -rf pgdata_dev
+    docker compose up -d --build
+    docker compose run --rm clients_bot uv run python -m alembic revision -m "..."
+    docker compose run --rm clients_bot uv run python -m alembic upgrade head
+    docker compose logs -f
+```

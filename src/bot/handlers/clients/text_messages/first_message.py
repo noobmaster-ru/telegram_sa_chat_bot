@@ -76,8 +76,10 @@ async def handle_first_message(
 ):
     # 0. Проверяем, что у нас есть кабинет и таблица
     if cabinet is None or spreadsheet is None:
+        text = "Техническая ошибка: кабинет ещё не привязан, попробуйте позже. (wait link_... message)"
         await message.answer(
-            "Техническая ошибка: кабинет ещё не привязан, попробуйте позже."
+            text=StringConverter.escape_markdown_v2(text),
+            parse_mode="MarkdownV2"
         )
         return
 
@@ -119,7 +121,7 @@ async def handle_first_message(
         last_messages_ids=[],
     )
 
-    # 3. Достаём инструкцию именно для этого товара/кабинета
+    # # 3. Достаём инструкцию именно для этого товара/кабинета
     instruction_str = await spreadsheet.get_instruction(
         sheet_instruction=constants.INSTRUCTION_SHEET_NAME_STR,
         product_title=nm_id_name,

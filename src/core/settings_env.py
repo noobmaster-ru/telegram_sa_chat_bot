@@ -36,6 +36,7 @@ class EnvSettings(BaseSettings):
             f"{self.POSTGRESQL_USER}:{password}"
             f"@{self.POSTGRESQL_HOST}:{self.POSTGRESQL_PORT}/{self.POSTGRESQL_DBNAME}"
         )
+
     @property
     def DATABASE_URL_sync(self) -> str:
         """URL для sync SQLAlchemy/Alembic (postgresql://...)"""

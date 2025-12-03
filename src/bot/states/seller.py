@@ -15,8 +15,6 @@ class SellerStates(StatesGroup):
     waiting_for_business_account_id = State()
     waiting_for_tap_to_keyboard_bus_acc_id = State()
     
-    # waiting_for_brand_name = State()
-    # waiting_for_tap_to_keyboard_brand_name = State()
     
     waiting_for_link_bot_to_bus_acc = State()
     
@@ -27,3 +25,8 @@ class SellerStates(StatesGroup):
     waiting_for_nm_id_photo = State()
     
     waiting_for_delete_confirmation = State()
+    
+    # Новые состояния для оплаты
+    waiting_for_leads = State()
+    waiting_for_leads_amount = State()
+    waiting_for_payment_confirm_click = State()

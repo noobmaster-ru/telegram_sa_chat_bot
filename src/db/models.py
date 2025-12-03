@@ -99,7 +99,15 @@ class CabinetORM(Base):
         nullable=True,
         comment="Код для первичной привязки бизнес-аккаунта (/link_<code>)",
     )
-
+    
+    # 🔹 новое поле — баланс лидов
+    leads_balance: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default="0",
+        comment="Текущий баланс лидов по кабинету",
+    )
+    
     created_at: Mapped[datetime.datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -239,6 +247,7 @@ class PaymentStatus(enum.Enum):
     CREATED = "created"
     SUCCEEDED = "succeeded"
     CANCELED = "canceled"
+    WAITING_CONFIRM = "waiting_confirm"
 
 
 class PaymentMethod(enum.Enum):
