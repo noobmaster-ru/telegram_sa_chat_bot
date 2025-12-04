@@ -135,7 +135,7 @@ async def handle_nm_id_photo(
     if is_photo:
         msg = await message.answer_photo(
             photo=photo_file_id,
-            caption=caption,
+            caption=StringConverter.escape_markdown_v2(caption),
             reply_markup=get_yes_no_keyboard(
                 callback_prefix="data_verify",
                 statement="верно",
@@ -146,7 +146,7 @@ async def handle_nm_id_photo(
         # документ (изображение без сжатия) — отправляем как документ
         msg = await message.answer_document(
             document=photo_file_id,
-            caption=caption,
+            caption=StringConverter.escape_markdown_v2(caption),
             reply_markup=get_yes_no_keyboard(
                 callback_prefix="data_verify",
                 statement="верно",
