@@ -17,7 +17,7 @@ async def handle_organization_name(
     message: Message,
     state: FSMContext
 ):
-    text = "Введите название вашего магазина/бренда, *который видят покупатели на ВБ(нужно для AI)*:"
+    text = "Введите *ТОЧНОЕ* название вашего магазина/бренда, *который видят покупатели на ВБ(нужно для AI)*:"
     await message.answer(
         text = StringConverter.escape_markdown_v2(text),
         reply_markup=ReplyKeyboardRemove(),

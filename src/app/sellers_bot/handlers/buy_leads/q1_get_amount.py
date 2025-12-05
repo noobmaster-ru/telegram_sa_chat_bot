@@ -198,9 +198,9 @@ async def process_leads_amount(
         f"Вы хотите купить *{leads}* лидов по цене *{constants.PRICE_PER_LEAD} ₽* за лид.\n"
         f"Итого к оплате: *{total_amount} ₽*.\n\n"
         f"Реквизиты для оплаты:\n"
-        f"• Карта: `{constants.KIRILL_CARD_NUMBER}`\n"
-        f"• Получатель: Кирилл К.\n\n"
-        f"После оплаты нажмите кнопку *«Я оплатил»*."
+        f"• Карта: `{constants.KIRILL_CARD_NUMBER}` или\n"
+        f"• Телефон: `{constants.KIRILL_PHONE_NUMBER}`\n"
+        f"• Получатель: *Кирилл К. , Т-банк*\n\n"
     )
 
     await message.answer(

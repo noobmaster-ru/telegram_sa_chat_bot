@@ -9,13 +9,13 @@ kb_menu = ReplyKeyboardMarkup(keyboard=[
 )
 
 kb_add_cabinet= ReplyKeyboardMarkup(keyboard=[
-	[KeyboardButton(text=constants.SELLER_MENU_TEXT[0])],
+	[KeyboardButton(text=constants.SELLER_MENU_TEXT[0]), KeyboardButton(text=constants.SELLER_MENU_TEXT[4])],
 	],
 	resize_keyboard=True,
 )
 
 kb_buy_leads = ReplyKeyboardMarkup(keyboard=[
-	[KeyboardButton(text=constants.SELLER_MENU_TEXT[1])],
+	[KeyboardButton(text=constants.SELLER_MENU_TEXT[1]), KeyboardButton(text=constants.SELLER_MENU_TEXT[4])],
 	],
 	resize_keyboard=True,
 )

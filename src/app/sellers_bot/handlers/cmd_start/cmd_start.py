@@ -18,15 +18,9 @@ async def cmd_start(
 ):
     
     telegram_id = message.from_user.id
-    fullname = message.from_user.full_name 
-    user_name = message.from_user.username
-    # if telegram_id in constants.ADMIN_ID_LIST:
-    #     text = f"Привет админ-{fullname}! Cюда я буду тебе отправлять оплаты от селлеров"
-    #     await message.answer(
-    #         text=StringConverter.escape_markdown_v2(text),
-    #         parse_mode="MarkdownV2"
-    #     )
-    #     return 
+    fullname = message.from_user.full_name or '-'
+    user_name = message.from_user.username or '-'
+
     
     await state.update_data(
         telegram_id=telegram_id,
@@ -37,7 +31,7 @@ async def cmd_start(
     text = (
         "Привет, этот инструмент ускорит в 5-10 раз скорость получения отзывов!\n"
         "А также позволит сократить расходы на ручной труд менеджеров.\n\n\n" 
-        "Стоимость:\n" 
+        "*Стоимость:*\n" 
         "- 20р/лид для первых 5 по счету селлеров\n"
         "- 30р/лид для 6-15 селлеров\n"
         "- 40р/лид для 16-30 селлеров\n\n"
@@ -47,8 +41,11 @@ async def cmd_start(
         "- раздача нескольких артикулов последовательно\n"
         "- приоритезация артикулов\n"
         "- автоматические выплаты\n"
-        "- раздача одному человеку несколько артикулов параллельно\n\n\n\n"
-        "Лид - человек, который написал и заинтересовался условиями."
+        "- раздача одному человеку несколько артикулов параллельно\n\n"
+        "*Лид - человек, который написал боту и заинтересовался условиями кэшбека.*\n\n"
+        f"P.S. Если что-то непонятно — в любое время нажмите кнопку"
+        f"«{constants.SELLER_MENU_TEXT[4]}» или введите команду /support, "
+        f"и напишите {constants.ADMIN_USERNAME}."
     )
     await message.answer(
         text=StringConverter.escape_markdown_v2(text),

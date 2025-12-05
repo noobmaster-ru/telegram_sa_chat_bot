@@ -4,11 +4,13 @@ import redis.asyncio as asyncredis
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 
+from src.app.clients_bot.handlers.text_messages import router as text_router
+from src.app.clients_bot.handlers.quiz import router as quiz_router 
+from src.app.clients_bot.handlers.photo import router as photo_router
+from src.app.clients_bot.handlers.payment_details import router as payment_router
+
 from src.app.bot.utils.inactivity_checker import inactivity_checker
-from src.app.bot.handlers.clients.text_messages import router as text_router
-from src.app.bot.handlers.clients.quiz import router as quiz_router 
-from src.app.bot.handlers.clients.photo import router as photo_router
-from src.app.bot.handlers.clients.payment_details import router as payment_router
+
 from src.app.bot.middlewares.ignore_bussiness_messages import IgnoreBusinessMessagesMiddleware
 from src.app.bot.middlewares.media_group import MediaGroupMiddleware
 from src.app.bot.middlewares.cabinet_context import CabinetContextMiddleware

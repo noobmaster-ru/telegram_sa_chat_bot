@@ -15,7 +15,6 @@ from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
 from src.tools.string_converter_class import StringConverter
 
 from src.core.config import constants
-# from src.core.constants import card_pattern, phone_pattern, bank_pattern, amount_pattern
 
 from .router import router
 

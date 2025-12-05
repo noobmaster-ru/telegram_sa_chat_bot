@@ -2,19 +2,21 @@
 INSTRUCTION_PHOTOS_DIR = "src/reg_photos/"
 PRICE_PER_LEAD = 20  # руб/лид — пока константой
 KIRILL_CARD_NUMBER = "5536 9140 2640 7977"
+KIRILL_PHONE_NUMBER = "89109681153"
 
 # Telegram
 ADMIN_ID_LIST = [694144143, 547299317]
 ADMIN_USERNAME = "@noobmaster_rus"
 SKIP_MESSAGE_STATE="skip_msg"
-CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot"
-SELLERS_BOT_USERNAME = "@axiom_agi_bot"
+CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot" # "@axiomAI_business_test2_bot" #
+SELLERS_BOT_USERNAME = "@axiom_agi_bot" # "@axiomAI_test2_bot" #
 BOT_TO_GET_ID = "@username_to_id_bot"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', # 0
     '💰Купить лиды', # 1, constants.SELLER_MENU_TEXT[1]
     'ℹ️Мой кабинет', # 2, редирект на сообщение с кабинетом
     '⬆️Мой артикул', # 3, редирект на сообщение с артикулом
+    "🆘 Поддержка" # 4 поддержка
 ]
 
 OK_WORDS = [
@@ -25,7 +27,7 @@ OK_WORDS = [
 MIN_LEN_TEXT = 12
 FIRST_MESSAGE_DELAY_SLEEP = 40 #in production 
 DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
-TIME_DURATION_BEETWEEN_REMINDER =  3600*12 #in production
+TIME_DURATION_BEETWEEN_REMINDER = 3600*12 #in production
 TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE = 3600*23 # in production
 TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  # in production - every hour check users last time activitys
 

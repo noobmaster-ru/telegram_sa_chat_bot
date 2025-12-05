@@ -10,7 +10,6 @@ from src.app.bot.keyboards.inline import get_yes_no_keyboard
 from src.app.bot.utils.last_activity import update_last_activity
 from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
 
-# from src.core.constants import card_pattern, phone_pattern
 from src.core.config import constants
 
 from .router import router

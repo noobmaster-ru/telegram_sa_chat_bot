@@ -61,7 +61,7 @@ async def link_cabinet(
         cabinet.link_code = None
         await session.commit()
 
-    text = "Кабинет успешно привязан к бизнес-аккаунту ✅"
+    text = f"Кабинет успешно привязан к бизнес-аккаунту ✅\nbusiness_connection_id = {business_connection_id}"
     await message.answer(
         text=StringConverter.escape_markdown_v2(text),
         parse_mode="MarkdownV2"

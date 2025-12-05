@@ -1,5 +1,5 @@
 [project]
-name = "telegram-chat-bot"
+name = "telegram-ai-chat-bot"
 version = "0.1.0"
 description = "Telegram cashback bots (sellers + clients)"
 readme = "README.md"

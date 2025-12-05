@@ -27,6 +27,13 @@ async def handle_gs_url(
     state: FSMContext,
 ):
     google_sheets_url = message.text if message.text else "-"
+    if google_sheets_url == constants.GOOGLE_SHEETS_TEMPLATE_URL:
+        text = f"Пожалуйста, отправьте ссылку на *СВОЮ* таблицу!"
+        await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
+            parse_mode="MarkdownV2"
+        )
+        return 
     await state.update_data(
         google_sheets_url=google_sheets_url
     )
