@@ -1,8 +1,13 @@
-FROM python:3.13-slim
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+
+COPY pyproject.toml README.md ./
+
+RUN uv sync --no-dev
+
 
 COPY . .
-CMD ["python", "run.py"]
+
+CMD ["uv", "run", "python", "run.py"]

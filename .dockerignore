@@ -9,7 +9,6 @@ venv/
 test_*
 .git/
 .gitignore
-README.md
 .env.dist
 .DS_Store
 

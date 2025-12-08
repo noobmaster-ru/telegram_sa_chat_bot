@@ -1,0 +1,48 @@
+[project]
+name = "telegram-ai-chat-bot"
+version = "0.1.0"
+description = "Telegram cashback bots (sellers + clients)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # Telegram
+    "aiogram==3.21.0",
+    "redis==7.0.0",
+
+    # Database and migrations
+    "SQLAlchemy==2.0.44",
+    "asyncpg==0.31.0",           # async for SQLAlchemy
+    "psycopg2==2.9.10",          # sync for Alembic (postgresql+psycopg2://)
+    "alembic==1.17.2",
+
+
+    # config
+    "pydantic==2.11.7",
+    "pydantic-settings==2.12.0",
+
+    # HTTP and OpenAI
+    "httpx==0.28.1",
+    "openai==2.6.0",
+
+    # Google Sheets
+    "gspread==6.0.2",
+    "gspread-asyncio==2.0.0",
+    "google-auth==2.41.1",
+    "google-auth-oauthlib==1.2.2",
+
+    # others
+    "filetype==1.2.0",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "pyproject.toml", "README.md"]
