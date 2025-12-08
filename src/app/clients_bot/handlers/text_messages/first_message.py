@@ -121,12 +121,12 @@ async def handle_first_message(
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
-    text = message.text or "-"
+    msg_text = message.text or "-"
     business_connection_id = message.business_connection_id
     bot_id = message.bot.id
 
     logging.info(
-        f"FIRST MESSAGE from (@{username}, {full_name}), id={telegram_id}: {text} ..."
+        f"FIRST MESSAGE from (@{username}, {full_name}), id={telegram_id}: {msg_text} ..."
     )
 
     # 2. Сохраняем контекст в FSM
@@ -144,7 +144,7 @@ async def handle_first_message(
     # # 3. Достаём инструкцию именно для этого товара/кабинета
     instruction_str = await spreadsheet.get_instruction(
         sheet_instruction=constants.INSTRUCTION_SHEET_NAME_STR,
-        product_title=nm_id_name,
+        # product_title=nm_id_name,
     )
 
     # 4. Сохраняем покупателя в ТАБЛИЦУ КОНКРЕТНОГО КАБИНЕТА
@@ -153,6 +153,7 @@ async def handle_first_message(
         full_name=full_name,
         telegram_id=telegram_id,
         nm_id=available_nm_id,
+        msg_text=msg_text
     )
 
     # небольшая задержка

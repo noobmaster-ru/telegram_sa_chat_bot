@@ -8,8 +8,8 @@ KIRILL_PHONE_NUMBER = "89109681153"
 ADMIN_ID_LIST = [694144143, 547299317]
 ADMIN_USERNAME = "@noobmaster_rus"
 SKIP_MESSAGE_STATE="skip_msg"
-CLIENTS_BOT_USERNAME = "@testing_ai_cashback_bot" #"@axiomAI_business_test2_bot" # 
-SELLERS_BOT_USERNAME = "@axiom_agi_bot" # "@axiomAI_test2_bot" #  
+CLIENTS_BOT_USERNAME = "@axiomAI_business_test2_bot" #  "@testing_ai_cashback_bot" 
+SELLERS_BOT_USERNAME = "@axiomAI_test2_bot" #   "@axiom_agi_bot" 
 BOT_TO_GET_ID = "@username_to_id_bot"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', # 0
@@ -65,7 +65,8 @@ GPT_REASONING="medium" # "low" | "medium" | "high"
 # Google Sheets
 GOOGLE_SHEETS_TEMPLATE_URL='https://docs.google.com/spreadsheets/d/1KdSieYIl40NmbK8DBCfL2VJNbDFuK_ydJFirnT_XVkY/edit?gid=1585191033#gid=1585191033'
 INSTRUCTION_SHEET_NAME_STR="Инструкция"
-BUYERS_SHEET_NAME_STR="Покупатели"
+BUYERS_SHEET_NAME_STR="Настройка"
+INSTRUCTION_CELL = "G2"
 
 # TTL
 CABINET_CONTEXT_TTL_SECONDS = 300

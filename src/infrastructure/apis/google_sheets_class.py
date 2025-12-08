@@ -4,7 +4,7 @@ from src.tools.string_converter_class import StringConverter
 from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
 from redis.asyncio import Redis
 from typing import List, Dict
-
+from src.core.config import constants
 import logging
 
 class GoogleSheetClass:
@@ -71,7 +71,7 @@ class GoogleSheetClass:
             self.header_row = await self.sheet.row_values(1)
             # запишем в класс названия столбцов некоторых, чтобы облечить прод
             self.last_message_column_name = self.header_row[4]
-            self.last_tap_column_name = self.header_row[5]
+            self.last_tap_column_name = self.header_row[6]
             self._header_cache = {header: idx + 1 for idx, header in enumerate(self.header_row)}
         return self.sheet 
     
@@ -93,7 +93,14 @@ class GoogleSheetClass:
         return row_index 
   
     # === Основные операции ===
-    async def add_new_buyer(self, username: str, full_name: str, telegram_id: int, nm_id: int) -> None:
+    async def add_new_buyer(
+        self, 
+        username: str, 
+        full_name: str, 
+        telegram_id: int, 
+        nm_id: int,
+        msg_text: str,
+    ) -> None:
         """Возвращает индекс строки из Redis или ищет в таблице, если в кэше нет."""
         key = f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{telegram_id}"
         row_index = await self.redis.get(key)
@@ -111,9 +118,10 @@ class GoogleSheetClass:
         new_row[2] = str(full_name) # полное имя юзера
         new_row[3] = now # дата первого сообщения
         new_row[4] = now # дата последнего сообщения
-        new_row[5] = '' # дата последнего нажатия на кнопку
-        new_row[6] = str(nm_id) # артикул
-        new_row[18] = str(full_name) # полное имя юзера
+        new_row[5] = msg_text # текст последнего сообщения
+        new_row[6] = '' # дата последнего нажатия на кнопку
+        new_row[7] = str(nm_id) # артикул
+        new_row[19] = str(full_name) # полное имя юзера
 
         await sheet.append_row(new_row)  
 
@@ -125,13 +133,30 @@ class GoogleSheetClass:
     async def update_buyer_last_time_message(
         self, 
         telegram_id: int,
-        is_tap_to_keyboard: bool
+        text: str
     ) -> None:
         sheet = self.sheet or await self.get_sheet()
         row_index = await self.get_user_row(telegram_id)
-        column_header_name = self.last_tap_column_name if is_tap_to_keyboard else self.last_message_column_name
+        column_header_name =  self.last_message_column_name 
         col_index = self._header_cache.get(column_header_name) 
-        await sheet.update_cell(row_index, col_index, StringConverter.get_now_str())
+        # await sheet.update_cell(row_index, col_index, StringConverter.get_now_str())
+        
+        # Маппинг из логических имен в заголовки
+        fields = {
+            self.header_row[4]: StringConverter.get_now_str(), # столбец Последнее нажатия на кнопку
+            self.header_row[5]: text, # столбец Текст последнего собщения
+        }
+        # Подготавливаем все апдейты для batch_update
+        updates = []
+        for column_name, value in fields.items():
+            col_index = self._header_cache[column_name]
+            # Конвертация номера столбца в букву (например 14 → N)
+            col_letter = chr(64 + col_index)
+            cell_range = f"{col_letter}{row_index}"
+            updates.append({"range": cell_range, "values": [[value]]})
+        
+        # Один батч-запрос к API
+        await sheet.batch_update(updates)
 
     async def update_buyer_button_and_time(
         self,
@@ -144,17 +169,17 @@ class GoogleSheetClass:
         row_index = await self.get_user_row(telegram_id)
         # Маппинг логических имён на реальные заголовки
         button_to_column = {
-            "agree": self.header_row[7], # Условия , дальше по порядку
-            "order": self.header_row[8], # заказ сделан
-            "photo_order": self.header_row[9], # скрин заказа GPT
-            "receive": self.header_row[10], # заказ получен
-            "feedback": self.header_row[11], # отзыв оставлен
-            "photo_feedback": self.header_row[12], # скрин отзыва GPT
-            "shk": self.header_row[13], # ШК разрезаны  
-            "photo_shk": self.header_row[14], # фото разрезанных ШК GPT
-            "phone_number": self.header_row[15], # номер телефона
-            "bank": self.header_row[16], # банк 
-            "amount": self.header_row[17] # сумма
+            "agree": self.header_row[8], # Условия , дальше по порядку
+            "order": self.header_row[9], # заказ сделан
+            "photo_order": self.header_row[10], # скрин заказа GPT
+            "receive": self.header_row[11], # заказ получен
+            "feedback": self.header_row[12], # отзыв оставлен
+            "photo_feedback": self.header_row[13], # скрин отзыва GPT
+            "shk": self.header_row[14], # ШК разрезаны  
+            "photo_shk": self.header_row[15], # фото разрезанных ШК GPT
+            "phone_number": self.header_row[16], # номер телефона
+            "bank": self.header_row[17], # банк 
+            "amount": self.header_row[18] # сумма
         }
         button_col_name = button_to_column.get(button_name)
         time_col_name = (
@@ -194,9 +219,9 @@ class GoogleSheetClass:
         # Маппинг из логических имен в заголовки
         fields = {
             self.header_row[4]: StringConverter.get_now_str(), # столбец Последнее сообщение
-            self.header_row[15]: phone_number_hash, # столбец Номер телефона
-            self.header_row[16]: bank or '-', # столбец Банк
-            self.header_row[17]: amount or '-', # столбец Сумма
+            self.header_row[16]: phone_number_hash, # столбец Номер телефона
+            self.header_row[17]: bank or '-', # столбец Банк
+            self.header_row[18]: amount or '-', # столбец Сумма
         }
 
         # Подготавливаем все апдейты для batch_update
@@ -224,16 +249,16 @@ class GoogleSheetClass:
     async def get_instruction(
         self,
         sheet_instruction: str,
-        product_title: str
+        # product_title: str
     ) -> str:
         sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
-        instruction_cell = await sheet.acell("A1")
+        instruction_cell = await sheet.acell(constants.INSTRUCTION_CELL)
         instruction_str = instruction_cell.value
 
-        instruction_str = (
-            instruction_str.replace("{", "{{").replace("}", "}}")
-            .replace("{{product_title}}", "{product_title}")
-        ).format(product_title=product_title)
+        # instruction_str = (
+        #     instruction_str.replace("{", "{{").replace("}", "}}")
+        #     .replace("{{product_title}}", "{product_title}")
+        # ).format(product_title=product_title)
 
         safe_text_instruction = StringConverter.escape_markdown_v2(instruction_str)
         return safe_text_instruction

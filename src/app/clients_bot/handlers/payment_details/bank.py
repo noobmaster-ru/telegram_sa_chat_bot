@@ -38,7 +38,7 @@ async def handle_bank_name(
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+        text=text
     )
     bank_match = re.search(constants.bank_pattern, text, flags=re.IGNORECASE)
     bank = bank_match.group(0).capitalize() if bank_match else None

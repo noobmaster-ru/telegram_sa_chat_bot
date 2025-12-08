@@ -33,7 +33,7 @@ async def handle_messages_after_requisites(
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+        text=text
     )
     business_connection_id = message.business_connection_id
     await state.update_data(

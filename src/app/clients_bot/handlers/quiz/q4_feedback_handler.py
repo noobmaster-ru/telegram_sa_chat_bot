@@ -16,6 +16,7 @@ from src.tools.string_converter_class import StringConverter
 from src.core.config import constants
 
 from .router import router
+
 # ------ 5. catch all text from user in state "waiting_for_feedback" and send it to gpt 
 @router.business_message(StateFilter(ClientStates.waiting_for_feedback))
 async def handle_unexpected_text_waiting_for_feedback_done(
@@ -39,7 +40,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+        text=text
     )
     
     await message.bot(

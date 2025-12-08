@@ -22,6 +22,7 @@ async def handle_photo(
 ):
     current_state = await state.get_state()
     telegram_id = message.from_user.id 
+    text = message.text
     business_connection_id = message.business_connection_id
     if business_connection_id:
         await state.update_data(
@@ -42,7 +43,7 @@ async def handle_photo(
     # # обновляем время последнего сообщения юзера
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+        text=text
     )
     
     if current_state == ClientStates.waiting_for_photo_order:

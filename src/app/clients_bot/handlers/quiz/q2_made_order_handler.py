@@ -42,7 +42,7 @@ async def handle_unexpected_text_waiting_for_order(
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
-        is_tap_to_keyboard=False
+        text=text
     )
     await message.bot(
         ReadBusinessMessage(
