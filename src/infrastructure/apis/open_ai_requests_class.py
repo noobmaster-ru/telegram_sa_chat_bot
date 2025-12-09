@@ -126,13 +126,19 @@ class OpenAiRequestClass:
         ref_image_url: str,
         user_image_url: str,
         nm_id: str,
-        nm_id_name: str
+        nm_id_name: str,
+        brand_name: str
     ) -> str:
         """
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message=f"Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries. Название товара `{nm_id_name}` должно быть на скриншоте клиента. Также там могут быть надписи под названием: 'Оформляется', 'Вы оформили заказ', а на самом товаре надписи: 'Оплачен'(зелёным цветом) , 'НЕ ОПЛАЧЕН'(красным цветом)",
+            prefix_message=(
+                "Подумай и скажи есть ли на скриншоте ЗАКАЗ нашего товара на Wildberries.\n"
+                f"Ниже фотографии товара (или рядом где-то) на скриншоте заказа может быть написан бренд `{brand_name}` или название  `{nm_id_name}`.\n" 
+                "Также там могут быть надписи под названием: 'Оформляется', 'Вы оформили заказ', "
+                "а на самом товаре надписи: 'Оплачен'(зелёным цветом) , 'НЕ ОПЛАЧЕН'(красным цветом)"
+            ),
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,
@@ -214,34 +220,17 @@ class OpenAiRequestClass:
             f"total: {usage.total_tokens}"
         )
         return result
-    
-        # return await self._classify_photo(
-        #     prefix_message="Подумай и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ ЭТИКЕТКИ (Штрихкода) Wildberries нашего товара.",
-        #     ref_image_url=ref_image_url,
-        #     user_image_url=user_image_url,
-        #     nm_id=nm_id,
-        #     nm_id_name=nm_id_name
-        # )
         
     async def _create_response(
         self,
         context_message: str,
-        product_title: str
+        instruction: str
     ) -> str:
         """
-        Базовый метод для общения с GPT — принимает текст подсказки (context_message),
-        автоматически подставляет инструкцию и модель.
+        Базовый метод для общения с GPT — принимает текст подсказки (context_message) и инструкцию (instruction)
         """
-
-        instruction_str = (
-            self.instruction_template
-            .replace("{", "{{").replace("}", "}}")
-            .replace("{{product_title}}", "{product_title}")
-        ).format(product_title=product_title)
-        
         # 🧹 экранируем markdown-символы
-        instruction_str = StringConverter.escape_markdown_v2(instruction_str) #re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", instruction_str)
-
+        instruction_str = StringConverter.escape_markdown_v2(instruction) 
         response = await self.client.chat.completions.create(
             model=self.model_name,
             messages=[
@@ -255,7 +244,7 @@ class OpenAiRequestClass:
             ],
             max_tokens=self.max_tokens,          # ограничиваем длину ответа 
             temperature=self.temperature,         # снижает «творчество» ради скорости и стабильности
-            # timeout=12,              # чтобы не ждать вечно
+            # timeout=12,             
         )
         # logging usage of tokens per prompt
         usage = response.usage
@@ -268,79 +257,79 @@ class OpenAiRequestClass:
     async def create_gpt_5_response(
         self, 
         new_prompt: str,
-        product_title:str
+        instruction:str
     ) -> str:
         return await self._create_response(
             f"Покупатель уже выполнил наши правила: получил товар, оставил отзыв, "
             f"разрезал этикетки, отправил реквизиты. Ответь вежливо на вопрос: '{new_prompt}'",
-            product_title=product_title
+            instruction=instruction
         )
    
     async def get_gpt_5_response_before_agreement_point(
         self, 
         new_prompt: str,
-        product_title: str
+        instruction: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, покупатель должен согласиться с нашими правилами. "
             f"Ответь на его вопрос: '{new_prompt}' и попроси нажать на кнопку 'Да, согласен' в Telegram.",
-            product_title=product_title
+            instruction=instruction
         )
 
     
     async def get_gpt_5_response_after_subscription_and_before_order_point(
         self, 
         new_prompt: str,
-        product_title: str
+        instruction: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно проверить, заказал ли покупатель товар. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, заказал'.",
-            product_title=product_title
+            instruction=instruction
         )
 
     async def get_gpt_5_response_after_order_and_before_receive_product_point(
         self, 
         new_prompt: str,
-        product_title: str
+        instruction: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно убедиться, что покупатель получил товар. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, получил'.",
-            product_title=product_title
+            instruction=instruction
         )
 
     async def get_gpt_5_response_after_receive_product_and_before_feedback_check_point(
         self, 
         new_prompt: str,
-        product_title: str
+        instruction: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно проверить, оставил ли покупатель отзыв. "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, оставил'.",
-            product_title=product_title
+            instruction=instruction
         )
 
     async def get_gpt_5_response_after_feedback_and_before_shk_check_point(
         self, 
         new_prompt: str,
-        product_title: str
+        instruction: str
     ) -> str:
         return await self._create_response(
             f"Чтобы вернуть деньги, нужно убедиться, что покупатель разрезал этикетки (ШК). "
             f"Ответь на вопрос: '{new_prompt}' и попроси нажать 'Да, разрезал(а) ШК'.",
-            product_title=product_title
+            instruction=instruction
         )
         
     async def create_gpt_5_response_requisites(
         self, 
         new_prompt: str,
-        product_title: str
+        instruction: str
     ) -> str:
         return await self._create_response(
             f"Покупатель уже выполнил наши правила: получил товар, оставил отзыв, "
             f"разрезал этикетки, теперь ему нужно отправить нам реквизиты в формате:"
             f"Номер телефона: +7910XXXXXXX"
             f"Ответь вежливо на вопрос и попроси отправить реквизиты в описанном выше формате: '{new_prompt}'",
-            product_title=product_title
+            instruction=instruction
         )

@@ -41,7 +41,7 @@ async def main():
     # Регистрируем хуки БД (они заполнят dp.workflow_data["db_session_factory"])
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
-    
+
     # === MIDDLEWARES ===
     # 0) старые юзеры, которые писали бизнес-акку до подключения бота
     dp.business_message.middleware(CheckUserInOldUsers(redis=redis_client))
@@ -68,7 +68,7 @@ async def main():
         max_output_tokens_photo=constants.GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
         temperature=constants.GPT_TEMPERATURE,
         reasoning=constants.GPT_REASONING,
-        block_if_no_leads=True,   # <-- ВАЖНО: включаем блокировку
+        block_if_no_leads=True,   # включаем блокировку, если селлер не купил лиды
     )
     dp.business_message.middleware(cabinet_ctx_middleware)
     dp.callback_query.middleware(cabinet_ctx_middleware)
@@ -79,6 +79,7 @@ async def main():
     # check last time activity and send reminder message if user too late inactive
     asyncio.create_task(inactivity_checker(bot, dp.storage))
     
+
     # clients routers
     dp.include_routers(text_router, quiz_router, photo_router, payment_router) 
     await dp.start_polling(bot)

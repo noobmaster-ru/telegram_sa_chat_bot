@@ -94,13 +94,13 @@ async def handle_requisites_message(
     logging.info(f"  user: {telegram_id} gave requisites: card_number = {card_number} , phone = {phone}, amount = {amt}, bank = {bank_name}")
     
     # ============== MAIN FLOW =============
-    text = (
-        f"📩 Получены реквизиты:\n"
-        f"Номер телефона: `{phone}`\n\n"
-        f"💬 Пожалуйста, отправьте сумму перевода, например: *500*",
-    )
     # если только номер телефона
-    if phone_number and not bank_name and not card_number and not amt:
+    if phone and not bank_name and not card_number and not amt:
+        text = (
+            f"📩 Получены реквизиты:\n"
+            f"Номер телефона: `{phone}`\n\n"
+            f"💬 Пожалуйста, отправьте сумму перевода, например: *500*"
+        )
         msg = await message.answer(
             text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
@@ -112,13 +112,16 @@ async def handle_requisites_message(
 
     # если банк, карта, телефон и сумма
     if bank_name and card_number and  phone_number and amt:
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Номер карты: `{card_number}`\n"
             f"Номер телефона: `{phone}`\n"
             f"Банк: `{bank}`\n"
             f"Сумма: `{amt}`\n\n"
-            f"Реквизиты заполнены верно?",
+            f"Реквизиты заполнены верно?"
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2",
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
@@ -129,10 +132,13 @@ async def handle_requisites_message(
     
     # если только банк
     if bank_name and not card_number and not phone_number and not amt:
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Банк: `{bank}`\n\n"
-            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
+            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты."
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_card_or_phone_number)
@@ -141,10 +147,13 @@ async def handle_requisites_message(
     
     # если только номер карты
     if not bank_name and card_number and not phone_number and not amt:
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Номер карты: `{card_number}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+            f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_amount)
@@ -153,10 +162,13 @@ async def handle_requisites_message(
     
     # если только сумма
     if not bank_name and not card_number and not phone_number and amt:
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Сумма: `{amt}`\n\n"
-            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
+            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты."
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_card_or_phone_number)
@@ -165,12 +177,15 @@ async def handle_requisites_message(
     
     # если карта , номер телефона и банк, но нет суммы оплаты
     if phone and card_number and bank_name and not amt:
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{phone}`\n"
             f"Номер карты: `{card_number}`\n"
             f"Банк: `{bank}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+            f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
         )
         await state.set_state(ClientStates.waiting_for_amount)
@@ -181,17 +196,23 @@ async def handle_requisites_message(
     if (phone or card_number) and not bank_name and not amt:
         msg = None
         if phone:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n\n"
-                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             )
         if card_number:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n\n"
-                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             )  
         await state.set_state(ClientStates.waiting_for_amount)
@@ -201,11 +222,14 @@ async def handle_requisites_message(
 
     # если только cумма и банк
     if not phone and not card_number and bank_name and amt:
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Банк: `{bank}`\n"
             f"Сумма: `{amt}`\n\n"
-           f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты.",
+            f"💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона или номер банковской карты."
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
         )  
         await state.set_state(ClientStates.waiting_for_card_or_phone_number)
@@ -216,28 +240,37 @@ async def handle_requisites_message(
     if bank_name and (phone or card_number) and not amt:
         msg = None
         if phone and card_number:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Банк: `{bank}`\n\n"
-                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             )
         elif card_number:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number}`\n"
                 f"Банк: `{bank}`\n\n"
-                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             ) 
         else:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Банк: `{bank}`\n\n"
-                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+                f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             )
         await state.set_state(ClientStates.waiting_for_amount)
@@ -248,28 +281,37 @@ async def handle_requisites_message(
     if not bank_name and (phone or card_number) and amt:
         msg = None
         if phone and card_number:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Номер карты: `{card_number}`\n"
                 f"Сумма: `{amt}`\n\n"
-                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             )
         elif card_number:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер карты: `{card_number or ''}`\n"
                 f"Сумма: `{amt or ''}`\n\n"
-                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             ) 
         else:
-            msg = await message.answer(
+            text = (
                 f"📩 Получены реквизиты:\n"
                 f"Номер телефона: `{phone}`\n"
                 f"Сумма: `{amt}`\n\n"
-                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
                 parse_mode="MarkdownV2"
             ) 
         await state.set_state(ClientStates.waiting_for_bank)
@@ -278,12 +320,15 @@ async def handle_requisites_message(
     
     # --- Если всё есть(телефон, банк , сумма), показываем кнопки подтверждения ---
     if all(k in data for k in ("phone_number", "amount", "bank")):
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{data['phone_number']}`\n"
             f"Банк: {data['bank']}\n"
             f"Сумма: `{data['amount']}`\n\n"
-            f"Реквизиты заполнены верно?",
+            f"Реквизиты заполнены верно?"
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2",
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
@@ -293,12 +338,15 @@ async def handle_requisites_message(
     
     # --- Если всё есть(карта, банк , сумма), показываем кнопки подтверждения ---
     if all(k in data for k in ("card_number", "amount", "bank")):
-        msg = await message.answer(
+        text = (
             f"📩 Получены реквизиты:\n"
             f"Номер карты: {data['card_number']}\n"
             f"Банк: {data['bank']}\n"
             f"Сумма: `{data['amount']}`\n\n"
-            f"Реквизиты заполнены верно?",
+            f"Реквизиты заполнены верно?"
+        )
+        msg = await message.answer(
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2",
             reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
         )
@@ -309,9 +357,10 @@ async def handle_requisites_message(
     # если юзер мега тупой и ввел какой-то текст, то загоняем текст в модель
     # переключаем в состояние ожидания(пока ответ от гпт не сформировался)
     await state.set_state(constants.SKIP_MESSAGE_STATE)
+    instruction = user_data.get("instruction")
     gpt5_response_text = await client_gpt_5.create_gpt_5_response_requisites(
         new_prompt=text,
-        product_title=nm_id_name
+        instruction=instruction
     )
     await state.set_state(ClientStates.waiting_for_requisites)
     await message.answer(gpt5_response_text)

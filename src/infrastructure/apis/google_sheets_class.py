@@ -1,11 +1,13 @@
 import json
-from google.oauth2.service_account import Credentials
-from src.tools.string_converter_class import StringConverter
-from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
-from redis.asyncio import Redis
-from typing import List, Dict
-from src.core.config import constants
 import logging
+from datetime import datetime
+from typing import List, Dict
+from redis.asyncio import Redis
+from gspread_asyncio import AsyncioGspreadClientManager, AsyncioGspreadSpreadsheet
+from google.oauth2.service_account import Credentials
+
+from src.tools.string_converter_class import StringConverter
+from src.core.config import constants
 
 class GoogleSheetClass:
     """⚡ Быстрое асинхронное взаимодействие с Google Sheets с кэшами и пакетными апдейтами."""
@@ -13,13 +15,13 @@ class GoogleSheetClass:
         self, 
         service_account_json: str,
         spreadsheet_id: str, 
-        buyers_sheet_name: str,
         redis_client: Redis,
         REDIS_KEY_USER_ROW_POSITION_STRING: str
     ):
         # Авторизация и получение объекта листа
         self.spreadsheet_id = spreadsheet_id
-        self.buyers_sheet_name = buyers_sheet_name
+        self.buyers_sheet_name = constants.BUYERS_SHEET_NAME_STR
+        self.settings_sheet_name = constants.SETTINGS_SHEET_NAME_STR
         self.service_account_json = service_account_json
         # ✅ Загружаем JSON сразу при инициализации
         with open(self.service_account_json, "r") as f:
@@ -39,7 +41,8 @@ class GoogleSheetClass:
         self.agcm = AsyncioGspreadClientManager(lambda: self._creds)
         self.client = None
         self.spreadsheet = None
-        self.sheet = None
+        self.buyers_sheet = None
+        self.settings_sheet = None
 
         # первая строка - названия столбцов
         self.header_row = None 
@@ -65,16 +68,20 @@ class GoogleSheetClass:
             self.spreadsheet = await client.open_by_key(self.spreadsheet_id)
         return self.spreadsheet
     
-    async def get_sheet(self):
-        if self.sheet is None:
-            self.sheet = await self.spreadsheet.worksheet(self.buyers_sheet_name)
-            self.header_row = await self.sheet.row_values(1)
+    async def get_buyers_sheet(self):
+        if self.buyers_sheet is None :
+            self.buyers_sheet = await self.spreadsheet.worksheet(self.buyers_sheet_name)
+            self.header_row = await self.buyers_sheet.row_values(1)
             # запишем в класс названия столбцов некоторых, чтобы облечить прод
             self.last_message_column_name = self.header_row[4]
             self.last_tap_column_name = self.header_row[6]
             self._header_cache = {header: idx + 1 for idx, header in enumerate(self.header_row)}
-        return self.sheet 
+        return self.buyers_sheet 
     
+    async def get_settings_sheet(self):
+        if self.settings_sheet is None:
+            self.settings_sheet = await self.spreadsheet.worksheet(self.settings_sheet_name)
+        return self.settings_sheet 
 
     async def get_user_row(self, telegram_id: int) -> int:
         """Возвращает индекс строки из Redis или ищет в таблице, если в кэше нет."""
@@ -84,7 +91,7 @@ class GoogleSheetClass:
             return int(row_index)
 
         # ❌ Если нет в Redis — ищем в таблице
-        sheet = self.sheet or await self.get_sheet()
+        sheet = self.buyers_sheet or await self.get_buyers_sheet()
         cell = await sheet.find(str(telegram_id))
         row_index = cell.row
 
@@ -107,7 +114,7 @@ class GoogleSheetClass:
         if row_index:
             return # if user already in google sheets - dont add him, skip
         
-        sheet = self.sheet or await self.get_sheet()
+        sheet = self.buyers_sheet or await self.get_buyers_sheet()
         new_row = [''] * len(self._header_cache)
         
         now = StringConverter.get_now_str()
@@ -135,11 +142,11 @@ class GoogleSheetClass:
         telegram_id: int,
         text: str
     ) -> None:
-        sheet = self.sheet or await self.get_sheet()
+        sheet = self.buyers_sheet or await self.get_buyers_sheet()
         row_index = await self.get_user_row(telegram_id)
         column_header_name =  self.last_message_column_name 
         col_index = self._header_cache.get(column_header_name) 
-        # await sheet.update_cell(row_index, col_index, StringConverter.get_now_str())
+        
         
         # Маппинг из логических имен в заголовки
         fields = {
@@ -165,7 +172,7 @@ class GoogleSheetClass:
         value: str,
         is_tap_to_keyboard: bool
     ) -> None:
-        sheet = self.sheet or await self.get_sheet()
+        sheet = self.buyers_sheet or await self.get_buyers_sheet()
         row_index = await self.get_user_row(telegram_id)
         # Маппинг логических имён на реальные заголовки
         button_to_column = {
@@ -209,12 +216,12 @@ class GoogleSheetClass:
         amount: str,
     ) -> None:
         """Обновляет реквизиты (карта, сумма, телефон, банк) одной операцией."""
-        sheet = self.sheet or await self.get_sheet()
+        sheet = self.buyers_sheet or await self.get_buyers_sheet() 
         row_index = await self.get_user_row(telegram_id)
         
         phone_number_hash = StringConverter.convert_phone_to_hash_format(phone_number)
         # чтобы Google Sheets сохранил +7, добавляем апостроф
-        fixed_phone = f"'{phone_number_hash}" if phone_number_hash else "-"
+        # fixed_phone = f"'{phone_number_hash}" if phone_number_hash else "-"
         
         # Маппинг из логических имен в заголовки
         fields = {
@@ -243,28 +250,21 @@ class GoogleSheetClass:
         Возвращает шаблон инструкции из Google Sheets (ячейка A1).
         """
         sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
-        instruction_cell = await sheet.acell("A1")
+        instruction_cell = await sheet.acell(constants.INSTRUCTION_CELL_TEMPLATE)
         return instruction_cell.value
     
     async def get_instruction(
         self,
-        sheet_instruction: str,
-        # product_title: str
+        sheet_settings: str,
     ) -> str:
-        sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
+        sheet = await (await self.get_spreadsheet()).worksheet(sheet_settings)
         instruction_cell = await sheet.acell(constants.INSTRUCTION_CELL)
         instruction_str = instruction_cell.value
-
-        # instruction_str = (
-        #     instruction_str.replace("{", "{{").replace("}", "}}")
-        #     .replace("{{product_title}}", "{product_title}")
-        # ).format(product_title=product_title)
-
         safe_text_instruction = StringConverter.escape_markdown_v2(instruction_str)
         return safe_text_instruction
 
     async def get_all_telegram_id(self) -> List[int]:
-        sheet = self.sheet or await self.get_sheet()
+        sheet = self.buyers_sheet or await self.get_buyers_sheet()
         all_values = await sheet.get_all_values() 
         telegram_ids = []    
         # Проходим по всем строкам, начиная со второй (индекс 1 в Python), чтобы пропустить заголовок
@@ -279,3 +279,39 @@ class GoogleSheetClass:
                     # Игнорируем строки, где значение не является числом
                     continue            
         return telegram_ids
+
+
+    async def get_data_from_settings_sheet(self) -> tuple[int, str, str, str, str]:
+        """
+        Читает Настройка!C2:H2 и возвращает:
+        nm_id, image_url, article_title, brand_name, instruction
+        """
+
+        # sheet = self.settings_sheet or await self.get_settings_sheet()
+        sheet = await (await self.get_spreadsheet()).worksheet(self.settings_sheet_name)
+        # [[D2, E2, F2, G2, H2]]
+        values = await sheet.get("D2:H2")
+        row = values[0] if values else ["", "", "", "", ""]
+
+        nm_id_str, image_url, nm_id_name, brand_name, instruction = row
+        nm_id = int(nm_id_str) if nm_id_str.strip().isdigit() else None
+
+        settings = {
+          "nm_id": nm_id,
+          "image_url": image_url,
+          "nm_id_name": nm_id_name,
+          "brand_name": brand_name,
+          "instruction": instruction
+        }
+        now = StringConverter.get_now_str()
+        text = f"Время последнего чтения информации: {now}"
+
+        # gspread-asyncio: обновление одной ячейки
+        await sheet.batch_update([
+            {
+                "range": "B4",
+                "values": [[text]],
+            },
+            # сюда можно добавить ещё диапазоны
+        ])
+        return settings

@@ -37,7 +37,8 @@ async def handle_unexpected_text_waiting_for_agreement(
     business_connection_id = message.business_connection_id
     
     user_data = await state.get_data()
-    nm_id_name = user_data.get("nm_id_name") # мы положили его в первом хэндлере
+    instruction = user_data.get("instruction")
+
     
     # Обновляем время последнего сообщения в ТАБЛИЦЕ КОНКРЕТНОГО КАБИНЕТА
     await spreadsheet.update_buyer_last_time_message(
@@ -61,7 +62,7 @@ async def handle_unexpected_text_waiting_for_agreement(
     # GPT-ответ с учётом конкретного продукта (nm_id_name для данного кабинета)
     gpt_5_response = await client_gpt_5.get_gpt_5_response_before_agreement_point(
         new_prompt=text,
-        product_title=nm_id_name
+        instruction=instruction
     )
     await state.set_state(ClientStates.waiting_for_agreement)
     msg = await message.answer(

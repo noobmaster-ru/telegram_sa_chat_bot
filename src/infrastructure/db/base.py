@@ -23,7 +23,7 @@ async_session_factory = async_sessionmaker(
 async def on_startup(dispatcher: Dispatcher):
     async_engine.echo = True
     dispatcher.workflow_data["db_session_factory"] = async_session_factory
-    print("[DB] connected and tables created")
+    print("[DB] connected")
 
 async def on_shutdown(dispatcher: Dispatcher):
     await async_engine.dispose()

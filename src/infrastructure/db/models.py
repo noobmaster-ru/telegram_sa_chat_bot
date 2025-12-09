@@ -10,6 +10,8 @@ from sqlalchemy import (
     ForeignKey,
     Enum as SAEnum,
     JSON,
+    Text,
+    DateTime
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -233,6 +235,14 @@ class CashbackTableORM(Base):
         "PaymentORM",
         back_populates="cashback_table",
     )
+    
+    # НОВЫЕ поля — «живая» конфигурация из Google Sheets
+    article_nm_id: Mapped[int | None] = mapped_column(Integer, nullable=True)        # C2
+    article_image_url: Mapped[str | None] = mapped_column(String, nullable=True)     # E2
+    article_title: Mapped[str | None] = mapped_column(String, nullable=True)         # F2
+    brand_name: Mapped[str | None] = mapped_column(String, nullable=True)            # G2
+    instruction_text: Mapped[str | None] = mapped_column(Text, nullable=True)        # H2
+    last_synced_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 # =====================

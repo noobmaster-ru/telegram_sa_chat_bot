@@ -1,5 +1,12 @@
-import base64
 import io
+import logging
+import base64
+
+import httpx
+import filetype
+from redis.asyncio import Redis
+
+from src.core.config import constants
 
 from aiogram import Bot
 from redis.asyncio import Redis
@@ -8,7 +15,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 # from src.db.models import ArticleORM
 from src.infrastructure.db.models import ArticleORM
-from src.core.config import constants
+logger = logging.getLogger(__name__)
 
 async def get_reference_image_data_url_cached(
     db_session_factory: async_sessionmaker[AsyncSession],
@@ -64,5 +71,61 @@ async def get_reference_image_data_url_cached(
 
     # 4. Кладём в Redis , чтобы затем не брать из бд 
     await redis.set(redis_key, data_url)
+
+    return data_url
+
+
+
+
+async def get_reference_image_data_url_from_wb(
+    redis: Redis,
+    clients_bot_id: int,
+    business_connection_id: str,
+    telegram_id: int, 
+    nm_id: int,
+    image_url: str,
+) -> str | None:
+    """
+    1. Пытается взять эталонное изображение из Redis.
+    2. Если нет — качает image_url с WB, кодирует в base64,
+       кладёт в Redis и возвращает data:image/...;base64,...
+    """
+
+    redis_key = f"fsm:{clients_bot_id}:{business_connection_id}:{telegram_id}:image"
+
+    # 1. Пробуем взять из Redis
+    cached = await redis.get(redis_key)
+    if cached:
+        return cached.decode("utf-8")
+
+    if not image_url:
+        logger.warning("Empty image_url for nm_id=%s", nm_id)
+        return None
+
+    # 2. Качаем с WB
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(image_url)
+            resp.raise_for_status()
+            image_bytes = resp.content
+    except httpx.HTTPError as e:
+        logger.exception("Failed to download image from %s: %s", image_url, e)
+        return None
+
+    # 3. Определяем mime по содержимому
+    kind = filetype.guess(image_bytes)
+    if kind is not None:
+        mime = kind.mime          # например, "image/webp" или "image/jpeg"
+    else:
+        # WB часто отдаёт webp, но на всякий случай дефолт
+        mime = "image/webp"
+
+    base64_image = base64.b64encode(image_bytes).decode("utf-8")
+    data_url = f"data:{mime};base64,{base64_image}"
+
+    # 4. Кладём в Redis (можно с TTL, если захочешь)
+    await redis.set(redis_key, data_url)
+    # или так:
+    # await redis.set(redis_key, data_url, ex=60 * 60)  # 1 час
 
     return data_url

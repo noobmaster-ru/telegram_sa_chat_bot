@@ -1,6 +1,6 @@
 from .router import router
 from . import (
-    q0_organization_name,
+    q0_copy_gs_template,
     q1_get_gs_id,
     q2_service_account_access,
     q3_link_bot_to_bus_acc,

@@ -1,6 +1,6 @@
 import logging
-import secrets
-import string
+# import secrets
+# import string
 from aiogram import F, Bot
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -21,9 +21,9 @@ from src.core.config import constants, settings
 from .router import router
 
 
-def generate_link_code(length: int = 8) -> str:
-    alphabet = string.ascii_uppercase + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(length))
+# def generate_link_code(length: int = 8) -> str:
+#     alphabet = string.ascii_uppercase + string.digits
+#     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 @router.callback_query(
@@ -49,21 +49,21 @@ async def handle_add_service_account_into_gs(
     if callback.data == "service_account_yes":
         google_sheets_url = seller_data["google_sheets_url"]
         user_id = seller_data["user_id"]
-        organization_name = seller_data["organization_name"]
-        nm_id_name = "" # заглушка для  seller_data["nm_id_name"]
+        # organization_name = seller_data["organization_name"]
+        # nm_id_name = "" # заглушка для  seller_data["nm_id_name"]
         # Разбираем ссылку и достаём table_id (spreadsheet_id)
         part1 = google_sheets_url.split("/d/")[-1]
         table_id = part1.split("/edit")[0]
 
-        link_code = generate_link_code()
+        link_code = StringConverter.generate_link_code()
 
         async with db_session_factory() as session:
             # 1. создаём кабинет
             new_cabinet = CabinetORM(
                 user_id=user_id,
-                organization_name=organization_name,
+                organization_name='none',
                 link_code=link_code,
-                nm_id_name=nm_id_name,
+                nm_id_name='none',
                 leads_balance=0
             )
             session.add(new_cabinet)
@@ -86,7 +86,7 @@ async def handle_add_service_account_into_gs(
                 cabinet_id=new_cabinet.id,
                 cashback_table_id=cashback_table.id,
             )
-        text = f"✅ Магазин: *{organization_name}* успешно добавлен!"
+        text = f"✅ Магазин: *добавить_сюда_название_маназина_через_парсинг_* успешно добавлен!"
         await callback.message.answer(
             text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"

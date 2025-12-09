@@ -1,6 +1,7 @@
 import logging
 import json
 import time
+import asyncio
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from redis.asyncio import Redis
@@ -64,6 +65,8 @@ class CabinetContextMiddleware(BaseMiddleware):
         self._cabinet_ttl_seconds = constants.CABINET_CONTEXT_TTL_SECONDS
         self.block_if_no_leads = block_if_no_leads  
         
+        # НОВОЕ: следим, для каких business_connection_id уже запустили watcher
+        self._watchers_started: set[str] = set()
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
@@ -141,18 +144,18 @@ class CabinetContextMiddleware(BaseMiddleware):
                 leads_balance,
             )
             if leads_balance <= 0:
-                text = (
-                    "К сожалению, приём заявок на кэшбек временно приостановлен.\n"
-                    # "У продавца закончился лимит лидов.\n"
-                    "Попробуйте написать позже.\n"
-                    "Спасибо."
-                )
+                # text = (
+                #     "К сожалению, приём заявок на кэшбек временно приостановлен.\n"
+                #     # "У продавца закончился лимит лидов.\n"
+                #     "Попробуйте написать позже.\n"
+                #     "Спасибо."
+                # )
                 
-                if isinstance(event, Message):
-                    await event.answer(text)
-                elif isinstance(event, CallbackQuery) and event.message:
-                    await event.message.answer(text)
-                    await event.answer()
+                # if isinstance(event, Message):
+                #     await event.answer(text)
+                # elif isinstance(event, CallbackQuery) and event.message:
+                #     await event.message.answer(text)
+                #     await event.answer()
 
                 return  # не зовём handler → бот для клиентов молчит
         
@@ -186,10 +189,20 @@ class CabinetContextMiddleware(BaseMiddleware):
             spreadsheet = GoogleSheetClass(
                 service_account_json=self.service_account_json,
                 spreadsheet_id=cashback_table.table_id,
-                buyers_sheet_name=self.buyers_sheet_name,
                 redis_client=self.redis_client,
                 REDIS_KEY_USER_ROW_POSITION_STRING=f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{business_connection_id}"
             )
+            # НОВОЕ: запускаем фонового watcher-а ОДИН РАЗ на этот business_connection_id
+            if session_factory is not None and business_connection_id not in self._watchers_started:
+                self._watchers_started.add(business_connection_id)
+                asyncio.create_task(
+                    self._watch_spreadsheet_loop(
+                        business_connection_id=business_connection_id,
+                        cabinet_id=cabinet.id,
+                        spreadsheet=spreadsheet,
+                        db_session_factory=session_factory,
+                    )
+                )
             self._sheets_cache[business_connection_id] = spreadsheet
 
         data["spreadsheet"] = spreadsheet
@@ -199,7 +212,7 @@ class CabinetContextMiddleware(BaseMiddleware):
         if client_gpt_5 is None:
             # Тянем инструкцию ИМЕННО из таблицы этого кабинета
             instruction_template = await spreadsheet.get_instruction_template(
-                constants.INSTRUCTION_SHEET_NAME_STR
+                constants.SETTINGS_SHEET_NAME_STR
             )
 
             client_gpt_5 = OpenAiRequestClass(
@@ -271,3 +284,49 @@ class CabinetContextMiddleware(BaseMiddleware):
             client_id,
             cabinet.leads_balance,
         )
+    
+    async def _watch_spreadsheet_loop(
+        self,
+        business_connection_id: str,
+        cabinet_id: int,
+        spreadsheet: GoogleSheetClass,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """
+        Фоновая задача: раз в N секунд читает настройки артикула из Google Sheets
+        и складывает их в Redis/БД.
+        """
+        logger.info(
+            "Start watcher for business_connection_id=%s, cabinet_id=%s",
+            business_connection_id,
+            cabinet_id,
+        )
+        while True:
+            try:
+                settings = await spreadsheet.get_data_from_settings_sheet() 
+                # settings = {
+                #     "nm_id": nm_id,
+                #     "image_url": image_url,
+                #     "nm_id_name": nm_id_name,
+                #     "brand_name": brand_name,
+                #     "instruction": instruction
+                # }
+
+                # ---- сохраняем в Redis, чтобы clients_bot быстро это читал ----
+                redis_key = f"CABINET_SETTINGS:{business_connection_id}:product_settings"
+                await self.redis_client.set(
+                    redis_key,
+                    json.dumps(settings, ensure_ascii=False),
+                )
+
+                # ---- (опционально) можем что-то обновлять в БД ----
+                # async with db_session_factory() as session:
+                #     ...
+                #     await session.commit()
+
+            except Exception:
+                logger.exception(
+                    "Ошибка в watcher-е Google Sheets для cabinet_id=%s",
+                    cabinet_id,
+                )
+            await asyncio.sleep(constants.TIME_DELTA_CHECK_GOOGLE_SHEETS_SELLER_DATA_UPDATE)

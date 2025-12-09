@@ -7,6 +7,7 @@ from src.infrastructure.db.base import Base
 # from src.db.base import Base  
 from src.core.config import settings  # если хочешь брать URL из кода
 # from src.db import models 
+
 from src.infrastructure.db import models
 
 config = context.config

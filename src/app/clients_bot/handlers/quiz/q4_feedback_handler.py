@@ -35,7 +35,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
             business_connection_id=business_connection_id
         )
     client_data = await state.get_data()
-    nm_id_name = client_data.get("nm_id_name")
+    instruction = client_data.get("instruction")
     
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
@@ -57,7 +57,7 @@ async def handle_unexpected_text_waiting_for_feedback_done(
     )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_receive_product_and_before_feedback_check_point(
         new_prompt=text,
-        product_title=nm_id_name
+        instruction=instruction
     )
     await state.set_state(ClientStates.waiting_for_feedback)
     msg = await message.answer(

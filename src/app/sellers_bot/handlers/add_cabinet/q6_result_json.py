@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove, Message, CallbackQuery
 
 from src.app.bot.states.seller import SellerStates
-from src.app.bot.keyboards.reply import kb_skip_result_json
+from src.app.bot.keyboards.reply import kb_skip_result_json, kb_buy_leads
 from src.tools.string_converter_class import StringConverter
 from src.tools.parse_telegram_ids_from_result_json import parse_zipped_result_json
 
@@ -26,15 +26,20 @@ async def waiting_for_result_json(
     file_name = message.document.file_name or ""
     if not file_name.lower().endswith(".zip"):
         text = (
-            "Пожалуйста, отправьте архив с экспортом Telegram в формате ZIP "
-            "(например, result.zip)."
+            "Файл result.json слишком большой (больше 50МБ)\n"
+            "Пожалуйста, cожмите файл result.json в .zip и отправьте мне этот архив😊"
         )
         await message.answer(
             text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2",
         )
         return
-    
+    text = "Считываю id написавших клиентов ..."
+    await message.answer(
+        text=StringConverter.escape_markdown_v2(text),
+        parse_mode="MarkdownV2",
+        reply_markup=ReplyKeyboardRemove()
+    )
     # 2. Скачиваем файл целиком в память
     tg_file = await message.bot.get_file(message.document.file_id)
     file_obj = await message.bot.download_file(tg_file.file_path)
@@ -66,16 +71,23 @@ async def waiting_for_result_json(
         parse_mode="MarkdownV2"
     )
 
-    text = (
-        "Теперь давайте добавим артикул для раздачи и его фото\n\n"
-        "Отправьте *артикул* товара на ВБ, *одно число*"
-    )
+    # text = (
+    #     "Теперь давайте добавим артикул для раздачи и его фото\n\n"
+    #     "Отправьте *артикул* товара на ВБ, *одно число*"
+    # )
+    # await message.answer(
+    #     text=StringConverter.escape_markdown_v2(text),
+    #     parse_mode="MarkdownV2",
+    #     reply_markup=ReplyKeyboardRemove()
+    # )
+    # await state.set_state(SellerStates.waiting_for_nm_id)
+    text=f"Теперь необходимо купить лиды на кабинет, нажмите на клавиатуре {constants.SELLER_MENU_TEXT[1]}"
     await message.answer(
         text=StringConverter.escape_markdown_v2(text),
+        reply_markup=kb_buy_leads,
         parse_mode="MarkdownV2",
-        reply_markup=ReplyKeyboardRemove()
     )
-    await state.set_state(SellerStates.waiting_for_nm_id)
+    await state.set_state(SellerStates.waiting_for_leads)
 
 
 @router.callback_query(

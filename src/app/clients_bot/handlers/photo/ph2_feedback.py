@@ -17,6 +17,7 @@ from src.app.bot.filters.image_document import ImageDocument
 from src.app.bot.states.client import ClientStates
 from src.app.bot.keyboards.inline import get_yes_no_keyboard
 from src.app.bot.utils.get_reference_image import get_reference_image_data_url_cached
+from src.app.bot.utils.get_reference_image import get_reference_image_data_url_from_wb
 from src.app.bot.utils.last_activity import update_last_activity
 
 from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
@@ -45,6 +46,7 @@ async def handle_photo_feedback(
     await state.set_state(constants.SKIP_MESSAGE_STATE)
     user_data = await state.get_data()
     business_connection_id = message.business_connection_id
+    clients_bot_id = message.bot.id
     if business_connection_id:
         await state.update_data(
             business_connection_id=business_connection_id
@@ -66,6 +68,7 @@ async def handle_photo_feedback(
     telegram_id = message.from_user.id
     nm_id = user_data.get("nm_id")
     nm_id_name = user_data.get("nm_id_name")
+    image_url = user_data.get("image_url")
     
     # === 3. Получаем фото юзера (как photo ИЛИ как document) ===
     # Если отправлено как обычное фото
@@ -98,12 +101,20 @@ async def handle_photo_feedback(
 
     
     # 4. Берём эталон из кэша / TG
-    ref_image_url = await get_reference_image_data_url_cached(
-        db_session_factory=db_session_factory,
+    # ref_image_url = await get_reference_image_data_url_cached(
+    #     db_session_factory=db_session_factory,
+    #     redis=redis,
+    #     cabinet_id=cabinet.id,
+    #     nm_id=nm_id,
+    #     seller_bot_token=settings.SELLERS_BOT_TOKEN,
+    # )
+    ref_image_url = await get_reference_image_data_url_from_wb(
         redis=redis,
-        cabinet_id=cabinet.id,
+        clients_bot_id=clients_bot_id,
+        business_connection_id=business_connection_id,
+        telegram_id=telegram_id,
         nm_id=nm_id,
-        seller_bot_token=settings.SELLERS_BOT_TOKEN,
+        image_url=image_url,
     )
     
     if ref_image_url is None:

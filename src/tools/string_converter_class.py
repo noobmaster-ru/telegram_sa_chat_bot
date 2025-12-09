@@ -1,4 +1,6 @@
 import re
+import secrets
+import string
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -28,3 +30,9 @@ class StringConverter:
     @staticmethod
     def get_now_str() -> str:
         return str(datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S"))
+    
+
+    @staticmethod
+    def generate_link_code(length: int = 8) -> str:
+        alphabet = string.ascii_uppercase + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(length))

@@ -181,12 +181,12 @@ async def inactivity_checker(
                             callback_prefix = "confirm_requisites"
                             statement = "верно" 
                         try:
-                            if state == REPLY_MARKUP_REMIND[2]:
-                                await bot.send_message(
-                                    chat_id=telegram_id,
-                                    text="ОТЗЫВ БЕЗ ФОТО И БЕЗ ВИДЕО!",
-                                    business_connection_id=business_connection_id,
-                                )
+                            # if state == REPLY_MARKUP_REMIND[2]:
+                            #     await bot.send_message(
+                            #         chat_id=telegram_id,
+                            #         text="ОТЗЫВ БЕЗ ФОТО И БЕЗ ВИДЕО!",
+                            #         business_connection_id=business_connection_id,
+                            #     )
                             msg = await bot.send_message(
                                 chat_id=telegram_id,
                                 text=text,

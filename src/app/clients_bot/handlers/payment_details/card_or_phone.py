@@ -9,6 +9,7 @@ from src.app.bot.states.client import ClientStates
 from src.app.bot.keyboards.inline import get_yes_no_keyboard
 from src.app.bot.utils.last_activity import update_last_activity
 from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
+from src.tools.string_converter_class import StringConverter
 
 from src.core.config import constants
 
@@ -63,12 +64,15 @@ async def handle_card_or_phone_number(
     if data.get('bank'):
         if data.get('card_number'):
             if data.get('amount'):
-                msg = await message.answer(
+                text = (
                     f"📩 Получены реквизиты:\n"
                     f"Номер карты: `{data.get('card_number', '')}`\n"
                     f"Банк: {data.get('bank', '')}\n"
                     f"Сумма: `{data.get('amount', '')}`\n\n"
-                    f"Реквизиты заполнены верно?",
+                    f"Реквизиты заполнены верно?"
+                )
+                msg = await message.answer(
+                    text=StringConverter.escape_markdown_v2(text),
                     parse_mode="MarkdownV2",
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
@@ -76,8 +80,11 @@ async def handle_card_or_phone_number(
                 await update_last_activity(state, msg)
                 return 
             else:
+                text = (
+                    f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"
+                )
                 msg = await message.answer(
-                    f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
+                    text=StringConverter.escape_markdown_v2(text),
                     parse_mode="MarkdownV2"
                 )  
                 await state.set_state(ClientStates.waiting_for_amount)
@@ -85,12 +92,15 @@ async def handle_card_or_phone_number(
                 return 
         if data.get('phone_number'):
             if data.get('amount'):
-                msg = await message.answer(
+                text = (
                     f"📩 Получены реквизиты:\n"
                     f"Номер телефона: `{data.get('phone_number', '')}`\n"
                     f"Банк: {data.get('bank', '')}\n"
                     f"Сумма: `{data.get('amount', '')}`\n\n"
-                    f"Реквизиты заполнены верно?",
+                    f"Реквизиты заполнены верно?"
+                )
+                msg = await message.answer(
+                    text=StringConverter.escape_markdown_v2(text),
                     parse_mode="MarkdownV2",
                     reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
                 )
@@ -98,16 +108,22 @@ async def handle_card_or_phone_number(
                 await update_last_activity(state, msg)
                 return 
             else:
+                text = (
+                    f"💬 Пожалуйста, отправьте  сумму перевода, например: 500 рублей"
+                )
                 msg = await message.answer(
-                    f"💬 Пожалуйста, отправьте  сумму перевода, например: 500 рублей",
+                    text=StringConverter.escape_markdown_v2(text),
                     parse_mode="MarkdownV2"
                 )  
                 await state.set_state(ClientStates.waiting_for_amount)
                 await update_last_activity(state, msg)
                 return 
     else:
+        text = (
+            f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)"
+        )
         msg = await message.answer(
-            f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)",
+            text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"
         )  
         await state.set_state(ClientStates.waiting_for_bank)

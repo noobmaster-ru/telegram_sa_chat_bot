@@ -1,6 +1,8 @@
+import json
 import asyncio
 import logging
 from aiogram import Bot, F
+from redis.asyncio import Redis
 from aiogram.types import Message
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -63,7 +65,7 @@ async def link_cabinet(
         cabinet.link_code = None
         await session.commit()
 
-    text = f"Кабинет успешно привязан к бизнес-аккаунту ✅\n\nbusiness_connection_id = `{business_connection_id}`"
+    text = f"business_connection_id = `{business_connection_id}`"
     await message.answer(
         text=StringConverter.escape_markdown_v2(text),
         parse_mode="MarkdownV2"
@@ -89,6 +91,7 @@ async def handle_first_message(
     spreadsheet: GoogleSheetClass,
     cabinet: CabinetORM,
     bot: Bot,
+    redis: Redis
 ):
     # 0. Проверяем, что у нас есть кабинет и таблица
     if cabinet is None or spreadsheet is None:
@@ -100,29 +103,55 @@ async def handle_first_message(
         return
 
     await state.set_state(constants.SKIP_MESSAGE_STATE)
+    business_connection_id = message.business_connection_id
+    redis_key = f"CABINET_SETTINGS:{business_connection_id}:product_settings"
+    raw = await redis.get(redis_key)
+    product_settings = None
+    if raw is None:
+        # ❶ Либо лениво достаём настройки из таблицы:
+        settings = await spreadsheet.get_data_from_settings_sheet()
+        # settings = {...} — то, что возвращает твой метод
+        # и можно сразу положить в Redis, чтобы в следующий раз было из кэша
+        await redis.set(redis_key, json.dumps(settings))
+        product_settings = settings
+    else:
+        # raw = bytes или str, json.loads это понимает
+        product_settings = json.loads(raw)
+    
+    # settings = {
+    #     "nm_id": nm_id,
+    #     "image_url": image_url,
+    #     "nm_id_name": nm_id_name,
+    #     "brand_name": brand_name,
+    #     "instruction": instruction
+    # }
+    nm_id = product_settings["nm_id"]
+    image_url = product_settings["image_url"]
+    nm_id_name = product_settings["nm_id_name"]
+    brand_name = product_settings["brand_name"]
+    instruction = product_settings["instruction"]
+    
+    # # 1. Выбираем артикул для этого кабинета
+    # article_obj = cabinet.articles[0] if cabinet.articles else None
+    # if article_obj is None:
+    #     text = (
+    #         "Для этого кабинета ещё не настроен артикул для раздачи. "
+    #         "Попросите, пожалуйста, менеджера завершить настройку."
+    #     )
+    #     await message.answer(
+    #         text=StringConverter.escape_markdown_v2(text),
+    #         parse_mode="MarkdownV2"
+    #     )
+    #     return
 
-    # 1. Выбираем артикул для этого кабинета
-    article_obj = cabinet.articles[0] if cabinet.articles else None
-    if article_obj is None:
-        text = (
-            "Для этого кабинета ещё не настроен артикул для раздачи. "
-            "Попросите, пожалуйста, менеджера завершить настройку."
-        )
-        await message.answer(
-            text=StringConverter.escape_markdown_v2(text),
-            parse_mode="MarkdownV2"
-        )
-        return
-
-    available_nm_id = article_obj.article  # nm_id из ArticleORM
-    organization_name = cabinet.organization_name  # название магазина/ИП
-    nm_id_name = cabinet.nm_id_name
+    # available_nm_id = article_obj.article  # nm_id из ArticleORM
+    # organization_name = cabinet.organization_name  # название магазина/ИП
+    # nm_id_name = cabinet.nm_id_name
     
     telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
     msg_text = message.text or "-"
-    business_connection_id = message.business_connection_id
     bot_id = message.bot.id
 
     logging.info(
@@ -132,9 +161,11 @@ async def handle_first_message(
     # 2. Сохраняем контекст в FSM
     await state.update_data(
         clients_bot_id=bot_id,
-        nm_id=available_nm_id,
-        organization_name=organization_name,
+        nm_id=nm_id,
+        brand_name=brand_name,
         nm_id_name=nm_id_name,
+        image_url=image_url,
+        instruction=instruction,
         telegram_id=telegram_id,
         full_name=full_name,
         business_connection_id=business_connection_id,
@@ -142,17 +173,16 @@ async def handle_first_message(
     )
 
     # # 3. Достаём инструкцию именно для этого товара/кабинета
-    instruction_str = await spreadsheet.get_instruction(
-        sheet_instruction=constants.INSTRUCTION_SHEET_NAME_STR,
-        # product_title=nm_id_name,
-    )
+    # instruction_str = await spreadsheet.get_instruction(
+    #     sheet_settings=constants.SETTINGS_SHEET_NAME_STR
+    # )
 
     # 4. Сохраняем покупателя в ТАБЛИЦУ КОНКРЕТНОГО КАБИНЕТА
     await spreadsheet.add_new_buyer(
         username=username,
         full_name=full_name,
         telegram_id=telegram_id,
-        nm_id=available_nm_id,
+        nm_id=nm_id,
         msg_text=msg_text
     )
 
@@ -219,7 +249,7 @@ async def handle_first_message(
     )
     await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     await message.answer(
-        text=instruction_str,
+        text=StringConverter.escape_markdown_v2(instruction),
         parse_mode="MarkdownV2",
     )
 

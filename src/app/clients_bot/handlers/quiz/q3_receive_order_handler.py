@@ -36,7 +36,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
             business_connection_id=business_connection_id
         )
     user_data = await state.get_data()
-    nm_id_name = user_data.get("nm_id_name")
+    instruction = user_data.get("instruction")
     
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
@@ -58,7 +58,7 @@ async def handle_unexpected_text_waiting_for_order_receive(
     )
     gpt_5_response = await client_gpt_5.get_gpt_5_response_after_order_and_before_receive_product_point(
         new_prompt=text,
-        product_title=nm_id_name
+        instruction=instruction
     )
     await state.set_state(ClientStates.waiting_for_order_receive)
     msg = await message.answer(

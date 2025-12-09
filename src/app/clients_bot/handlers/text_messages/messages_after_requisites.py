@@ -27,9 +27,7 @@ async def handle_messages_after_requisites(
     text = message.text if message.text else "(без текста)"
 
     user_data = await state.get_data()
-    nm_id = user_data.get("nm_id")
-    nm_id_name = user_data.get("nm_id_name")
-    
+    instruction = user_data.get("instruction")
     # обновляем время последнего сообщения
     await spreadsheet.update_buyer_last_time_message(
         telegram_id=telegram_id,
@@ -55,7 +53,7 @@ async def handle_messages_after_requisites(
         # переключаем в состояние ожидания(пока ответ от гпт не сформировался) 
         gpt5_response_text = await client_gpt_5.create_gpt_5_response(
             new_prompt=text,
-            product_title=nm_id_name
+            instruction=instruction
         )
         await state.set_state(ClientStates.continue_dialog)
         await message.answer(gpt5_response_text)
@@ -63,7 +61,7 @@ async def handle_messages_after_requisites(
         if len(text) > constants.MIN_LEN_TEXT:
             gpt5_response_text = await client_gpt_5.create_gpt_5_response(
                 new_prompt=text,
-                product_title=nm_id_name
+                instruction=instruction
             )
             await state.set_state(ClientStates.continue_dialog)
             await message.answer(gpt5_response_text)    
