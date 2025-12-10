@@ -55,21 +55,23 @@ async def handle_messages_after_requisites(
             new_prompt=text,
             instruction=instruction
         )
-        await state.set_state(ClientStates.continue_dialog)
         await message.answer(gpt5_response_text)
+        await state.set_state(ClientStates.continue_dialog)
     else:
         if len(text) > constants.MIN_LEN_TEXT:
             gpt5_response_text = await client_gpt_5.create_gpt_5_response(
                 new_prompt=text,
                 instruction=instruction
             )
-            await state.set_state(ClientStates.continue_dialog)
             await message.answer(gpt5_response_text)    
+            await state.set_state(ClientStates.continue_dialog)
         elif text in constants.OK_WORDS:
             await message.answer("👍")
+            await state.set_state(ClientStates.continue_dialog)
         else:
             text_answer = "Напишите, пожалуйста, ваш вопрос более подробнее, одним сообщением"
             await message.answer(
                 text=StringConverter.escape_markdown_v2(text_answer),
                 parse_mode="MarkdownV2"
             )
+            await state.set_state(ClientStates.continue_dialog)

@@ -309,7 +309,7 @@ class GoogleSheetClass:
         # gspread-asyncio: обновление одной ячейки
         await sheet.batch_update([
             {
-                "range": "B4",
+                "range": constants.TIME_UPDATE_CELL,
                 "values": [[text]],
             },
             # сюда можно добавить ещё диапазоны
