@@ -1,8 +1,8 @@
 # prod: sellers_bot 
 services:
-  clients_bot:
+  axiomai_clients_bot:
     build: .
-    container_name: clients_bot
+    container_name: axiomai_clients_bot
     command: uv run python -m src.app.clients_bot.run
     env_file:
       - .env        # на проде тут лежит REDIS_URL=redis://default:...@194.87.86.12:6379/2
@@ -11,9 +11,9 @@ services:
       - ./logs:/app/logs
     restart: always
 
-  sellers_bot:
+  axiomai_sellers_bot:
     build: .
-    container_name: sellers_bot
+    container_name: axiomai_sellers_bot
     command: uv run python -m src.app.sellers_bot.run
     env_file:
       - .env
