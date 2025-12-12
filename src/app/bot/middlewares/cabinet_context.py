@@ -15,7 +15,7 @@ from sqlalchemy.orm import selectinload
 from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
 from src.infrastructure.apis.open_ai_requests_class import OpenAiRequestClass
 from src.infrastructure.db.models import CabinetORM, CashbackTableORM, CashbackTableStatus
-
+from src.tools.string_converter_class import StringConverter
 from src.core.config import constants
 
 logger = logging.getLogger(__name__)
@@ -65,8 +65,12 @@ class CabinetContextMiddleware(BaseMiddleware):
         self._cabinet_ttl_seconds = constants.CABINET_CONTEXT_TTL_SECONDS
         self.block_if_no_leads = block_if_no_leads  
         
-        # НОВОЕ: следим, для каких business_connection_id уже запустили watcher
+        # watcher настроек (D2:H2 -> Redis)
         self._watchers_started: set[str] = set()
+        
+        # watcher остатка лидов -> в таблицу
+        self._leads_watchers_started: set[str] = set()
+
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
@@ -192,11 +196,22 @@ class CabinetContextMiddleware(BaseMiddleware):
                 redis_client=self.redis_client,
                 REDIS_KEY_USER_ROW_POSITION_STRING=f"{self.REDIS_KEY_USER_ROW_POSITION_STRING}:{business_connection_id}"
             )
-            # НОВОЕ: запускаем фонового watcher-а ОДИН РАЗ на этот business_connection_id
+            # watcher настроек (D2:H2 -> Redis)
             if session_factory is not None and business_connection_id not in self._watchers_started:
                 self._watchers_started.add(business_connection_id)
                 asyncio.create_task(
                     self._watch_spreadsheet_loop(
+                        business_connection_id=business_connection_id,
+                        cabinet_id=cabinet.id,
+                        spreadsheet=spreadsheet,
+                        db_session_factory=session_factory,
+                    )
+                )
+            # watcher остатка лидов -> в ячейку LEADS_REMAIN_CELL
+            if session_factory is not None and business_connection_id not in self._leads_watchers_started:
+                self._leads_watchers_started.add(business_connection_id)
+                asyncio.create_task(
+                    self._sync_leads_balance_loop(
                         business_connection_id=business_connection_id,
                         cabinet_id=cabinet.id,
                         spreadsheet=spreadsheet,
@@ -330,3 +345,68 @@ class CabinetContextMiddleware(BaseMiddleware):
                     cabinet_id,
                 )
             await asyncio.sleep(constants.TIME_DELTA_CHECK_GOOGLE_SHEETS_SELLER_DATA_UPDATE)
+            
+    async def _sync_leads_balance_loop(
+        self,
+        business_connection_id: str,
+        cabinet_id: int,
+        spreadsheet: GoogleSheetClass,
+        db_session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        """
+        Фоновая задача: периодически читает leads_balance из БД
+        и пишет его в таблицу (ячейка constants.LEADS_REMAIN_CELL).
+        Например, раз в час.
+        """
+        logger.info(
+            "Start leads watcher for business_connection_id=%s, cabinet_id=%s",
+            business_connection_id,
+            cabinet_id,
+        )
+
+
+        while True:
+            try:
+                # 1. Берём актуальный leads_balance из БД
+                async with db_session_factory() as session:
+                    db_cabinet = await session.get(CabinetORM, cabinet_id)
+                    if db_cabinet is None:
+                        logger.warning(
+                            "Cabinet %s not found in DB in leads watcher, stop loop",
+                            cabinet_id,
+                        )
+                        return
+
+                    leads_balance = db_cabinet.leads_balance or 0
+
+                # sheet = spreadsheet.settings_sheet or await spreadsheet.get_settings_sheet()
+                # sheet = await (await spreadsheet.get_spreadsheet()).worksheet(constants.SETTINGS_SHEET_NAME_STR)
+                sheet = await spreadsheet.get_settings_sheet()
+                now = StringConverter.get_now_str()
+                value_text = f"Остаток лидов: {leads_balance}, время обновления: {now}"
+                # gspread-asyncio: обновление одной ячейки
+                await sheet.batch_update([
+                    {
+                        "range": constants.LEADS_REMAIN_CELL,
+                        "values": [[value_text]],
+                    },
+                    {
+                        "range": constants.LEADS_REMAIN_CELL_UPPER,
+                        "values": [[f"Остаток лидов, обновление раз в ~{constants.TIME_DELTA_CHECK_LEADS_REMAIN // 3600} часов"]],
+                    },
+                    # сюда можно добавить ещё диапазоны
+                ])
+                logger.info(
+                    "Leads watcher: cabinet_id=%s, leads_balance=%s записан в %s",
+                    cabinet_id,
+                    leads_balance,
+                    constants.LEADS_REMAIN_CELL,
+                )
+
+            except Exception:
+                logger.exception(
+                    "Ошибка в leads watcher-е для cabinet_id=%s",
+                    cabinet_id,
+                )
+
+            await asyncio.sleep(constants.TIME_DELTA_CHECK_LEADS_REMAIN)

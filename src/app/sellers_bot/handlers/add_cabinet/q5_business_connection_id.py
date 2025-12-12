@@ -2,12 +2,18 @@ import logging
 from aiogram import F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import (
+    Message, 
+    CallbackQuery,
+    FSInputFile,
+    InputMediaPhoto
+)
 
 from src.app.bot.states.seller import SellerStates
 from src.app.bot.keyboards.inline import get_yes_no_keyboard
 from src.tools.string_converter_class import StringConverter
 from src.app.bot.keyboards.reply import kb_skip_result_json
+from src.core.config import constants
 
 from .router import router
 
@@ -69,8 +75,49 @@ async def callback_business_connection_id(
     await state.set_data(seller_data)
     
     if callback.data == "business_connection_id_yes":
+        INSTRUCTION_PHOTOS_DIR = constants.INSTRUCTION_PHOTOS_DIR
+        photo_path1 = INSTRUCTION_PHOTOS_DIR + "5_settings.png"
+        photo_path2 = INSTRUCTION_PHOTOS_DIR + "6_advanced.png"
+        photo_path3 = INSTRUCTION_PHOTOS_DIR + "7_export_telegram_data.png"
+        photo_path4 = INSTRUCTION_PHOTOS_DIR + "8_export_settings.png"
+        photo_path5 = INSTRUCTION_PHOTOS_DIR + "9_export_settings.png"
+        photo_path6 = INSTRUCTION_PHOTOS_DIR + "10_export_settings.png"
+        photo_path7 = INSTRUCTION_PHOTOS_DIR + "11_export_settings.png"
+        photo_path8 = INSTRUCTION_PHOTOS_DIR + "12_data.png"
+        photo_path9 = INSTRUCTION_PHOTOS_DIR + "13_data.png"
+        caption_text = (
+            f"Теперь *внимательно!*:\n\n"
+            f"Чтобы бот не отвечал старым клиентам ,которые уже писали по поводу раздач, мне нужен файл с вашими данными по перепискам.\n"
+            f"Его можно получить через десктоп-версию телеграма: https://desktop.telegram.org/ \n\n"
+            f"Скачивайте приложение , и следуйте инструкциям на фотографиях:\nsettings --> advanced --> export Telegram data --> установить флажки на нужных ячейках как на фото --> *machine-readable JSON*(очень важно именно *json*) --> Export\n"
+            f"Скачивание файла может занять достаточно долгое время, если у вас было много покупателей(минут 10-20), дождитейсь когда файл скачается.\n"
+            "Скачается папка DataExport_... , внутри этой папки будет файл result.json , вот он мне и нужен☺️\n\n"
+            "(P.S. Если файл result.json по размеру будет больше 50МБ, то его необходимо сжать в .zip и отправить мне этот архив)"
+        )
+        safe_caption = StringConverter.escape_markdown_v2(caption_text) 
+        media_group = [
+            InputMediaPhoto(
+                media=FSInputFile(photo_path1),
+                caption=safe_caption,
+                parse_mode="MarkdownV2"
+            ),
+            InputMediaPhoto(media=FSInputFile(photo_path2)), 
+            InputMediaPhoto(media=FSInputFile(photo_path3)),
+            InputMediaPhoto(media=FSInputFile(photo_path4)),
+            InputMediaPhoto(media=FSInputFile(photo_path5)),
+            InputMediaPhoto(media=FSInputFile(photo_path6)),
+            InputMediaPhoto(media=FSInputFile(photo_path7)),
+            InputMediaPhoto(media=FSInputFile(photo_path8)),
+            InputMediaPhoto(media=FSInputFile(photo_path9)),
+        ]
+        # Отправляем медиагруппу
+        await callback.bot.send_media_group(
+            chat_id=callback.message.chat.id,
+            media=media_group
+        )
         text = (
-            "✅ Отлично!Теперь мне нужен файл *result.zip*\n\n(Если у вас новый аккаунт, и нет старых переписок с покупателями, тогда нажмите на кнопку *Пропустить result.json* ниже)"
+            "Отправьте мне файл *result.json*\n\n"
+            "(Если у вас новый аккаунт, и нет старых переписок с покупателями, тогда нажмите на кнопку *Пропустить result.json* ниже)"
         )
         await callback.message.answer(
             text=StringConverter.escape_markdown_v2(text),

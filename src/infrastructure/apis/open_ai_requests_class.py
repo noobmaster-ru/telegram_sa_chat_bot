@@ -150,13 +150,17 @@ class OpenAiRequestClass:
         ref_image_url: str,
         user_image_url: str,
         nm_id: str,
-        nm_id_name: str
+        nm_id_name: str,
+        brand_name: str
     ) -> str:
         """
         Отправляет фото модели GPT-5.1 и получает ответ: 'Да' или 'Нет'
         """
         return await self._classify_photo(
-            prefix_message=f"Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries. Название товара `{nm_id_name}` и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента. Звёзды могут быть прямо на фотографии товара.",
+            prefix_message=(
+                "Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries."
+                f"Название товара `{nm_id_name}`, бренда {brand_name} и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента. Звёзды могут быть прямо на фотографии товара."
+            ),
             ref_image_url=ref_image_url,
             user_image_url=user_image_url,
             nm_id=nm_id,

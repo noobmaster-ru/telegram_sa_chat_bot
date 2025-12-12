@@ -99,7 +99,7 @@ async def handle_requisites_message(
         text = (
             f"📩 Получены реквизиты:\n"
             f"Номер телефона: `{phone}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода, например: *500*"
+            f"💬 Пожалуйста, отправьте сумму перевода, например: *235*"
         )
         msg = await message.answer(
             text=StringConverter.escape_markdown_v2(text),

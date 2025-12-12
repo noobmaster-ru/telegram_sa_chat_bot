@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 class StringConverter:
     @staticmethod
     def escape_markdown_v2(text: str) -> str:
-        return re.sub(r"([_\[\]()~#+\-=|{}.!])", r"\\\1", text)
+        return re.sub(r"([_\[\]()~#+>\-=|{}.!])", r"\\\1", text)
     
     @staticmethod
     def extract_table_id(url: str) -> str | None:

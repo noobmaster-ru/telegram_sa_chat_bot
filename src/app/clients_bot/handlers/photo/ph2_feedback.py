@@ -69,6 +69,7 @@ async def handle_photo_feedback(
     nm_id = user_data.get("nm_id")
     nm_id_name = user_data.get("nm_id_name")
     image_url = user_data.get("image_url")
+    brand_name = user_data.get("brand_name")
     
     # === 3. Получаем фото юзера (как photo ИЛИ как document) ===
     # Если отправлено как обычное фото
@@ -133,7 +134,8 @@ async def handle_photo_feedback(
         ref_image_url=ref_image_url,
         user_image_url=user_image_url,
         nm_id=nm_id,
-        nm_id_name=nm_id_name
+        nm_id_name=nm_id_name,
+        brand_name=brand_name
     )
 
     await spreadsheet.update_buyer_button_and_time(

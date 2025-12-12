@@ -86,7 +86,7 @@ async def handle_add_service_account_into_gs(
                 cabinet_id=new_cabinet.id,
                 cashback_table_id=cashback_table.id,
             )
-        text = f"✅ Магазин: *добавить_сюда_название_маназина_через_парсинг_* успешно добавлен!"
+        text = f"Отлично! Идём дальше."
         await callback.message.answer(
             text=StringConverter.escape_markdown_v2(text),
             parse_mode="MarkdownV2"

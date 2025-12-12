@@ -80,7 +80,8 @@ class GoogleSheetClass:
     
     async def get_settings_sheet(self):
         if self.settings_sheet is None:
-            self.settings_sheet = await self.spreadsheet.worksheet(self.settings_sheet_name)
+            self.settings_sheet = await (await self.get_spreadsheet()).worksheet(self.settings_sheet_name)
+            # self.settings_sheet = await self.spreadsheet.worksheet(self.settings_sheet_name)
         return self.settings_sheet 
 
     async def get_user_row(self, telegram_id: int) -> int:
@@ -249,7 +250,8 @@ class GoogleSheetClass:
         """
         Возвращает шаблон инструкции из Google Sheets (ячейка A1).
         """
-        sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
+        # sheet = await (await self.get_spreadsheet()).worksheet(sheet_instruction)
+        sheet = await self.get_settings_sheet()
         instruction_cell = await sheet.acell(constants.INSTRUCTION_CELL_TEMPLATE)
         return instruction_cell.value
     
@@ -257,7 +259,8 @@ class GoogleSheetClass:
         self,
         sheet_settings: str,
     ) -> str:
-        sheet = await (await self.get_spreadsheet()).worksheet(sheet_settings)
+        # sheet = await (await self.get_spreadsheet()).worksheet(sheet_settings)
+        sheet = await self.get_settings_sheet()
         instruction_cell = await sheet.acell(constants.INSTRUCTION_CELL)
         instruction_str = instruction_cell.value
         safe_text_instruction = StringConverter.escape_markdown_v2(instruction_str)
@@ -288,7 +291,9 @@ class GoogleSheetClass:
         """
 
         # sheet = self.settings_sheet or await self.get_settings_sheet()
-        sheet = await (await self.get_spreadsheet()).worksheet(self.settings_sheet_name)
+        # sheet = await (await self.get_spreadsheet()).worksheet(self.settings_sheet_name)
+        sheet = await self.get_settings_sheet()
+        
         # [[D2, E2, F2, G2, H2]]
         values = await sheet.get("D2:H2")
         row = values[0] if values else ["", "", "", "", ""]
@@ -311,6 +316,10 @@ class GoogleSheetClass:
             {
                 "range": constants.TIME_UPDATE_CELL,
                 "values": [[text]],
+            },
+            {
+                "range": constants.TIME_UPDATE_CELL_UPPER,
+                "values": [[f"Обновление информации в бд раз в ~{constants.TIME_DELTA_CHECK_GOOGLE_SHEETS_SELLER_DATA_UPDATE // 60} минут"]],
             },
             # сюда можно добавить ещё диапазоны
         ])
