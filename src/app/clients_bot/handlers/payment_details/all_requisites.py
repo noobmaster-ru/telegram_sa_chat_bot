@@ -74,6 +74,7 @@ async def handle_requisites_message(
 
     # --- Сохраняем найденное в FSM ---
     data = await state.get_data()
+    price_gpt = data.get("price")
     # logging.info(data) - {} выводит
     if card_number:
         data["card_number"] = re.sub(r"[ -]", "", card_number)
@@ -96,18 +97,35 @@ async def handle_requisites_message(
     # ============== MAIN FLOW =============
     # если только номер телефона
     if phone and not bank_name and not card_number and not amt:
-        text = (
-            f"📩 Получены реквизиты:\n"
-            f"Номер телефона: `{phone}`\n\n"
-            f"💬 Пожалуйста, отправьте сумму перевода, например: *235*"
-        )
-        msg = await message.answer(
-            text=StringConverter.escape_markdown_v2(text),
-            parse_mode="MarkdownV2"
-        )
-        await state.set_state(ClientStates.waiting_for_amount)
-        await update_last_activity(state, msg)
-        return
+        if not price_gpt:
+            text = (
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{phone}`\n\n"
+                f"💬 Пожалуйста, отправьте сумму перевода, например: *235*"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
+                parse_mode="MarkdownV2"
+            )
+            await state.set_state(ClientStates.waiting_for_amount)
+            await update_last_activity(state, msg)
+            return
+        if price_gpt:
+            await state.update_data(
+                amount=price_gpt
+            )
+            text = (
+                f"📩 Получены реквизиты:\n"
+                f"Номер телефона: `{phone}`\n\n"
+                f"💬 Пожалуйста, отправьте название банка (например: *Сбербанк*, *Т-банк*)"
+            )
+            msg = await message.answer(
+                text=StringConverter.escape_markdown_v2(text),
+                parse_mode="MarkdownV2"
+            )
+            await state.set_state(ClientStates.waiting_for_bank)
+            await update_last_activity(state, msg)
+            return
     # ============== MAIN FLOW =============    
 
     # если банк, карта, телефон и сумма

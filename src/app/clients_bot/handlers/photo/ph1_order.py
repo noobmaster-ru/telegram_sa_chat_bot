@@ -1,5 +1,7 @@
 import asyncio
 import base64
+import json
+import logging
 import filetype
 from typing import List, Optional
 
@@ -134,21 +136,38 @@ async def handle_photo_order(
         return
     
     # отправляем в OpenAI для классификации
-    model_response = await client_gpt_5.classify_photo_order(
+    raw_response = await client_gpt_5.classify_photo_order(
         ref_image_url=ref_image_url,
         user_image_url=user_image_url,
         nm_id=nm_id,
         nm_id_name=nm_id_name,
         brand_name=brand_name
     )
+    try:
+        model_response = json.loads(raw_response)
+    except json.JSONDecodeError:
+        logging.exception("Не удалось распарсить JSON от GPT: %r", raw_response)
+        # можно задать дефолты
+        model_response = {"is_order": False, "price": None}
 
-    await spreadsheet.update_buyer_button_and_time(
-        telegram_id=telegram_id,
-        button_name="photo_order",
-        value=model_response,
-        is_tap_to_keyboard=False
+    is_order = bool(model_response.get("is_order"))
+    price = model_response.get("price", None)
+    await state.update_data(
+        is_order=is_order,
+        price=price
     )
-    
+    logging.info("Photo classify result: is_order=%s, amount=%s", is_order, price)
+    # await spreadsheet.update_buyer_button_and_time(
+    #     telegram_id=telegram_id,
+    #     button_name="photo_order",
+    #     value=is_order,
+    #     is_tap_to_keyboard=False
+    # )
+    await spreadsheet.update_buyer_is_order_and_price_with_time(
+        telegram_id=telegram_id,
+        price=price,
+        is_order=is_order
+    )
     await message.bot(
         ReadBusinessMessage(
             business_connection_id=message.business_connection_id,
@@ -163,7 +182,7 @@ async def handle_photo_order(
     )
     await asyncio.sleep(constants.DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER)
     
-    if model_response == "Да":
+    if is_order:
         # теперь ждём скрин отзыва
         await state.update_data(photo_type="feedback")
         text = f"✅ Скриншот заказа принят!"

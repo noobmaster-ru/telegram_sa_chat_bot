@@ -70,6 +70,11 @@ async def cmd_start(
         # Сохраняем user_id в FSM
         await state.update_data(user_id=user.id)
     # text = "Скиньте ваш email(нужен для связи)"
+    text = "ВНИМАНИЕ! регистрацию делать с личного/рабочего аккаунта! НЕ с бизнес-аккаунта, на котором раздачи делаются"
+    await message.answer(
+        text=StringConverter.escape_markdown_v2(text),
+        parse_mode="MarkdownV2"
+    )
     text = "Теперь давайте зарегистрируем ваши кабинеты, выберите пункт *Добавить кабинет* в меню"
     await message.answer(
         text=StringConverter.escape_markdown_v2(text),

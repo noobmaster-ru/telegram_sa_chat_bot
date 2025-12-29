@@ -88,14 +88,20 @@ async def confirm_requisites_yes(
     data = await state.get_data()
     telegram_id = callback.from_user.id
 
-
-    # записываем данные в гугл-таблицу и однвременно обновим последнее время записи
-    await spreadsheet.write_requisites_into_google_sheets_and_update_last_time_message(
-        telegram_id=telegram_id,
-        phone_number=data.get('phone_number','-'),
-        bank=data.get('bank','-'),
-        amount=data.get('amount','-'),
-    )
+    price_gpt = data.get("price")
+    if not price_gpt:# записываем данные в гугл-таблицу и однвременно обновим последнее время записи
+        await spreadsheet.write_requisites_into_google_sheets_and_update_last_time_message(
+            telegram_id=telegram_id,
+            phone_number=data.get('phone_number','-'),
+            bank=data.get('bank','-'),
+            amount=data.get('amount','-'),
+        )
+    else:
+        await spreadsheet.write_phone_and_bank_into_google_sheets_and_update_last_time_message(
+            telegram_id=telegram_id,
+            phone_number=data.get('phone_number','-'),
+            bank=data.get('bank','-'),
+        )
 
     text = (
         f"📩 Реквизиты записаны:\n"

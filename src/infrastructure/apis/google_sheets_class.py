@@ -165,6 +165,30 @@ class GoogleSheetClass:
         
         # Один батч-запрос к API
         await sheet.batch_update(updates)
+    
+    async def update_buyer_is_order_and_price_with_time(
+        self,
+        telegram_id: int,
+        price: str,
+        is_order: str
+    ) -> None:
+        sheet = self.buyers_sheet or await self.get_buyers_sheet()
+        row_index = await self.get_user_row(telegram_id)
+
+        # 2️⃣ Готовим список обновлений
+        updates = []
+        for column_name, val in [
+            (self.header_row[10], is_order),
+            (self.header_row[18], price),
+            (self.last_message_column_name, StringConverter.get_now_str())
+        ]:
+            col_index = self._header_cache[column_name]
+            col_letter = chr(64 + col_index)
+            cell_range = f"{col_letter}{row_index}"
+            updates.append({"range": cell_range, "values": [[val]]})
+
+        # 3️⃣ Один batch-запрос
+        await sheet.batch_update(updates)
 
     async def update_buyer_button_and_time(
         self,
@@ -208,7 +232,36 @@ class GoogleSheetClass:
         # 3️⃣ Один batch-запрос
         await sheet.batch_update(updates)
 
+    async def write_phone_and_bank_into_google_sheets_and_update_last_time_message(
+        self,
+        telegram_id: int,
+        phone_number: str,
+        bank: str,
+    ) -> None:
+        """Обновляет реквизиты (телефон, банк) одной операцией."""
+        sheet = self.buyers_sheet or await self.get_buyers_sheet() 
+        row_index = await self.get_user_row(telegram_id)
+        phone_number_hash = StringConverter.convert_phone_to_hash_format(phone_number)
 
+        # Маппинг из логических имен в заголовки
+        fields = {
+            self.header_row[4]: StringConverter.get_now_str(), # столбец Последнее сообщение
+            self.header_row[16]: phone_number_hash, # столбец Номер телефона
+            self.header_row[17]: bank or '-', # столбец Банк
+        }
+        # Подготавливаем все апдейты для batch_update
+        updates = []
+        for column_name, value in fields.items():
+            col_index = self._header_cache[column_name]
+            # Конвертация номера столбца в букву (например 14 → N)
+            col_letter = chr(64 + col_index)
+            cell_range = f"{col_letter}{row_index}"
+            updates.append({"range": cell_range, "values": [[value]]})
+        
+        logging.info(f"  user: {telegram_id}, writes requisites into GoogleSheet: {phone_number}, {bank}")
+        # Один батч-запрос к API
+        await sheet.batch_update(updates)#, value_input_option="RAW")
+    
     async def write_requisites_into_google_sheets_and_update_last_time_message(
         self,
         telegram_id: int,
@@ -221,8 +274,7 @@ class GoogleSheetClass:
         row_index = await self.get_user_row(telegram_id)
         
         phone_number_hash = StringConverter.convert_phone_to_hash_format(phone_number)
-        # чтобы Google Sheets сохранил +7, добавляем апостроф
-        # fixed_phone = f"'{phone_number_hash}" if phone_number_hash else "-"
+
         
         # Маппинг из логических имен в заголовки
         fields = {

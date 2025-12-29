@@ -45,6 +45,7 @@ async def handle_bank_name(
     await state.update_data(bank=bank)
 
     data = await state.get_data()
+    price_gpt = data.get("price")
     msg = None
     if data.get("amount"):
         if data.get('card_number'):
@@ -100,21 +101,37 @@ async def handle_bank_name(
                 await update_last_activity(state, msg)
                 return 
             else:
-                text = (
-                    f"📩 Получены реквизиты:\n"
-                    f"Номер телефона: `{data.get('phone_number')}`\n"
-                    f"Банк: {data.get('bank')}\n"
-                    f"Сумма: `{data.get('amount')}`\n\n"
-                    f"Реквизиты заполнены верно?"
-                )
-                msg = await message.answer(
-                    text=StringConverter.escape_markdown_v2(text),
-                    parse_mode="MarkdownV2",
-                    reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
-                )
-                await state.set_state(ClientStates.confirming_requisites)
-                await update_last_activity(state, msg)
-                return
+                if not price_gpt:
+                    text = (
+                        f"📩 Получены реквизиты:\n"
+                        f"Номер телефона: `{data.get('phone_number')}`\n"
+                        f"Банк: {data.get('bank')}\n"
+                        f"Сумма: `{data.get('amount')}`\n\n"
+                        f"Реквизиты заполнены верно?"
+                    )
+                    msg = await message.answer(
+                        text=StringConverter.escape_markdown_v2(text),
+                        parse_mode="MarkdownV2",
+                        reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
+                    )
+                    await state.set_state(ClientStates.confirming_requisites)
+                    await update_last_activity(state, msg)
+                    return
+                else:
+                    text = (
+                        f"📩 Получены реквизиты:\n"
+                        f"Номер телефона: `{data.get('phone_number')}`\n"
+                        f"Банк: {data.get('bank')}\n\n"
+                        f"Реквизиты заполнены верно?"
+                    )
+                    msg = await message.answer(
+                        text=StringConverter.escape_markdown_v2(text),
+                        parse_mode="MarkdownV2",
+                        reply_markup=get_yes_no_keyboard("confirm_requisites", "верно")
+                    )
+                    await state.set_state(ClientStates.confirming_requisites)
+                    await update_last_activity(state, msg)
+                    return
     else:
         text = (
             f"💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей"

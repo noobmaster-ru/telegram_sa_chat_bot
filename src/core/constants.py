@@ -8,8 +8,12 @@ KIRILL_PHONE_NUMBER = "89109681153"
 ADMIN_ID_LIST = [694144143, 547299317]
 ADMIN_USERNAME = "@noobmaster_rus"
 SKIP_MESSAGE_STATE="skip_msg"
-CLIENTS_BOT_USERNAME = "@axiomAI_business_test2_bot" #  "@testing_ai_cashback_bot" 
-SELLERS_BOT_USERNAME = "@axiomAI_test2_bot" #   "@axiom_agi_bot" 
+CLIENTS_BOT_USERNAME = "@axiomai_develop_business_bot"
+SELLERS_BOT_USERNAME = "@axiomai_develop_bot"
+
+# CLIENTS_BOT_USERNAME = "@axiomAI_business_test2_bot" #  "@testing_ai_cashback_bot" 
+# SELLERS_BOT_USERNAME = "@axiomAI_test2_bot" #   "@axiom_agi_bot" 
+
 BOT_TO_GET_ID = "@username_to_id_bot"
 SELLER_MENU_TEXT = [
     '⚙️Добавить кабинет', # 0
@@ -26,8 +30,8 @@ OK_WORDS = [
     "окей!", "Хорошо, сейчас", "понял", "Ладно", "Окэй!"
 ]
 MIN_LEN_TEXT = 12
-FIRST_MESSAGE_DELAY_SLEEP = 60 #  in production 
-DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 5 #in production
+FIRST_MESSAGE_DELAY_SLEEP = 0.1 #60 #  in production 
+DELAY_BEETWEEN_BOT_MESSAGES_IN_FIRST_HANDLER = 0.1 #5 #in production
 TIME_DURATION_BEETWEEN_REMINDER =  3600*23 #in production
 TIME_DURATION_BEETWEEN_REMINDER_ORDER_RECEIVE =  3600*23 #in production
 TIME_DELTA_CHECK_LAST_USERS_ACTIVITYS = 3600  #  in production - every hour check users last time activitys
