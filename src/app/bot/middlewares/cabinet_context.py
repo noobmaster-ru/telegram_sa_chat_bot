@@ -163,14 +163,14 @@ class CabinetContextMiddleware(BaseMiddleware):
 
                 return  # не зовём handler → бот для клиентов молчит
         
-        # === 3б. Списываем лид при первом обращении клиента ===
-        if self.block_if_no_leads and isinstance(event, Message):
-            await self._maybe_consume_lead(
-                message=event,
-                cabinet=cabinet,
-                session_factory=session_factory,
-                business_connection_id=business_connection_id,
-            )
+        # # === 3б. Списываем лид при первом обращении клиента ===
+        # if self.block_if_no_leads and isinstance(event, Message):
+        #     await self._maybe_consume_lead(
+        #         message=event,
+        #         cabinet=cabinet,
+        #         session_factory=session_factory,
+        #         business_connection_id=business_connection_id,
+        #     )
             
         # 4. Выбираем актуальную таблицу кэшбека
         cashback_table: Optional[CashbackTableORM] = None

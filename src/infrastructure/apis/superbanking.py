@@ -130,7 +130,6 @@ class Superbanking:
 
         # 2. Полные названия (по списку)
         for b in constants.SUPERBANKING_BANKS:
-            logging.info(b)
             if StringConverter._norm(b["nameRus"]) in t or StringConverter._norm(b["bankName"]) in t:
                 return b["identifier"]
 
@@ -150,12 +149,10 @@ class Superbanking:
             "Content-Type": "application/json"
             
         }
-        logging.info(phone)
-        logging.info(uid_token)
         payload = {
             "cabinetId": self.cabinet_id,
             "projectId": self.project_id,
-            "orderNumber": f"CASHBACK-{self.pay_number}", # нужно как-то считать все выплаты
+            "orderNumber": f"axiomAICashback-{self.pay_number}", # нужно как-то считать все выплаты
             "phone": phone, # "0079876543210"
             "bank": bank_identifier, # "SBER" = 100000000111 , "TINKOFF" = 100000000004
             "amount": amount, 
@@ -168,12 +165,9 @@ class Superbanking:
 
             response.raise_for_status()            
             if response.status_code == 200:
-                logging.info("create 200")
                 resp_json = response.json()
                 payment_id = resp_json["data"]["payout"]["id"]
                 url = "https://api.superbanking.ru/cabinet/payout/sign?v=1.0.1"
-                logging.info(uid_token)
-                logging.info(payment_id)
                 headers = {
                     "x-token-user-api": self.api_key,
                     "x-idempotency-token": uid_token, # Генерация уникального ключа идемпотентности

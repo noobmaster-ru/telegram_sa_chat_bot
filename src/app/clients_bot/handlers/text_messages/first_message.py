@@ -101,9 +101,30 @@ async def handle_first_message(
             parse_mode="MarkdownV2"
         )
         return
-
-    await state.set_state(constants.SKIP_MESSAGE_STATE)
+    
+    telegram_id = message.from_user.id
+    bot_id = message.bot.id
     business_connection_id = message.business_connection_id
+    
+    # 🔒 0.1. Идемпотентный замок на «первое сообщение»
+    # ключ завязан на бота, бизнес-коннект и юзера — для каждого кабинета отдельно
+    first_msg_key = (
+        f"first_message_handled:"
+        f"{bot_id}:{business_connection_id}:{telegram_id}"
+    )
+
+    # setnx: если ключа нет — создаст и вернёт True; если уже есть — False
+    is_first = await redis.set(first_msg_key, "1", nx=True)
+    if not is_first:
+        # Значит, для этого (bot, cabinet, user) первый хэндлер уже отработал.
+        # Эту «вторую половину» первого сообщения просто игнорируем.
+        return
+
+    # (опционально) TTL, чтобы через N дней ключ сам протух
+    await redis.expire(first_msg_key, 24 * 3600)
+    
+    await state.set_state(constants.SKIP_MESSAGE_STATE)
+    
     redis_key = f"CABINET_SETTINGS:{business_connection_id}:product_settings"
     raw = await redis.get(redis_key)
     product_settings = None
@@ -131,34 +152,15 @@ async def handle_first_message(
     brand_name = product_settings["brand_name"]
     instruction = product_settings["instruction"]
     
-    # # 1. Выбираем артикул для этого кабинета
-    # article_obj = cabinet.articles[0] if cabinet.articles else None
-    # if article_obj is None:
-    #     text = (
-    #         "Для этого кабинета ещё не настроен артикул для раздачи. "
-    #         "Попросите, пожалуйста, менеджера завершить настройку."
-    #     )
-    #     await message.answer(
-    #         text=StringConverter.escape_markdown_v2(text),
-    #         parse_mode="MarkdownV2"
-    #     )
-    #     return
-
-    # available_nm_id = article_obj.article  # nm_id из ArticleORM
-    # organization_name = cabinet.organization_name  # название магазина/ИП
-    # nm_id_name = cabinet.nm_id_name
-    
-    telegram_id = message.from_user.id
     username = message.from_user.username or "-"
     full_name = message.from_user.full_name or "-"
     msg_text = message.text or "-"
-    bot_id = message.bot.id
 
     logging.info(
         f"FIRST MESSAGE from (@{username}, {full_name}), id={telegram_id}: {msg_text} ..."
     )
 
-    # 2. Сохраняем контекст в FSM
+    # 3. Сохраняем контекст в FSM
     await state.update_data(
         clients_bot_id=bot_id,
         nm_id=nm_id,
@@ -172,10 +174,7 @@ async def handle_first_message(
         last_messages_ids=[],
     )
 
-    # # 3. Достаём инструкцию именно для этого товара/кабинета
-    # instruction_str = await spreadsheet.get_instruction(
-    #     sheet_settings=constants.SETTINGS_SHEET_NAME_STR
-    # )
+
 
     # 4. Сохраняем покупателя в ТАБЛИЦУ КОНКРЕТНОГО КАБИНЕТА
     await spreadsheet.add_new_buyer(

@@ -1,4 +1,7 @@
 import logging
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
 from aiogram import F, types, Bot
 from aiogram.enums import ChatAction
 from aiogram.types import CallbackQuery
@@ -9,6 +12,7 @@ from aiogram.filters import StateFilter
 from src.app.bot.states.client import ClientStates
 from src.app.bot.keyboards.inline import get_yes_no_keyboard
 from src.app.bot.utils.last_activity import update_last_activity
+from src.app.bot.utils.leads import consume_lead_for_cabinet
 
 from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
 from src.infrastructure.apis.open_ai_requests_class import OpenAiRequestClass
@@ -78,6 +82,8 @@ async def handle_agreement(
     state: FSMContext,
     spreadsheet: GoogleSheetClass,
     cabinet: CabinetORM,              # <- тоже можем принять, чтобы при необходимости работать по кабинету
+    redis: Redis,
+    db_session_factory: async_sessionmaker
 ):
     await callback.answer()
     
@@ -108,6 +114,19 @@ async def handle_agreement(
     )
     # ====== ВЕТКА "СОГЛАСЕН" ======
     if callback.data == "agree_yes":
+        try:
+            # 👉 ТУТ СПИСЫВАЕМ ЛИД
+            await consume_lead_for_cabinet(
+                redis_client=redis,
+                session_factory=db_session_factory,
+                cabinet=cabinet,
+                client_id=callback.from_user.id,
+                bot_id=callback.bot.id,
+                business_connection_id=business_connection_id,
+                # cabinet_cache=self._cabinet_cache  # если захочешь передавать из middleware
+            )
+        except:
+            pass
         text = "Спасибо за согласие с нашими условиями!"
         await callback.message.answer(
             text=StringConverter.escape_markdown_v2(text),
