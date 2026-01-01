@@ -17,13 +17,15 @@ from src.app.bot.middlewares.cabinet_context import CabinetContextMiddleware
 from src.app.bot.middlewares.check_old_users import CheckUserInOldUsers
 
 from src.infrastructure.db.base import on_shutdown, on_startup
-
+from src.infrastructure.apis.superbanking import Superbanking
 from src.core.config import settings, constants
 
 async def main():
     # Один Redis-клиент, одна DB (например /0)
     redis_client = await asyncredis.from_url(settings.REDIS_URL)
-    
+    superbanking = Superbanking()
+    superbanking.create_banks_ids()
+
     clients_storage = RedisStorage(
         redis=redis_client,
         key_builder=DefaultKeyBuilder(
@@ -74,7 +76,12 @@ async def main():
     dp.callback_query.middleware(cabinet_ctx_middleware)
 
     # добавляем глобальные данные - чтобы все хэндлеры видели их
-    dp.workflow_data.update({"redis": redis_client})
+    dp.workflow_data.update(
+        {
+            "redis": redis_client,
+            "superbanking": superbanking
+        }
+    )
     
     # check last time activity and send reminder message if user too late inactive
     asyncio.create_task(inactivity_checker(bot, dp.storage))

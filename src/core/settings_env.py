@@ -20,6 +20,12 @@ class EnvSettings(BaseSettings):
     # Redis
     REDIS_URL: str
 
+    #Superbanking
+    SUPERBANKING_API_KEY: str
+    SUPERBANKING_CABINET_ID: str
+    SUPERBANKING_PROJECT_ID: str
+    SUPERBANKING_CLEARING_CENTER_ID: str
+    
     # Postgresql
     POSTGRESQL_HOST: str
     POSTGRESQL_PORT: int

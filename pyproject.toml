@@ -14,7 +14,7 @@ dependencies = [
     "asyncpg==0.31.0",           # async for SQLAlchemy
     "psycopg2==2.9.10",          # sync for Alembic (postgresql+psycopg2://)
     "alembic==1.17.2",
-
+    "requests==2.32.5",
 
     # config
     "pydantic==2.11.7",

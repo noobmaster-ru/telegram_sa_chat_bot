@@ -35,6 +35,9 @@ alembic:
 ```
 > VSCodeCounter
 
+docker compose exec clients_bot sh 
+curl https://ifconfig.me
+
 docker compose run --rm clients_bot uv run python -m alembic revision -m "..." 
 Полностью сбросить локальную БД и начать с нуля:
 ```

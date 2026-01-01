@@ -1033,6 +1033,7 @@ dependencies = [
     { name = "pytest-asyncio" },
     { name = "pytest-mock" },
     { name = "redis" },
+    { name = "requests" },
     { name = "sqlalchemy" },
 ]
 
@@ -1055,6 +1056,7 @@ requires-dist = [
     { name = "pytest-asyncio" },
     { name = "pytest-mock" },
     { name = "redis", specifier = "==7.0.0" },
+    { name = "requests", specifier = "==2.32.5" },
     { name = "sqlalchemy", specifier = "==2.0.44" },
 ]
 

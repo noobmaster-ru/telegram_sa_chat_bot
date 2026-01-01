@@ -9,6 +9,7 @@ from src.app.bot.states.client import ClientStates
 from src.app.bot.utils.last_activity import update_last_activity
 
 from src.infrastructure.apis.google_sheets_class import GoogleSheetClass
+from src.infrastructure.apis.superbanking import Superbanking
 from src.tools.string_converter_class import StringConverter
 
 from .router import router
@@ -67,7 +68,8 @@ async def confirm_requisites_no(
 async def confirm_requisites_yes(
     callback: CallbackQuery, 
     state: FSMContext,
-    spreadsheet: GoogleSheetClass
+    spreadsheet: GoogleSheetClass,
+    superbanking: Superbanking
 ):
     await callback.answer()
     """
@@ -86,29 +88,33 @@ async def confirm_requisites_yes(
         )
     )
     data = await state.get_data()
+    phone_number = data.get('phone_number', '-')
+    bank = data.get('bank', '-')
+    amount = data.get('amount', '-')
+    
     telegram_id = callback.from_user.id
 
     price_gpt = data.get("price")
     if not price_gpt:# записываем данные в гугл-таблицу и однвременно обновим последнее время записи
         await spreadsheet.write_requisites_into_google_sheets_and_update_last_time_message(
             telegram_id=telegram_id,
-            phone_number=data.get('phone_number','-'),
-            bank=data.get('bank','-'),
-            amount=data.get('amount','-'),
+            phone_number=phone_number,
+            bank=bank,
+            amount=amount,
         )
     else:
         await spreadsheet.write_phone_and_bank_into_google_sheets_and_update_last_time_message(
             telegram_id=telegram_id,
-            phone_number=data.get('phone_number','-'),
-            bank=data.get('bank','-'),
+            phone_number=phone_number,
+            bank=bank
         )
 
     text = (
         f"📩 Реквизиты записаны:\n"
-        f"Номер телефона: `{data.get('phone_number', '-')}`\n"
-        f"Банк: {data.get('bank', '-')}\n"
-        f"Сумма: `{data.get('amount', '-')}`\n\n"
-        f"Ожидайте выплату в ближайшее время(в течение 10 дней), спасибо ☺️"
+        f"Номер телефона: `{phone_number}`\n"
+        f"Банк: {bank}\n\n"
+        # f"Сумма: `{amount}`\n\n"
+        f"Ожидайте выплату в ближайшее время, спасибо ☺️"
     )
     await callback.message.edit_text(
         text=StringConverter.escape_markdown_v2(text),
@@ -116,5 +122,27 @@ async def confirm_requisites_yes(
     )
     
     await state.set_state(ClientStates.continue_dialog)
+    
+    amount = StringConverter.parse_amount(text=str(amount)) 
+    phone_formated = StringConverter.convert_phone_to_superbanking_format(phone_number=phone_number)
+    bank_id = superbanking.parse_bank_identifier(text=bank)
+    response_status_code = superbanking.create_payment(
+        phone=phone_formated,
+        bank_identifier=bank_id,
+        amount=amount
+    )
+    await spreadsheet.write_status_code_and_update_last_time_message(
+        telegram_id=telegram_id,
+        status=response_status_code
+    )
+    if response_status_code != 200:
+        text = (
+            f"У нас возникли некоторые проблемы при выплате , можете , пожалуйста ввести свой номер телефона заново в формате 8910xxxxxxx"
+        )
+        await callback.message.answer(
+            text=StringConverter.escape_markdown_v2(text),
+            parse_mode="MarkdownV2"
+        )
+        await state.set_state(ClientStates.waiting_for_requisites)
     # удаляем данные из состояния и из redis (но можно и оставить так-то)
     # await state.set_data({})

@@ -151,7 +151,7 @@ async def handle_photo_order(
         model_response = {"is_order": False, "price": None}
 
     is_order = bool(model_response.get("is_order"))
-    price = model_response.get("price", None)
+    price = model_response.get("price")
     await state.update_data(
         is_order=is_order,
         price=price

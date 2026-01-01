@@ -262,6 +262,33 @@ class GoogleSheetClass:
         # Один батч-запрос к API
         await sheet.batch_update(updates)#, value_input_option="RAW")
     
+    async def write_status_code_and_update_last_time_message(
+        self,
+        telegram_id: int,
+        status: int
+    ):
+        """Обновляет статус выплаты юзеру"""
+        sheet = self.buyers_sheet or await self.get_buyers_sheet() 
+        row_index = await self.get_user_row(telegram_id)
+        # Маппинг из логических имен в заголовки
+        status_message = "paid✅" if status == 200 else "error❌"
+        fields = {
+            self.header_row[4]: StringConverter.get_now_str(), # столбец Последнее сообщение
+            self.header_row[20]: status_message # столбец Выплата произведена
+        }
+        # Подготавливаем все апдейты для batch_update
+        updates = []
+        for column_name, value in fields.items():
+            col_index = self._header_cache[column_name]
+            # Конвертация номера столбца в букву (например 14 → N)
+            col_letter = chr(64 + col_index)
+            cell_range = f"{col_letter}{row_index}"
+            updates.append({"range": cell_range, "values": [[value]]})
+        
+        logging.info(f"  user: {telegram_id}, status paid: {status_message}")
+        # Один батч-запрос к API
+        await sheet.batch_update(updates)#, value_input_option="RAW")
+        
     async def write_requisites_into_google_sheets_and_update_last_time_message(
         self,
         telegram_id: int,
