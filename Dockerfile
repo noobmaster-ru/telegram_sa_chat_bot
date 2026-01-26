@@ -17,7 +17,6 @@ RUN apt-get update && \
 
 RUN pip install --no-cache-dir uv
 
-COPY ./assets ./assets
 COPY ./pyproject.toml ./uv.lock ./
 
 RUN uv venv \

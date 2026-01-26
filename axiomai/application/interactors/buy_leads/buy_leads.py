@@ -9,7 +9,7 @@ from axiomai.infrastructure.database.gateways.cashback_table_gateway import Cash
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
 from axiomai.infrastructure.database.gateways.user import UserGateway
 from axiomai.infrastructure.database.models import Payment
-from axiomai.infrastructure.database.models.payment import PaymentStatus, PaymentMethod, PaymentType, ServiceType
+from axiomai.infrastructure.database.models.payment import PaymentMethod, PaymentStatus, PaymentType, ServiceType
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class BuyLeads:
         self._cashback_table_gateway = cashback_table_gateway
         self._payment_gateway = payment_gateway
 
-    async def execute(self, telegram_id: int, leads_amount: int) -> None:
+    async def execute(self, telegram_id: int, leads_amount: int) -> int:
         user = await self._user_gateway.get_user_by_telegram_id(telegram_id)
         if not user:
             raise UserNotFoundError(f"User with telegram_id {telegram_id} not found")
@@ -67,6 +67,6 @@ class BuyLeads:
         await self._payment_gateway.create_payment(payment)
         await self._tm.commit()
 
-        logger.info(f"created payment %s for user %s to buy %s leads", payment.id, telegram_id, leads_amount)
+        logger.info("created payment %s for user %s to buy %s leads", payment.id, telegram_id, leads_amount)
 
         return payment.id

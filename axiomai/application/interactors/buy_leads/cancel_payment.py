@@ -3,13 +3,10 @@ import logging
 from axiomai.application.exceptions.payment import (
     PaymentAlreadyProcessedError,
     PaymentNotFoundError,
-    PermissionDeniedError,
 )
-from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
 from axiomai.infrastructure.database.models.payment import PaymentStatus
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,4 +36,4 @@ class CancelPayment:
 
         await self._tm.commit()
 
-        logger.info(f"payment %s canceled by admin %s", payment_id, admin_telegram_id)
+        logger.info("payment %s canceled by admin %s", payment_id, admin_telegram_id)

@@ -1,10 +1,10 @@
 import logging
 
-from axiomai.application.exceptions.cabinet import CabinetAlreadyExistsError, BusinessAccountAlreadyLinkedError
+from axiomai.application.exceptions.cabinet import BusinessAccountAlreadyLinkedError, CabinetAlreadyExistsError
 from axiomai.application.exceptions.user import UserAlreadyExistsError
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.user import UserGateway
-from axiomai.infrastructure.database.models import User, Cabinet
+from axiomai.infrastructure.database.models import User
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 
 logger = logging.getLogger(__name__)

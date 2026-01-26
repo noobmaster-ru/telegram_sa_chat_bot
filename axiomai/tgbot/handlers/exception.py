@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.filters import ExceptionTypeFilter
 from aiogram.types import ErrorEvent, Message
 from dishka.integrations.aiogram import inject

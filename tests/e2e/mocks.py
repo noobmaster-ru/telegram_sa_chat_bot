@@ -7,6 +7,7 @@ from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPay
 from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
+from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.di import GatewaysProvider
 
@@ -30,6 +31,7 @@ class MocksProvider(GatewaysProvider):
     interactors = provide_all(
         CreateSeller,
         ObserveCashbackTables,
+        SyncCashbackTables,
         BuyLeads,
         ConfirmPayment,
         CancelPayment,

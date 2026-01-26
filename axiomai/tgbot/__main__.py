@@ -10,13 +10,8 @@ from dishka import make_async_container
 from dishka.integrations.aiogram import setup_dishka
 from redis.asyncio import Redis
 
-from axiomai.config import load_config, Config
-from axiomai.infrastructure.di import (
-    DatabaseProvider,
-    GatewaysProvider,
-    TgbotInteractorsProvider,
-    CommonProvider,
-)
+from axiomai.config import Config, load_config
+from axiomai.infrastructure.di import ConfigProvider, DatabaseProvider, GatewaysProvider, TgbotInteractorsProvider
 from axiomai.infrastructure.logging import setup_logging
 from axiomai.infrastructure.telegram import dialogs
 from axiomai.tgbot import handlers
@@ -34,7 +29,7 @@ async def main() -> None:
 
     # Создаем DI контейнер с провайдерами
     di_container = make_async_container(
-        CommonProvider(),
+        ConfigProvider(),
         DatabaseProvider(),
         TgbotInteractorsProvider(),
         GatewaysProvider(),

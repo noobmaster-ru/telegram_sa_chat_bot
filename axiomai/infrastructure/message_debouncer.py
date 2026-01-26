@@ -1,12 +1,13 @@
 import asyncio
 import json
 import logging
-import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Callable, Awaitable
+from datetime import UTC, datetime
 
 from redis.asyncio import Redis
+
+from axiomai.config import MessageDebouncerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,83 +41,12 @@ class MessageDebouncer:
     Использует Redis для временного хранения и asyncio для управления таймерами.
     """
 
-    # Фильтр бессодержательных сообщений
-    GREETING_PATTERNS = [
-        r"^(привет|здравствуй(те)?|добр(ый|ого|ое|ая)\s*(день|утро|вечер)|hi|hello|hey)[\s!.]*$",
-        r"^(хай|йоу|салам|хеллоу)[\s!.]*$",
-    ]
-
-    def __init__(
-        self,
-        redis: Redis,
-        delay_seconds: int = 1,
-        ttl_seconds: int = 300,
-        immediate_processing_length: int = 500,
-    ):
-        """
-        Инициализация debouncer
-
-        Args:
-            redis: Redis клиент для хранения
-            delay_seconds: Сколько секунд ждать паузы перед обработкой
-            ttl_seconds: TTL для накопленных сообщений в Redis (автоочистка)
-            immediate_processing_length: Длина сообщения для немедленной обработки
-        """
+    def __init__(self, redis: Redis, config: MessageDebouncerConfig) -> None:
         self.redis = redis
-        self.delay_seconds = delay_seconds
-        self.ttl_seconds = ttl_seconds
-        self.immediate_processing_length = immediate_processing_length
+        self.delay_seconds = config.message_debounce_delay
+        self.ttl_seconds = config.message_accumulation_ttl
+        self.immediate_processing_length = config.immediate_processing_length
         self._active_timers: dict[str, asyncio.Task] = {}
-        self._greeting_regex = re.compile("|".join(self.GREETING_PATTERNS), re.IGNORECASE | re.UNICODE)
-
-    def _is_meaningful_message(self, text: str | None) -> bool:
-        """
-        Проверяет, является ли сообщение содержательным
-
-        Фильтрует:
-        - Приветствия (Здравствуйте, Привет, Hello и т.д.)
-        - Очень короткие сообщения (< 3 символов без emoji)
-        - Только emoji без текста
-        - Только знаки препинания
-        """
-        if not text:
-            return False
-
-        text = text.strip()
-
-        # Пустые сообщения
-        if not text:
-            return False
-
-        # Приветствия
-        if self._greeting_regex.match(text):
-            logger.debug("filtered greeting message: %s", text)
-            return False
-
-        # Удаляем emoji и проверяем что осталось
-        text_without_emoji = re.sub(
-            r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002702-\U000027B0\U000024C2-\U0001F251]+",
-            "",
-            text,
-        )
-        text_without_emoji = text_without_emoji.strip()
-
-        # Только emoji без текста
-        if not text_without_emoji:
-            logger.debug("filtered emoji-only message: %s", text)
-            return False
-
-        # Только знаки препинания
-        if re.match(r"^[^\w\s]+$", text_without_emoji, re.UNICODE):
-            logger.debug("filtered punctuation-only message: %s", text)
-            return False
-
-        # Очень короткие (менее 3 символов)
-        if len(text_without_emoji) <= 3:
-            logger.debug("filtered short message: %s", text)
-            return False
-
-        return True
 
     async def add_message(
         self,
@@ -125,15 +55,7 @@ class MessageDebouncer:
         message_data: MessageData,
         process_callback: Callable[[str, int, list[MessageData]], Awaitable[None]],
     ) -> None:
-        """
-        Добавляет сообщение в очередь накопления и запускает/перезапускает таймер
-
-        Args:
-            business_connection_id: ID бизнес-подключения
-            chat_id: ID чата клиента
-            message_data: Данные сообщения
-            process_callback: Функция для обработки накопленных сообщений
-        """
+        """Добавляет сообщение в очередь накопления и запускает/перезапускает таймер"""
         redis_key = _get_redis_key(business_connection_id, chat_id)
         timer_key = f"{business_connection_id}:{chat_id}"
 
@@ -143,29 +65,23 @@ class MessageDebouncer:
             await process_callback(business_connection_id, chat_id, [message_data])
             return
 
-        # Если есть фото - всегда считаем содержательным
-        is_meaningful = message_data.has_photo or self._is_meaningful_message(message_data.text)
-
         # Получаем текущие накопленные сообщения
         existing_data = await self.redis.get(redis_key)
 
         if existing_data:
             accumulated = _deserialize_messages(existing_data)
         else:
-            accumulated = AccumulatedMessages(messages=[], timer_id=timer_key, scheduled_at=datetime.now().timestamp())
+            accumulated = AccumulatedMessages(
+                messages=[], timer_id=timer_key, scheduled_at=datetime.now(UTC).timestamp()
+            )
 
         accumulated.messages.append(message_data)
-        accumulated.scheduled_at = datetime.now().timestamp() + self.delay_seconds
+        accumulated.scheduled_at = datetime.now(UTC).timestamp() + self.delay_seconds
 
         serialized = _serialize_messages(accumulated)
         await self.redis.setex(redis_key, self.ttl_seconds, serialized)
 
-        logger.info(
-            "added message to accumulation buffer. chat: %s, total: %s, meaningful: %s",
-            chat_id,
-            len(accumulated.messages),
-            is_meaningful,
-        )
+        logger.info("added message to accumulation buffer. chat: %s, total: %s", chat_id, len(accumulated.messages))
 
         # Отменяем старый таймер если есть
         if timer_key in self._active_timers:
@@ -189,9 +105,7 @@ class MessageDebouncer:
         process_callback: Callable[[str, int, list[MessageData]], Awaitable[None]],
         delay: float,
     ) -> None:
-        """
-        Ожидает паузу и затем обрабатывает накопленные сообщения
-        """
+        """Ожидает паузу и затем обрабатывает накопленные сообщения"""
         try:
             await asyncio.sleep(delay)
 
@@ -206,29 +120,12 @@ class MessageDebouncer:
 
             accumulated = _deserialize_messages(data)
 
-            # Фильтруем бессодержательные сообщения
-            meaningful_messages = [
-                msg for msg in accumulated.messages if msg.has_photo or self._is_meaningful_message(msg.text)
-            ]
+            logger.info("processing accumulated messages. chat: %s, total: %s", chat_id, len(accumulated.messages))
 
-            logger.info(
-                "processing accumulated messages. chat: %s, total: %s, meaningful: %s",
-                chat_id,
-                len(accumulated.messages),
-                len(meaningful_messages),
-            )
-
-            # Если после фильтрации ничего не осталось - не обрабатываем
-            if not meaningful_messages:
-                logger.info("no meaningful messages to process for chat %s", chat_id)
-                await self.redis.delete(redis_key)
-                return
-
-            # Обрабатываем накопленные сообщения
             try:
-                await process_callback(business_connection_id, chat_id, meaningful_messages)
+                await process_callback(business_connection_id, chat_id, accumulated.messages)
             except Exception as e:
-                logger.error("error processing accumulated messages", exc_info=e)
+                logger.exception("error processing accumulated messages", exc_info=e)
             finally:
                 # Очищаем Redis и таймер
                 await self.redis.delete(redis_key)
@@ -239,7 +136,7 @@ class MessageDebouncer:
             logger.debug("timer cancelled for chat %s", chat_id)
             raise
         except Exception as e:
-            logger.error("error in delayed processing: %s", exc_info=e)
+            logger.exception("error in delayed processing: %s", exc_info=e)
 
 
 def _get_redis_key(business_connection_id: str, chat_id: int) -> str:
@@ -290,8 +187,6 @@ def _deserialize_messages(data: bytes | str) -> AccumulatedMessages:
 
 
 def merge_messages_text(messages: list[MessageData]) -> str:
-    """
-    Объединяет текст из нескольких сообщений в единую строку
-    """
+    """Объединяет текст из нескольких сообщений в единую строку"""
     texts = [msg.text for msg in messages if msg.text]
     return " ".join(texts).strip()

@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def build_payment_admin_keyboard(payment_id: int) -> InlineKeyboardMarkup:

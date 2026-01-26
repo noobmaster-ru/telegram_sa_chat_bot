@@ -1,8 +1,8 @@
 import logging
 
-from aiogram import Router, F, Bot
-from aiogram.filters import CommandStart, CommandObject
-from aiogram.types import Message, BusinessConnection
+from aiogram import Bot, F, Router
+from aiogram.filters import CommandObject, CommandStart
+from aiogram.types import BusinessConnection, Message
 from dishka import FromDishka
 from dishka.integrations.aiogram import inject
 
@@ -21,11 +21,12 @@ async def cmd_link_business_account(
     command: CommandObject,
     cabinet_gateway: FromDishka[CabinetGateway],
     transaction_manager: FromDishka[TransactionManager],
-):
+) -> None:
     """Хендлер для подключения бизнес-аккаунта через deep link."""
     # Извлекаем код из deep link
     args = message.text.split(" ", 1)
-    if len(args) < 2 or not args[1].startswith("link_"):
+    min_args_len = 2
+    if len(args) < min_args_len or not args[1].startswith("link_"):
         await message.answer("❌ Неверная ссылка для подключения.")
         return
 

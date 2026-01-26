@@ -5,7 +5,7 @@ class WritePermissionError(AppError):
     """Raised when there is no write permission for cashback table."""
 
 
-class CashbackTableAlredyExists(AppError):
+class CashbackTableAlredyExistsError(AppError):
     """Raised when cashback table already exists."""
 
 

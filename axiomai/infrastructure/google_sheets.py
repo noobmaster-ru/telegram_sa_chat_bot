@@ -33,17 +33,16 @@ class GoogleSheetsGateway:
                     drive_v3.permissions.list(fileId=table_id, fields="permissions(emailAddress,role)")
                 )
             except HTTPError as err:
-                if err.res.status_code == 404:
+                if err.res.status_code == 404:  # noqa: PLR2004
                     raise PermissionError(
                         "The service account does not have access to the provided Google Sheets document. "
                         "Please share the document with the service account email."
                     ) from err
-                if err.res.status_code == 403:
+                if err.res.status_code == 403:  # noqa: PLR2004
                     raise WritePermissionError(
                         "The service account does not have write access to the Google Sheets document."
-                    )
-                else:
-                    raise
+                    ) from err
+                raise
 
             for permission in permissions.get("permissions", []):
                 if permission.get("emailAddress") == self._service_account_email:
@@ -58,29 +57,32 @@ class GoogleSheetsGateway:
             sheets_v4 = await aiogoogle.discover("sheets", "v4")
 
             response = await aiogoogle.as_service_account(
-                sheets_v4.spreadsheets.values.get(spreadsheetId=table_id, range="D2:H")
+                sheets_v4.spreadsheets.values.get(spreadsheetId=table_id, range="D2:I")
             )
 
             values = response.get("values", [])
             articles = []
             for row in values:
-                if row and len(row) >= 1 and row[0]:
+                if row and len(row) >= 2 and row[1]:  # noqa: PLR2004
                     try:
-                        nm_id = int(row[0])
-                        image_url = row[1] if len(row) >= 2 else ""
-                        title = row[2] if len(row) >= 3 else ""
-                        brand_name = row[3] if len(row) >= 4 else ""
-                        instruction_text = row[4] if len(row) >= 5 else ""
-                        articles.append(
-                            CashbackArticle(
-                                nm_id=nm_id,
-                                title=title,
-                                brand_name=brand_name,
-                                instruction_text=instruction_text,
-                                image_url=image_url,
-                            )
-                        )
+                        in_stock = row[0].upper() == "TRUE" if row[0] else False
+                        nm_id = int(row[1])
+                        image_url = row[2] if len(row) >= 3 else ""  # noqa:  PLR2004
+                        title = row[3] if len(row) >= 4 else ""  # noqa: PLR2004
+                        brand_name = row[4] if len(row) >= 5 else ""  # noqa: PLR2004
+                        instruction_text = row[5] if len(row) >= 6 else ""  # noqa: PLR2004
                     except ValueError:
                         continue
+
+                    articles.append(
+                        CashbackArticle(
+                            nm_id=nm_id,
+                            title=title,
+                            brand_name=brand_name,
+                            instruction_text=instruction_text,
+                            image_url=image_url,
+                            in_stock=in_stock,
+                        )
+                    )
 
             return articles

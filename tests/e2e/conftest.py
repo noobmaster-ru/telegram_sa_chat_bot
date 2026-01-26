@@ -2,7 +2,7 @@ import secrets
 import uuid
 from collections.abc import AsyncIterable
 from random import randint
-from unittest.mock import AsyncMock, Mock, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram import Bot

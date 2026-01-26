@@ -5,16 +5,16 @@ from aiogram_dialog import DialogManager, StartMode
 from dishka import FromDishka
 from dishka.integrations.aiogram import inject
 
-from axiomai.application.exceptions.cabinet import CabinetAlreadyExistsError, BusinessAccountAlreadyLinkedError
+from axiomai.application.exceptions.cabinet import BusinessAccountAlreadyLinkedError, CabinetAlreadyExistsError
 from axiomai.application.exceptions.user import UserAlreadyExistsError
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.telegram.dialogs.states import CreateCashbackTableStates
 from axiomai.infrastructure.telegram.keyboards.reply import kb_add_cabinet, kb_menu
 from axiomai.infrastructure.telegram.text import (
-    START_MESSAGE_TEXT,
-    REGISTRATION_ACCOUNT_WARNING_TEXT,
     ADD_CABINET_INSTRUCTION_TEXT,
+    REGISTRATION_ACCOUNT_WARNING_TEXT,
+    START_MESSAGE_TEXT,
 )
 
 router = Router()
@@ -27,7 +27,7 @@ async def cmd_start(
     dialog_manager: DialogManager,
     create_seller: FromDishka[CreateSeller],
     cashback_table_gateway: FromDishka[CashbackTableGateway],
-):
+) -> None:
     telegram_id = message.from_user.id
     fullname = message.from_user.full_name or "-"
     user_name = message.from_user.username or "-"

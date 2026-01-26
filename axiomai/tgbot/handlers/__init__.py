@@ -1,14 +1,14 @@
 from aiogram import Dispatcher
 
 from axiomai.tgbot.handlers import (
-    start,
-    create_cashback_table,
-    link_business_account,
-    process_clients,
-    my_cabinet,
-    exception,
-    buy_leads,
     admin_confirms,
+    buy_leads,
+    create_cashback_table,
+    exception,
+    link_business_account,
+    my_cabinet,
+    process_clients,
+    start,
 )
 
 

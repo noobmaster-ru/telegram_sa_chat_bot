@@ -1,23 +1,17 @@
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
-from aiogram import Router, Bot
+from aiogram import Bot, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
-from aiogram_dialog import DialogManager, StartMode, ShowMode
-from dishka import FromDishka, AsyncContainer
+from aiogram_dialog import DialogManager, ShowMode, StartMode
+from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram import inject
 
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
-from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
-from axiomai.infrastructure.message_debouncer import (
-    MessageDebouncer,
-    MessageData,
-    merge_messages_text,
-)
+from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
-from axiomai.infrastructure.telegram.common import escape_markdown_v2
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 from axiomai.tgbot.filters.ignore_self_message import SelfBusinessMessageFilter
 
@@ -57,7 +51,7 @@ async def process_clients_business_message(
 
     message_data = MessageData(
         text=message_text,
-        timestamp=datetime.now().timestamp(),
+        timestamp=datetime.now(UTC).timestamp(),
         message_id=message.message_id,
         has_photo=bool(message.photo),
         photo_url=photo_url,
@@ -90,7 +84,6 @@ async def _process_accumulated_messages(
 
     async with di_container() as r_container:
         cashback_table_gateway = await r_container.get(CashbackTableGateway)
-        google_sheets_gateway = await r_container.get(GoogleSheetsGateway)
         openai_gateway = await r_container.get(OpenAIGateway)
 
         cashback_table = await cashback_table_gateway.get_active_cashback_table_by_business_connection_id(
@@ -105,12 +98,12 @@ async def _process_accumulated_messages(
             )
             return
 
-        articles = await google_sheets_gateway.get_cashback_articles(cashback_table.table_id)
+        articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(cashback_table.cabinet_id)
 
         if not articles:
             await bot.send_message(
                 chat_id=chat_id,
-                text="Артикулы для раздачи кешбека не найдены.",
+                text="Увы, артикулы для раздачи кэшбека закончились",
                 business_connection_id=business_connection_id,
             )
             return
@@ -128,18 +121,11 @@ async def _process_accumulated_messages(
         if classified_article:
             await state.set_state("client_processing")
             await dialog_manager.start(
-                CashbackArticleStates.show_instruction,
+                CashbackArticleStates.check_order,
                 mode=StartMode.RESET_STACK,
                 show_mode=ShowMode.SEND,
-                data={
-                    "instruction_text": escape_markdown_v2(classified_article.instruction_text),
-                    "nm_id": classified_article.nm_id,
-                    "article_title": classified_article.title,
-                    "brand_name": classified_article.brand_name,
-                    "article_image_url": classified_article.image_url,
-                },
+                data={"article_id": classified_article.id},
             )
-            await dialog_manager.switch_to(CashbackArticleStates.agreement_terms, show_mode=ShowMode.SEND)
         else:
             articles_text = "\n".join(f"{article.nm_id} - {article.title}" for article in articles)
             response_text = f"Текущие артикулы для раздачи кешбека:\n\n{articles_text}"

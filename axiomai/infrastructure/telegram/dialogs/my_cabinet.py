@@ -1,6 +1,6 @@
 from typing import Any
 
-from aiogram_dialog import Dialog, Window, DialogManager
+from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.text import Format
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject

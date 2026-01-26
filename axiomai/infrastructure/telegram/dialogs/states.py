@@ -1,4 +1,4 @@
-from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.state import State, StatesGroup
 
 
 class CreateCashbackTableStates(StatesGroup):
@@ -15,8 +15,7 @@ class BuyLeadsStates(StatesGroup):
 
 
 class CashbackArticleStates(StatesGroup):
-    show_instruction = State()
-    agreement_terms = State()
     check_order = State()
     check_received = State()
     check_labels_cut = State()
+    input_requisites = State()

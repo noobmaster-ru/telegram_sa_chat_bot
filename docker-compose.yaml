@@ -13,7 +13,8 @@ services:
         condition: service_healthy
     volumes:
       - ./axiomai:/app/axiomai
-      - ./testservice.json:/app/testservice.json:ro
+      - ./assets:/app/assets
+      - ./sunny-might-477012-c4-04c66c69a92f.json:/app/sunny-might-477012-c4-04c66c69a92f.json:ro
     restart: unless-stopped
     command: "python -m axiomai.tgbot"
   observer:
@@ -28,7 +29,7 @@ services:
         condition: service_healthy
     volumes:
       - ./axiomai:/app/axiomai
-      - ./testservice.json:/app/testservice.json:ro
+      - ./sunny-might-477012-c4-04c66c69a92f.json:/app/sunny-might-477012-c4-04c66c69a92f.json:ro
     restart: unless-stopped
     command: "python -m axiomai.observer"
   postgres_migration:

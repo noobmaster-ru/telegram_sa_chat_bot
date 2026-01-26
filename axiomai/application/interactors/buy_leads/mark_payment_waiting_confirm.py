@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot
 
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
-from axiomai.application.exceptions.payment import PaymentNotFoundError, PaymentAlreadyProcessedError
+from axiomai.application.exceptions.payment import PaymentAlreadyProcessedError, PaymentNotFoundError
 from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
@@ -55,9 +55,9 @@ class MarkPaymentWaitingConfirm:
         text = (
             f"💸 Новая оплата {payment_id}\n"
             f"Кабинет: {cabinet.organization_name}\n"
-            f"Лидов: {payment.service_data["leads"]}\n"
+            f"Лидов: {payment.service_data['leads']}\n"
             f"Сумма: {payment.amount} ₽\n\n"
-            f"Подтвердите, пожалуйста"
+            "Подтвердите, пожалуйста"
         )
 
         await self._bot.send_message(
@@ -66,4 +66,4 @@ class MarkPaymentWaitingConfirm:
             reply_markup=build_payment_admin_keyboard(payment_id),
         )
 
-        logger.info(f"payment %s marked as waiting confirmation", payment_id)
+        logger.info("payment %s marked as waiting confirmation", payment_id)

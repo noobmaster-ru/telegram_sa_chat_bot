@@ -1,7 +1,7 @@
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 
 from axiomai.infrastructure.database.gateways.base import Gateway
-from axiomai.infrastructure.database.models import User, CashbackTable
+from axiomai.infrastructure.database.models import CashbackTable, User
 from axiomai.infrastructure.database.models.cabinet import Cabinet
 
 

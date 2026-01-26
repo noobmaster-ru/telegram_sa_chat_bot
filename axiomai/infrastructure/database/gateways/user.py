@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from axiomai.infrastructure.database.gateways.base import Gateway
-from axiomai.infrastructure.database.models import User, Cabinet
+from axiomai.infrastructure.database.models import Cabinet, User
 
 
 class UserGateway(Gateway):

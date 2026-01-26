@@ -1,7 +1,8 @@
 import asyncio
 import os
-from sqlalchemy import pool, Connection
+
 from alembic import context
+from sqlalchemy import Connection, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from axiomai.infrastructure.database.models import Base

@@ -1,16 +1,16 @@
 from typing import Any
 
-from aiogram.types import Message, CallbackQuery
-from aiogram_dialog import Dialog, Window, DialogManager
+from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Row, Button
+from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.text import Const, Format
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
 from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
-from axiomai.constants import PRICE_PER_LEAD, KIRILL_CARD_NUMBER, KIRILL_PHONE_NUMBER
+from axiomai.constants import KIRILL_CARD_NUMBER, KIRILL_PHONE_NUMBER, PRICE_PER_LEAD
 from axiomai.infrastructure.telegram.dialogs.states import BuyLeadsStates
 
 

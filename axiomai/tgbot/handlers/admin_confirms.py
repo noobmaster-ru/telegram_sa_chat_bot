@@ -1,9 +1,9 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from dishka import FromDishka
 from dishka.integrations.aiogram import inject
 
-from axiomai.application.exceptions.payment import PaymentNotFoundError, PaymentAlreadyProcessedError
+from axiomai.application.exceptions.payment import PaymentAlreadyProcessedError, PaymentNotFoundError
 from axiomai.application.interactors.buy_leads.cancel_payment import CancelPayment
 from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPayment
 
@@ -12,7 +12,7 @@ router = Router()
 
 @router.callback_query(F.data.startswith("admin_pay_ok:"))
 @inject
-async def admin_confirm_payment(callback: CallbackQuery, confirm_payment: FromDishka[ConfirmPayment]):
+async def admin_confirm_payment(callback: CallbackQuery, confirm_payment: FromDishka[ConfirmPayment]) -> None:
     """
     Админ подтверждает оплату:
     - payment.status: WAITING_CONFIRM -> SUCCEEDED
@@ -35,7 +35,7 @@ async def admin_confirm_payment(callback: CallbackQuery, confirm_payment: FromDi
 
 @router.callback_query(F.data.startswith("admin_pay_fail:"))
 @inject
-async def admin_reject_payment(callback: CallbackQuery, cancel_payment: FromDishka[CancelPayment]):
+async def admin_reject_payment(callback: CallbackQuery, cancel_payment: FromDishka[CancelPayment]) -> None:
     """
     Админ отклоняет оплату:
     - payment.status: WAITING_CONFIRM -> CANCELED

@@ -1,7 +1,8 @@
 import datetime
 import enum
 
-from sqlalchemy import ForeignKey, String, Enum as SAEnum, TIMESTAMP, Integer, Text, func
+from sqlalchemy import TIMESTAMP, ForeignKey, String, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from axiomai.infrastructure.database.models.base import Base
@@ -52,3 +53,22 @@ class CashbackTable(Base):
         TIMESTAMP(timezone=True), comment="Когда истекает оплаченный период/лимит по кэшбеку (если нужно)"
     )
     last_synced_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+
+class CashbackArticle(Base):
+    __tablename__ = "articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cabinet_id: Mapped[int] = mapped_column(ForeignKey("cabinets.id"))
+
+    nm_id: Mapped[int]  # артикул товара
+    title: Mapped[str | None] = mapped_column(String(256))  # название товара
+    image_url: Mapped[str]
+    brand_name: Mapped[str]
+    instruction_text: Mapped[str]
+    in_stock: Mapped[bool]
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+    )

@@ -1,94 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from redis.asyncio import Redis
 
+from axiomai.config import MessageDebouncerConfig
 from axiomai.infrastructure.message_debouncer import (
     MessageDebouncer,
     MessageData,
     merge_messages_text,
 )
-
-
-class TestMessageFiltering:
-    """Тесты фильтрации бессодержательных сообщений"""
-
-    def setup_method(self):
-        """Создаем debouncer для каждого теста"""
-        redis_mock = MagicMock(spec=Redis)
-        self.debouncer = MessageDebouncer(redis=redis_mock, delay_seconds=1)
-
-    def test_filter_greeting_hello(self):
-        """Приветствие 'Здравствуйте' должно быть отфильтровано"""
-        assert not self.debouncer._is_meaningful_message("Здравствуйте")
-        assert not self.debouncer._is_meaningful_message("здравствуйте")
-        assert not self.debouncer._is_meaningful_message("ЗДРАВСТВУЙТЕ!")
-
-    def test_filter_greeting_privet(self):
-        """Приветствие 'Привет' должно быть отфильтровано"""
-        assert not self.debouncer._is_meaningful_message("Привет")
-        assert not self.debouncer._is_meaningful_message("привет")
-        assert not self.debouncer._is_meaningful_message("Привет!")
-
-    def test_filter_greeting_dobriy_den(self):
-        """Приветствие 'Добрый день' должно быть отфильтровано"""
-        assert not self.debouncer._is_meaningful_message("Добрый день")
-        assert not self.debouncer._is_meaningful_message("доброе утро")
-        assert not self.debouncer._is_meaningful_message("Добрый вечер!")
-
-    def test_filter_greeting_english(self):
-        """Английские приветствия должны быть отфильтрованы"""
-        assert not self.debouncer._is_meaningful_message("hello")
-        assert not self.debouncer._is_meaningful_message("Hello!")
-        assert not self.debouncer._is_meaningful_message("Hi")
-        assert not self.debouncer._is_meaningful_message("Hey")
-
-    def test_filter_very_short_messages(self):
-        """Очень короткие сообщения должны быть отфильтрованы"""
-        assert not self.debouncer._is_meaningful_message("ок")
-        assert not self.debouncer._is_meaningful_message("да")
-        assert not self.debouncer._is_meaningful_message("нет")
-        assert not self.debouncer._is_meaningful_message("!")
-        assert not self.debouncer._is_meaningful_message("???")
-
-    def test_filter_emoji_only(self):
-        """Сообщения только с emoji должны быть отфильтрованы"""
-        assert not self.debouncer._is_meaningful_message("👍")
-        assert not self.debouncer._is_meaningful_message("😊😊")
-        assert not self.debouncer._is_meaningful_message("🔥🔥🔥")
-
-    def test_filter_punctuation_only(self):
-        """Сообщения только со знаками препинания должны быть отфильтрованы"""
-        assert not self.debouncer._is_meaningful_message("...")
-        assert not self.debouncer._is_meaningful_message("!!!")
-        assert not self.debouncer._is_meaningful_message("???")
-        assert not self.debouncer._is_meaningful_message("!?!?")
-
-    def test_filter_empty_messages(self):
-        """Пустые сообщения должны быть отфильтрованы"""
-        assert not self.debouncer._is_meaningful_message("")
-        assert not self.debouncer._is_meaningful_message("   ")
-        assert not self.debouncer._is_meaningful_message("\n\n")
-        assert not self.debouncer._is_meaningful_message(None)
-
-    def test_allow_meaningful_messages(self):
-        """Содержательные сообщения должны проходить фильтр"""
-        assert self.debouncer._is_meaningful_message("Я по поводу ролика")
-        assert self.debouncer._is_meaningful_message("можно ли инструкцию")
-        assert self.debouncer._is_meaningful_message("Хочу узнать про кешбек")
-        assert self.debouncer._is_meaningful_message("Есть вопрос по товару")
-
-    def test_allow_long_enough_messages(self):
-        """Сообщения длиннее 3 символов должны проходить"""
-        assert self.debouncer._is_meaningful_message("Как дела?")
-        assert self.debouncer._is_meaningful_message("Хорошо")
-        assert self.debouncer._is_meaningful_message("Спасибо")
-
-    def test_allow_messages_with_emoji_and_text(self):
-        """Сообщения с emoji и текстом должны проходить"""
-        assert self.debouncer._is_meaningful_message("Спасибо 👍")
-        assert self.debouncer._is_meaningful_message("😊 Хорошо")
-        assert self.debouncer._is_meaningful_message("Отлично 🔥 работает")
 
 
 class TestMessageMerging:
@@ -133,14 +53,14 @@ async def test_immediate_processing_for_long_messages():
     redis_mock.get = AsyncMock(return_value=None)
     redis_mock.setex = AsyncMock()
 
-    debouncer = MessageDebouncer(redis=redis_mock, immediate_processing_length=100)
+    debouncer = MessageDebouncer(redis=redis_mock, config=MessageDebouncerConfig(IMMEDIATE_PROCESSING_LENGTH=100))
 
     process_callback = AsyncMock()
 
     long_text = "a" * 150  # Сообщение длиннее порога
     message_data = MessageData(
         text=long_text,
-        timestamp=datetime.now().timestamp(),
+        timestamp=datetime.now(timezone.utc).timestamp(),
         message_id=1,
         has_photo=False,
     )

@@ -1,7 +1,7 @@
 import logging
 
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
-from axiomai.application.exceptions.cashback_table import CashbackTableAlredyExists
+from axiomai.application.exceptions.cashback_table import CashbackTableAlredyExistsError
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.models import CashbackTable
@@ -29,7 +29,7 @@ class CreateCashbackTable:
 
         cashback_table = await self._cashback_table_gateway.get_cashback_table_by_table_id(table_id)
         if cashback_table:
-            raise CashbackTableAlredyExists
+            raise CashbackTableAlredyExistsError
 
         cashback_table = CashbackTable(cabinet_id=cabinet.id, table_id=table_id, status=CashbackTableStatus.NEW)
         await self._cashback_table_gateway.create_cashback_table(cashback_table)

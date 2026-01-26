@@ -1,6 +1,6 @@
 from contextlib import suppress
 
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, StartMode
 from dishka import FromDishka

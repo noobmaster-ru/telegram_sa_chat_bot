@@ -8,3 +8,4 @@ class CashbackArticle:
     brand_name: str
     instruction_text: str
     image_url: str
+    in_stock: bool

@@ -7,9 +7,7 @@ from axiomai.application.exceptions.cashback_table import CashbackTableNotFoundE
 from axiomai.application.exceptions.payment import (
     PaymentAlreadyProcessedError,
     PaymentNotFoundError,
-    PermissionDeniedError,
 )
-from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
@@ -70,7 +68,7 @@ class ConfirmPayment:
 
         await self._tm.commit()
 
-        logger.info(f"payment %s confirmed by admin %s", payment_id, admin_telegram_id)
+        logger.info("payment %s confirmed by admin %s", payment_id, admin_telegram_id)
 
         user = await self._user_gateway.get_user_by_id(payment.user_id)
         if user and user.telegram_id:
