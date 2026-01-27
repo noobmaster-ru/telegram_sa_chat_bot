@@ -40,7 +40,7 @@ jobs:
             ~/.local/share/uv
           key: venv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
       - name: Lint
-        run: source ./venv/bin/activate && make lint
+        run: source ./.venv/bin/activate && make lint
   test:
     needs: setup
     runs-on: ubuntu-latest
