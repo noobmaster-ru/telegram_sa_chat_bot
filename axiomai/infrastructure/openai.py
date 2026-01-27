@@ -1,9 +1,11 @@
 import json
 import logging
+import re
 from contextlib import suppress
 
 from httpx import AsyncClient, HTTPTransport
 from openai import AsyncOpenAI
+from openai.types.responses import Response
 
 from axiomai.config import OpenAIConfig
 from axiomai.constants import CHAT_GPT_4O_LATEST, CHAT_GPT_5_1, GPT_REASONING
@@ -123,14 +125,7 @@ class OpenAIGateway:
 
         logger.debug("classified order screenshot response %s ", response)
 
-        result = None
-        for item in response.output:
-            if getattr(item, "content", None):
-                for block in item.content:
-                    text = getattr(block, "text", None)
-                    if text:
-                        result = text.strip()
-                        break
+        result = _extract_response_text(response)
 
         if not result:
             return {"is_order": False, "price": None, "cancel_reason": None}
@@ -227,14 +222,7 @@ class OpenAIGateway:
 
         logger.debug("classified cut labels screenshot response %s ", response)
 
-        result = None
-        for item in response.output:
-            if getattr(item, "content", None):
-                for block in item.content:
-                    text = getattr(block, "text", None)
-                    if text:
-                        result = text.strip()
-                        break
+        result = _extract_response_text(response)
 
         if not result:
             return {"is_cut_labels": False, "cancel_reason": None}
@@ -245,3 +233,135 @@ class OpenAIGateway:
             return result
 
         return {"is_cut_labels": False, "cancel_reason": None}
+
+    async def answer_user_question(
+        self,
+        user_message: str,
+        current_step: str,
+        instruction_text: str,
+        article_title: str,
+        available_articles: list[tuple[int, str]] | None = None,
+        chat_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, str | bool | int | None]:
+        """
+        Отвечает на вопрос пользователя в контексте кешбек-диалога.
+
+        Returns:
+            dict с ключами:
+            - response: str - текст ответа
+            - wants_to_stop: bool - хочет ли пользователь прекратить процесс
+            - switch_to_article_id: int | None - ID артикула для переключения
+        """
+        step_descriptions = {
+            "check_order": "отправка скриншота заказа на Wildberries",
+            "check_received": "отправка скриншота отзыва с 5 звёздами",
+            "check_labels_cut": "отправка фотографии разрезанных этикеток (штрихкодов/QR-кодов)",
+        }
+        current_step_desc = step_descriptions.get(current_step, "выполнение текущего шага")
+
+        history_text = ""
+        if chat_history:
+            history_lines = []
+            for entry in chat_history[-10:]:
+                history_lines.append(f"Клиент: {entry['user']}")
+                history_lines.append(f"Ты: {entry['assistant']}")
+            history_text = "\n".join(history_lines)
+
+        articles_text = ""
+        articles_for_user = ""
+        if available_articles:
+            articles_lines = [f"- ID:{art_id} — {title}" for art_id, title in available_articles]
+            articles_text = "\n".join(articles_lines)
+            articles_for_user = "\n".join([f"- {title}" for _, title in available_articles])
+
+        prompt = f"""
+        Ты — вежливый помощник кешбек-сервиса. Клиент получает кешбек за покупку товара "{article_title}" на Wildberries.
+
+        Процесс получения кешбека:
+        1. Скриншот заказа — клиент отправляет скриншот оформленного заказа
+        2. Скриншот отзыва — после получения товара клиент оставляет отзыв на 5 звёзд и присылает скриншот
+        3. Фото разрезанных этикеток — клиент разрезает этикетки со штрихкодом/QR-кодом и присылает фото
+        4. Реквизиты — клиент отправляет данные для перевода кешбека
+
+        Сейчас клиент находится на шаге: {current_step_desc}
+
+        Инструкция для клиента:
+        {instruction_text}
+
+        {"Доступные артикулы (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):" + chr(10) + articles_text if articles_text else ""}
+
+        {"История диалога:" + chr(10) + history_text if history_text else ""}
+
+        Новое сообщение клиента: "{user_message}"
+
+        ВАЖНО:
+        - Ответь кратко и по делу (не более 3-4 предложений)
+        - Не повторяй ответы из истории диалога
+        - НЕ добавляй завершающие фразы типа "Если возникнут вопросы — помогу"
+        - Используй разметку Markdown
+        - НИКОГДА не показывай пользователю ID артикулов — только названия товаров
+
+        СПЕЦИАЛЬНЫЕ КОМАНДЫ (добавляй в начало ответа если нужно):
+
+        1. Если клиент ОДНОЗНАЧНО хочет прекратить процесс по текущему товару
+           (например: "не хочу", "отмена", "стоп", "передумал"),
+           напиши [STOP] в начале ответа.
+
+        2. Если клиент хочет получить кешбек за ДРУГОЙ товар из списка доступных,
+           напиши [SWITCH:ID] где ID — числовой идентификатор из списка выше.
+           Например: [SWITCH:123]
+           После этого напиши приветствие для нового артикула (БЕЗ упоминания ID).
+
+        3. Если клиент спрашивает какие товары доступны — перечисли ТОЛЬКО названия:
+        {articles_for_user}
+
+        Не путай вопросы или сомнения с командами — только явные намерения.
+        """
+
+        messages = [
+            {"role": "system", "content": "Ты вежливый помощник кешбек-сервиса Wildberries."},
+            {"role": "user", "content": prompt},
+        ]
+
+        response = await self._client.responses.create(
+            model=CHAT_GPT_4O_LATEST,
+            input=messages,
+            temperature=0.7,
+        )
+
+        result = _extract_response_text(response)
+        return _parse_answer_result(result)
+
+
+def _extract_response_text(response: Response) -> str | None:
+    """Извлекает текст ответа из response объекта OpenAI"""
+    for item in response.output:
+        if getattr(item, "content", None):
+            for block in item.content:
+                text = getattr(block, "text", None)
+                if text:
+                    return text.strip()
+    return None
+
+
+def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | None]:
+    """Парсит результат ответа GPT и извлекает специальные команды"""
+    if not result:
+        return {
+            "response": "Пожалуйста, следуйте инструкциям на экране.",
+            "wants_to_stop": False,
+            "switch_to_article_id": None,
+        }
+
+    wants_to_stop = result.startswith("[STOP]")
+    if wants_to_stop:
+        result = result.replace("[STOP]", "").strip()
+
+    switch_to_article_id = None
+    if "[SWITCH:" in result:
+        match = re.search(r"\[SWITCH:(\d+)\]", result)
+        if match:
+            switch_to_article_id = int(match.group(1))
+            result = re.sub(r"\[SWITCH:\d+\]", "", result).strip()
+
+    return {"response": result, "wants_to_stop": wants_to_stop, "switch_to_article_id": switch_to_article_id}

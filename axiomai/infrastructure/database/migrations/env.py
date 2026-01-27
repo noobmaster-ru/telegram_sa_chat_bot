@@ -13,9 +13,7 @@ target_metadata = Base.metadata
 
 sqlalchemy_url = config.get_main_option("sqlalchemy.url")
 if sqlalchemy_url is None:
-    postgres_url = os.getenv("POSTGRES_URL")
-    if postgres_url:
-        config.set_main_option("sqlalchemy.url", postgres_url)
+    config.set_main_option("sqlalchemy.url", os.getenv("POSTGRES_URL"))
 
 
 def run_migrations_offline() -> None:

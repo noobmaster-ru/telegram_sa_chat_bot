@@ -1,7 +1,7 @@
 from aiogram import Dispatcher, Router
 
 from axiomai.infrastructure.telegram.dialogs.buy_leads import buy_leads_dialog
-from axiomai.infrastructure.telegram.dialogs.cashback_article import cashback_article_dialog
+from axiomai.infrastructure.telegram.dialogs.cashback_article.dialog import cashback_article_dialog
 from axiomai.infrastructure.telegram.dialogs.create_cashback_table import create_cashback_table_dialog
 from axiomai.infrastructure.telegram.dialogs.my_cabinet import my_cabinet_dialog
 from axiomai.tgbot.filters.ignore_self_message import SelfBusinessMessageFilter

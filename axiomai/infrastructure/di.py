@@ -8,12 +8,14 @@ from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
 from axiomai.application.interactors.buy_leads.cancel_payment import CancelPayment
 from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPayment
 from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
+from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.application.interactors.create_cabinet import CreateCabinet
 from axiomai.application.interactors.create_cashback_table import CreateCashbackTable
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.config import Config, MessageDebouncerConfig, OpenAIConfig, SuperbankingConfig
+from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
@@ -69,7 +71,7 @@ class GatewaysProvider(Provider):
 
     google_sheets_gateway = provide(GoogleSheetsGateway, scope=Scope.APP)
 
-    gateways = provide_all(CabinetGateway, CashbackTableGateway, PaymentGateway, UserGateway)
+    gateways = provide_all(BuyerGateway, CabinetGateway, CashbackTableGateway, PaymentGateway, UserGateway)
 
 
 class TgbotInteractorsProvider(Provider):
@@ -84,6 +86,7 @@ class TgbotInteractorsProvider(Provider):
         CreateSeller,
         CreateCabinet,
         CreateCashbackTable,
+        CreateBuyer,
         BuyLeads,
         MarkPaymentWaitingConfirm,
         ConfirmPayment,

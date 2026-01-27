@@ -62,11 +62,14 @@ async def session(engine) -> AsyncIterable[AsyncSession]:
 
 @pytest.fixture
 async def di_container(session):
+    google_sheets_mock = AsyncMock()
+    google_sheets_mock.sync_buyers_to_sheet = AsyncMock()
+
     container = make_async_container(
         MocksProvider(),
         context={
             AsyncSession: session,
-            GoogleSheetsGateway: AsyncMock(),
+            GoogleSheetsGateway: google_sheets_mock,
             Bot: AsyncMock(),
             OpenAIGateway: AsyncMock(),
             Config: MagicMock(),

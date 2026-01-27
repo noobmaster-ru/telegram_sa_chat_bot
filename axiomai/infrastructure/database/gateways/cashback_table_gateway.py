@@ -71,7 +71,9 @@ class CashbackTableGateway(Gateway):
         return list(articles)
 
     async def get_in_stock_cashback_articles_by_cabinet_id(self, cabinet_id: int) -> list[CashbackArticle]:
-        articles = await self._session.scalars(select(CashbackArticle).where(CashbackArticle.cabinet_id == cabinet_id))
+        articles = await self._session.scalars(
+            select(CashbackArticle).where(CashbackArticle.cabinet_id == cabinet_id, CashbackArticle.in_stock.is_(True))
+        )
 
         return list(articles)
 

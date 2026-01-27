@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
@@ -13,10 +14,12 @@ class SyncCashbackTables:
     def __init__(
         self,
         cashback_table_gateway: CashbackTableGateway,
+        buyer_gateway: BuyerGateway,
         google_sheets_gateway: GoogleSheetsGateway,
         transaction_manager: TransactionManager,
     ) -> None:
         self._cashback_table_gateway = cashback_table_gateway
+        self._buyer_gateway = buyer_gateway
         self._google_sheets_gateway = google_sheets_gateway
         self._transaction_manager = transaction_manager
 
@@ -59,6 +62,13 @@ class SyncCashbackTables:
             for nm_id, article in existing_by_nm_id.items():
                 if nm_id not in new_nm_ids:
                     await self._cashback_table_gateway.delete_article(article)
+
+            # Sync buyers to Google Sheets
+            try:
+                buyers = await self._buyer_gateway.get_buyers_by_cabinet_id(table.cabinet_id)
+                await self._google_sheets_gateway.sync_buyers_to_sheet(table.table_id, buyers)
+            except Exception as e:
+                logger.exception("failed to sync buyers to table %s", table.table_id, exc_info=e)
 
             table.last_synced_at = datetime.datetime.now(datetime.UTC)
             await self._transaction_manager.commit()

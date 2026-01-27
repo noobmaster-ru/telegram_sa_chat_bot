@@ -124,14 +124,24 @@ async def _process_accumulated_messages(
                 CashbackArticleStates.check_order,
                 mode=StartMode.RESET_STACK,
                 show_mode=ShowMode.SEND,
-                data={"article_id": classified_article.id},
+                data={
+                    "article_id": classified_article.id,
+                    "telegram_id": chat_id,
+                    "username": None,  # Will be set from message.from_user in dialog
+                    "fullname": "",  # Will be set from message.from_user in dialog
+                },
             )
         else:
-            articles_text = "\n".join(f"{article.nm_id} - {article.title}" for article in articles)
-            response_text = f"Текущие артикулы для раздачи кешбека:\n\n{articles_text}"
+            articles_text = "\n".join(f"- {article.title}" for article in articles)
+            response_text = f"Текущие артикулы для раздачи кешбека:\n{articles_text}"
 
             await bot.send_message(
                 chat_id=chat_id,
                 text=response_text,
                 business_connection_id=business_connection_id,
             )
+
+
+@router.business_message(StateFilter("skip_messaging"))
+async def skip_messaging(message: Message, bot: Bot) -> None:
+    await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
