@@ -80,7 +80,7 @@ class OpenAIGateway:
 
     async def classify_order_screenshot(
         self, photo_url: str, article_title: str, brand_name: str, article_image_url: str | None = None
-    ) -> dict[str, bool | int | None]:
+    ) -> dict[str, bool | str | int | None]:
         prompt = f"""
         Проанализируй скриншот заказа на Wildberries и определи:
         1. Есть ли на скриншоте ЗАКАЗ нашего товара с названием "{article_title}" или бренд "{brand_name}"
@@ -139,7 +139,7 @@ class OpenAIGateway:
 
     async def classify_feedback_screenshot(
         self, photo_url: str, article_title: str, brand_name: str
-    ) -> dict[str, bool | None]:
+    ) -> dict[str, bool | str | None]:
         prompt = f"""
         Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries.
         Подпись у товара может быть "{article_title}" или "{brand_name}" и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента.
@@ -191,7 +191,7 @@ class OpenAIGateway:
 
         return {"is_feedback": False, "cancel_reason": None}
 
-    async def classify_cut_labels_photo(self, photo_url: str) -> dict[str, bool | None]:
+    async def classify_cut_labels_photo(self, photo_url: str) -> dict[str, str | bool | None]:
         prompt = """
         Подумай и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ ЭТИКЕТКИ (Штрихкода или QR-кода) Wildberries нашего товара.
         

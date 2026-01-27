@@ -39,7 +39,7 @@ async def _get_or_create_buyer(dialog_manager: DialogManager, di_container: Asyn
         return buyer.id
 
 
-async def _update_buyer_field(di_container: AsyncContainer, buyer_id: int, **fields: dict[str, Any]) -> None:
+async def _update_buyer_field(di_container: AsyncContainer, buyer_id: int, **fields: Any) -> None:
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)
         transaction_manager = await r_container.get(TransactionManager)
