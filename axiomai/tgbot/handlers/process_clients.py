@@ -1,7 +1,9 @@
+import asyncio
 import logging
 from datetime import UTC, datetime
 
 from aiogram import Bot, Router
+from aiogram.enums import ChatAction
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -9,6 +11,7 @@ from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram import inject
 
+from axiomai.constants import DELAY_BEETWEEN_BOT_MESSAGES
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
@@ -118,6 +121,12 @@ async def _process_accumulated_messages(
 
         classified_article = await openai_gateway.classify_article_from_message(combined_text, articles, photo_url)
 
+        await bot.send_chat_action(
+            chat_id=chat_id,
+            action=ChatAction.TYPING,
+            business_connection_id=business_connection_id,
+        )
+        await asyncio.sleep(DELAY_BEETWEEN_BOT_MESSAGES)
         if classified_article:
             await state.set_state("client_processing")
             await dialog_manager.start(

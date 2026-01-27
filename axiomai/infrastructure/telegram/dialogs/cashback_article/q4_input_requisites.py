@@ -8,7 +8,13 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from redis.asyncio import Redis
 
-from axiomai.constants import AMOUNT_PATTERN, BANK_PATTERN, CARD_CLEAN_RE, CARD_PATTERN, PHONE_PATTERN
+from axiomai.constants import (
+    AMOUNT_PATTERN,
+    BANK_PATTERN,
+    CARD_CLEAN_RE,
+    CARD_PATTERN,
+    PHONE_PATTERN,
+)
 from axiomai.infrastructure.superbanking import Superbanking
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import _update_buyer_field
 
@@ -55,7 +61,7 @@ async def on_confirm_requisites(
     dialog_manager: DialogManager,
     di_container: FromDishka[AsyncContainer],
 ) -> None:
-    # Update buyer requisites
+
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
     if buyer_id:
         update_fields = {}

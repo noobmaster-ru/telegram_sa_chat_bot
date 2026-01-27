@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Bot
+from aiogram.enums import ChatAction
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import DefaultKeyBuilder, StorageKey
 from aiogram.fsm.storage.redis import RedisStorage
@@ -12,6 +13,7 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from redis.asyncio import Redis
 
+from axiomai.constants import DELAY_BEETWEEN_BOT_MESSAGES
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.openai import OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import _update_buyer_field
@@ -100,6 +102,13 @@ async def _process_feedback_screenshot_background(
         )
         await state.set_state("client_processing")
         return
+
+    await bot.send_chat_action(
+        chat_id=chat_id,
+        action=ChatAction.TYPING,
+        business_connection_id=business_connection_id,
+    )
+    await asyncio.sleep(DELAY_BEETWEEN_BOT_MESSAGES)
 
     if not result["is_feedback"]:
         cancel_reason = result["cancel_reason"]

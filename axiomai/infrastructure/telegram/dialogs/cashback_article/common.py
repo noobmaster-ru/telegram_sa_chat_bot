@@ -1,8 +1,9 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
 from aiogram import Bot
-from aiogram.enums import ParseMode
+from aiogram.enums import ChatAction, ParseMode
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.input import MessageInput
@@ -10,6 +11,7 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.interactors.create_buyer import CreateBuyer
+from axiomai.constants import DELAY_BEETWEEN_BOT_MESSAGES
 from axiomai.infrastructure.chat_history import add_to_chat_history, get_chat_history
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -142,6 +144,13 @@ async def _process_dialog_messages(
 
         if buyer_id:
             await add_to_chat_history(di_container, buyer_id, combined_text, response_text)
+
+        await bot.send_chat_action(
+            chat_id=chat_id,
+            action=ChatAction.TYPING,
+            business_connection_id=business_connection_id,
+        )
+        await asyncio.sleep(DELAY_BEETWEEN_BOT_MESSAGES)
 
         await bot.send_message(
             chat_id=chat_id,
