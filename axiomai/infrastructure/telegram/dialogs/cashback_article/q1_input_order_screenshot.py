@@ -117,7 +117,8 @@ async def _process_order_screenshot_background(
         await state.set_state("client_processing")
         return
 
-    await bg_manager.update({"gpt_amount": result["price"]})
+    gpt_amount_key = f"gpt_amount:{user_id}:{chat_id}"
+    await redis.set(gpt_amount_key, result["price"], ex=86400)
     await bot.send_message(chat_id, "✅ Скриншот заказа принят!", business_connection_id=business_connection_id)
 
     await _update_buyer_field(di_container, buyer_id, is_ordered=True)

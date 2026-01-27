@@ -62,10 +62,11 @@ async def on_close(
 
 cashback_article_dialog = Dialog(
     Window(
-        Format("Отправьте, пожалуйста, <b>скриншот</b> сделанного заказа"),
+        Format("Отправьте, пожалуйста, <b>скриншот</b> сделанного заказа артикула <code>{article.nm_id}</code>"),
         MessageInput(on_input_order_screenshot, content_types=[ContentType.PHOTO]),
         MessageInput(mes_input_handler),
         state=CashbackArticleStates.check_order,
+        getter=article_getter,
     ),
     Window(
         Format(

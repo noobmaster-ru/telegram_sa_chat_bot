@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
+from redis.asyncio import Redis
 
 from axiomai.constants import AMOUNT_PATTERN, BANK_PATTERN, CARD_CLEAN_RE, CARD_PATTERN, PHONE_PATTERN
 from axiomai.infrastructure.superbanking import Superbanking
@@ -18,6 +19,7 @@ async def on_input_requisites(
     widget: Any,
     dialog_manager: DialogManager,
     superbanking: FromDishka[Superbanking],
+    redis: FromDishka[Redis],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
 
@@ -25,12 +27,14 @@ async def on_input_requisites(
 
     requisites = message.text.strip()
 
-    if dialog_manager.dialog_data["gpt_amount"]:
-        dialog_manager.dialog_data["amount"] = dialog_manager.dialog_data["gpt_amount"]
+    gpt_amount_key = f"gpt_amount:{message.from_user.id}:{message.chat.id}"
+    gpt_amount = await redis.get(gpt_amount_key)
+    if gpt_amount:
+        dialog_manager.dialog_data["amount"] = gpt_amount.decode() if isinstance(gpt_amount, bytes) else gpt_amount
 
     if card_match := CARD_PATTERN.search(requisites):
         dialog_manager.dialog_data["card_number"] = CARD_CLEAN_RE.sub("", card_match.group())
-    if (amount_match := AMOUNT_PATTERN.search(requisites)) and (not dialog_manager.dialog_data["gpt_amount"]):
+    if (amount_match := AMOUNT_PATTERN.search(requisites)) and (not gpt_amount):
         dialog_manager.dialog_data["amount"] = amount_match.group(1)
     if phone_match := PHONE_PATTERN.search(requisites):
         dialog_manager.dialog_data["phone_number"] = phone_match.group()
