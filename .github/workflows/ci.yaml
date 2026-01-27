@@ -27,37 +27,37 @@ jobs:
             ./.venv
             ~/.local/share/uv
           key: venv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
-#  lint:
-#    needs: setup
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Restore cached venv
-#        uses: actions/cache@v4
-#        with:
-#          path: |
-#            ./.venv
-#            ~/.local/share/uv
-#          key: venv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
-#      - name: Lint
-#        run: source ./.venv/bin/activate && make lint
-#  test:
-#    needs: setup
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Restore cached venv
-#        uses: actions/cache@v4
-#        with:
-#          path: |
-#            ./.venv
-#            ~/.local/share/uv
-#          key: venv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
-#      - name: Run tests with pytest
-#        run: ./.venv/bin/pytest
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore cached venv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./.venv
+            ~/.local/share/uv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+      - name: Lint
+        run: source ./.venv/bin/activate && make lint
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore cached venv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./.venv
+            ~/.local/share/uv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+      - name: Run tests with pytest
+        run: ./.venv/bin/pytest
   build-and-push-image:
     runs-on: ubuntu-latest
-#    needs: [test, lint]
+    needs: [test, lint]
     permissions:
       contents: read
       packages: write
