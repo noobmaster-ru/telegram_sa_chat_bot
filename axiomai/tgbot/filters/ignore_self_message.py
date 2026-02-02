@@ -1,3 +1,4 @@
+from aiogram import Bot
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
 from dishka import FromDishka
@@ -8,5 +9,6 @@ from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 
 class SelfBusinessMessageFilter(BaseFilter):
     @inject
-    async def __call__(self, message: Message, cabinet_gateway: FromDishka[CabinetGateway]) -> bool:
-        return bool(await cabinet_gateway.get_cabinet_by_business_account_id(message.from_user.id))
+    async def __call__(self, message: Message, cabinet_gateway: FromDishka[CabinetGateway], bot: Bot) -> bool:
+        business_connection = await bot.get_business_connection(message.business_connection_id)
+        return message.from_user.id == business_connection.user.id

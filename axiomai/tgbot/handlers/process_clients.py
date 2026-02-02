@@ -11,7 +11,7 @@ from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram import inject
 
-from axiomai.constants import DELAY_BEETWEEN_BOT_MESSAGES
+from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
@@ -31,17 +31,9 @@ async def process_clients_business_message(
     bot: Bot,
     state: FSMContext,
     dialog_manager: DialogManager,
-    di_container: AsyncContainer,
+    di_container: FromDishka[AsyncContainer],
     debouncer: FromDishka[MessageDebouncer],
 ) -> None:
-    """
-    Обработчик входящих сообщений от клиентов.
-    Накапливает сообщения через MessageDebouncer и обрабатывает после паузы.
-    """
-    if not message.business_connection_id:
-        logger.warning("received message without business_connection_id")
-        return
-
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
     message_text = message.text or message.caption or ""
@@ -79,13 +71,11 @@ async def _process_accumulated_messages(
     dialog_manager: DialogManager,
     di_container: AsyncContainer,
 ) -> None:
-    """
-    Обработка накопленных сообщений после паузы.
-    Вызывается MessageDebouncer автоматически.
-    """
+    """Обработка накопленных сообщений после паузы. Вызывается MessageDebouncer автоматически."""
     logger.info("processing %s accumulated messages for chat %s", len(messages), chat_id)
 
     async with di_container() as r_container:
+        config = await r_container.get(Config)
         cashback_table_gateway = await r_container.get(CashbackTableGateway)
         openai_gateway = await r_container.get(OpenAIGateway)
 
@@ -106,7 +96,7 @@ async def _process_accumulated_messages(
         if not articles:
             await bot.send_message(
                 chat_id=chat_id,
-                text="Увы, артикулы для раздачи кэшбека закончились",
+                text="Увы, артикулы для раздачи кэшбека закончились.",
                 business_connection_id=business_connection_id,
             )
             return
@@ -126,7 +116,7 @@ async def _process_accumulated_messages(
             action=ChatAction.TYPING,
             business_connection_id=business_connection_id,
         )
-        await asyncio.sleep(DELAY_BEETWEEN_BOT_MESSAGES)
+        await asyncio.sleep(config.delay_between_bot_messages)
         if classified_article:
             await state.set_state("client_processing")
             await dialog_manager.start(
