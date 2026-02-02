@@ -16,7 +16,7 @@ async def admin_confirm_payment(callback: CallbackQuery, confirm_payment: FromDi
     """
     Админ подтверждает оплату:
     - payment.status: WAITING_CONFIRM -> SUCCEEDED
-    - увеличиваем cabinet.leads_balance на количество лидов из service_data["leads"]
+    - увеличиваем cabinet.leads_balance на количество лидов из service_data["leads"].
     """
     await callback.answer()
     payment_id = int(callback.data.split(":")[1])
