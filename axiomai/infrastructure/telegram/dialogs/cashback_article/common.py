@@ -28,11 +28,14 @@ async def _get_or_create_buyer(dialog_manager: DialogManager, di_container: Asyn
         event = dialog_manager.event
         user = event.from_user if hasattr(event, "from_user") else None
 
+        predialog_history = dialog_manager.start_data.get("predialog_history", [])
+
         buyer = await create_buyer.execute(
             telegram_id=dialog_manager.event.chat.id,
             username=user.username if user else None,
             fullname=user.full_name if user else "",
             article_id=dialog_manager.start_data["article_id"],
+            chat_history=predialog_history,
         )
         dialog_manager.dialog_data["buyer_id"] = buyer.id
         return buyer.id
@@ -110,7 +113,6 @@ async def _process_dialog_messages(
         articles_list = [(art.id, art.title) for art in available_articles]
         valid_ids = {art.id for art in available_articles}
 
-        # Get chat history from PostgreSQL
         chat_history = []
         if buyer_id:
             chat_history = await get_chat_history(di_container, buyer_id)

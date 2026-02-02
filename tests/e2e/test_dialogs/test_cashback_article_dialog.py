@@ -51,12 +51,15 @@ async def test_cashback_article_when_not_classified_message(
     await cashback_article_factory(cabinet_id=cabinet.id)
     openai_gateway = await di_container.get(OpenAIGateway)
 
-    openai_gateway.classify_article_from_message = AsyncMock(return_value=None)
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Здравствуйте! У нас есть товары для кешбека.",
+        "article_id": None,
+    })
 
     await bot_client.send_business("хочу кешбек")
 
     last_message = fake_bot.sent_messages[-1]
-    assert last_message.text.startswith("Текущие артикулы для раздачи кешбека")
+    assert "Здравствуйте" in last_message.text
 
 
 async def test_cashback_article_q1_input_order_screenshot(
@@ -74,7 +77,10 @@ async def test_cashback_article_q1_input_order_screenshot(
     article = await cashback_article_factory(cabinet_id=cabinet.id)
     openai_gateway = await di_container.get(OpenAIGateway)
 
-    openai_gateway.classify_article_from_message = AsyncMock(return_value=article)
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
     openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
     await bot_client.send_business("хочу кешбек")
     await bot_client.send_business_photo()  # order
@@ -100,7 +106,10 @@ async def test_cashback_article_q2_input_feedback_screenshot(
     article = await cashback_article_factory(cabinet_id=cabinet.id)
     openai_gateway = await di_container.get(OpenAIGateway)
 
-    openai_gateway.classify_article_from_message = AsyncMock(return_value=article)
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
     openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
     openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={"is_feedback": True})
 
@@ -129,7 +138,10 @@ async def test_cashback_article_q3_input_cut_labels_screenshot(
     article = await cashback_article_factory(cabinet_id=cabinet.id)
     openai_gateway = await di_container.get(OpenAIGateway)
 
-    openai_gateway.classify_article_from_message = AsyncMock(return_value=article)
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
     openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
     openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={"is_feedback": True})
     openai_gateway.classify_cut_labels_screenshot = AsyncMock(return_value={"is_cut_labels": True})
@@ -162,7 +174,10 @@ async def test_cashback_article_q4_input_requisites(
     openai_gateway = await di_container.get(OpenAIGateway)
     superbanking = await di_container.get(Superbanking)
 
-    openai_gateway.classify_article_from_message = AsyncMock(return_value=article)
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
     openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
     openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={"is_feedback": True})
     openai_gateway.classify_cut_labels_screenshot = AsyncMock(return_value={"is_cut_labels": True})

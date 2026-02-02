@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.base import DefaultKeyBuilder
+from aiogram.fsm.storage.base import BaseStorage, DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram_dialog import setup_dialogs
 from dishka import make_async_container
@@ -37,6 +37,7 @@ async def main() -> None:
             Config: config,
             Redis: redis,
             Bot: bot,
+            BaseStorage: storage
         },
     )
 

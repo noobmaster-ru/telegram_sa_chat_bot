@@ -27,6 +27,27 @@ from axiomai.infrastructure.superbanking import Superbanking
 from tests.e2e.mocks import MocksProvider, FakeMessageDebouncer
 
 
+class FakeRedis:
+    """Fake Redis for testing that stores data in memory."""
+
+    def __init__(self):
+        self._data: dict[str, bytes] = {}
+
+    async def get(self, key: str) -> bytes | None:
+        return self._data.get(key)
+
+    async def set(self, key: str, value: str | bytes) -> None:
+        if isinstance(value, str):
+            value = value.encode()
+        self._data[key] = value
+
+    async def setex(self, key: str, ttl: int, value: str | bytes) -> None:
+        await self.set(key, value)
+
+    async def delete(self, key: str) -> None:
+        self._data.pop(key, None)
+
+
 @pytest.fixture(scope="session")
 def postgres_uri():
     postgres = PostgresContainer("postgres:16-alpine")
@@ -81,7 +102,7 @@ async def di_container(session):
             OpenAIGateway: AsyncMock(),
             Config: config,
             MessageDebouncer: FakeMessageDebouncer(),
-            Redis: AsyncMock(),
+            Redis: FakeRedis(),
             BaseStorage: JsonMemoryStorage(),
             Superbanking: AsyncMock(),
         },

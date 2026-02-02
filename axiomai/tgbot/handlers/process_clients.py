@@ -3,15 +3,21 @@ import logging
 from datetime import UTC, datetime
 
 from aiogram import Bot, Router
-from aiogram.enums import ChatAction
+from aiogram.enums import ChatAction, ParseMode
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram import inject
+from redis.asyncio import Redis
 
 from axiomai.config import Config
+from axiomai.infrastructure.chat_history import (
+    add_predialog_chat_history,
+    clear_predialog_chat_history,
+    get_predialog_chat_history,
+)
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
@@ -78,6 +84,7 @@ async def _process_accumulated_messages(
         config = await r_container.get(Config)
         cashback_table_gateway = await r_container.get(CashbackTableGateway)
         openai_gateway = await r_container.get(OpenAIGateway)
+        redis = await r_container.get(Redis)
 
         cashback_table = await cashback_table_gateway.get_active_cashback_table_by_business_connection_id(
             business_connection_id
@@ -109,7 +116,17 @@ async def _process_accumulated_messages(
         logger.debug("combined text: %s...", combined_text[:100])
         logger.debug("photo urls: %s", len(photo_urls))
 
-        classified_article = await openai_gateway.classify_article_from_message(combined_text, articles, photo_url)
+        chat_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
+
+        result = await openai_gateway.chat_with_client(
+            user_message=combined_text,
+            articles=articles,
+            chat_history=chat_history,
+            photo_url=photo_url,
+        )
+
+        response_text = result["response"]
+        classified_article_id = result["article_id"]
 
         await bot.send_chat_action(
             chat_id=chat_id,
@@ -117,27 +134,42 @@ async def _process_accumulated_messages(
             business_connection_id=business_connection_id,
         )
         await asyncio.sleep(config.delay_between_bot_messages)
-        if classified_article:
+
+        if classified_article_id:
+            await add_predialog_chat_history(
+                redis, business_connection_id, chat_id, combined_text, response_text
+            )
+
+            await bot.send_message(
+                chat_id=chat_id,
+                text=response_text,
+                business_connection_id=business_connection_id,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+
+            predialog_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
+            await clear_predialog_chat_history(redis, business_connection_id, chat_id)
+
             await state.set_state("client_processing")
             await dialog_manager.start(
                 CashbackArticleStates.check_order,
                 mode=StartMode.RESET_STACK,
                 show_mode=ShowMode.SEND,
                 data={
-                    "article_id": classified_article.id,
-                    "telegram_id": chat_id,
-                    "username": None,  # Will be set from message.from_user in dialog
-                    "fullname": "",  # Will be set from message.from_user in dialog
+                    "article_id": classified_article_id,
+                    "predialog_history": predialog_history,
                 },
             )
         else:
-            articles_text = "\n".join(f"- {article.title}" for article in articles)
-            response_text = f"Текущие артикулы для раздачи кешбека:\n{articles_text}"
+            await add_predialog_chat_history(
+                redis, business_connection_id, chat_id, combined_text, response_text
+            )
 
             await bot.send_message(
                 chat_id=chat_id,
                 text=response_text,
                 business_connection_id=business_connection_id,
+                parse_mode=ParseMode.MARKDOWN,
             )
 
 
