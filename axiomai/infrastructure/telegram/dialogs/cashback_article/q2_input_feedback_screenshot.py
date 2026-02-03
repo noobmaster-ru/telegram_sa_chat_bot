@@ -64,6 +64,7 @@ async def on_input_feedback_screenshot(
     )
 
     bg_manager = dialog_manager.bg()
+    app_container = di_container.parent_container
 
     await message_debouncer.add_message(
         business_connection_id=message.business_connection_id,
@@ -74,7 +75,7 @@ async def on_input_feedback_screenshot(
             bot=bot,
             storage=storage,
             bg_manager=bg_manager,
-            di_container=di_container,
+            di_container=app_container,
             openai_gateway=openai_gateway,
             config=config,
             article_title=article.title,

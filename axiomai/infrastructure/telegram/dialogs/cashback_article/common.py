@@ -71,13 +71,14 @@ async def mes_input_handler(
         article_id = dialog_manager.start_data["article_id"]
         buyer_id = dialog_manager.dialog_data.get("buyer_id")
         bg_manager = dialog_manager.bg()
+        app_container = di_container.parent_container
 
         await debouncer.add_message(
             business_connection_id=message.business_connection_id,
             chat_id=message.chat.id,
             message_data=message_data,
             process_callback=lambda biz_id, chat_id, msgs: _process_dialog_messages(
-                biz_id, chat_id, msgs, bot, di_container, step_name, article_id, buyer_id, bg_manager
+                biz_id, chat_id, msgs, bot, app_container, step_name, article_id, buyer_id, bg_manager
             ),
         )
         dialog_manager.show_mode = ShowMode.NO_UPDATE

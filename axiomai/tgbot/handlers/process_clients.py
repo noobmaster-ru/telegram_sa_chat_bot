@@ -58,12 +58,14 @@ async def process_clients_business_message(
         photo_url=photo_url,
     )
     bg_manager = dialog_manager.bg()
+    app_container = di_container.parent_container
+
     await debouncer.add_message(
         business_connection_id=message.business_connection_id,
         chat_id=message.chat.id,
         message_data=message_data,
         process_callback=lambda biz_id, chat_id, msgs: _process_accumulated_messages(
-            biz_id, chat_id, msgs, bot, state, bg_manager, di_container
+            biz_id, chat_id, msgs, bot, state, bg_manager, app_container
         ),
     )
 
@@ -108,69 +110,69 @@ async def _process_accumulated_messages(
             )
             return
 
-        combined_text = merge_messages_text(messages)
+    chat_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
 
-        photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
-        photo_url = photo_urls[0] if photo_urls else None
+    combined_text = merge_messages_text(messages)
 
-        logger.debug("combined text: %s...", combined_text[:100])
-        logger.debug("photo urls: %s", len(photo_urls))
+    photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
+    photo_url = photo_urls[0] if photo_urls else None
 
-        chat_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
+    logger.debug("combined text: %s...", combined_text[:100])
+    logger.debug("photo urls: %s", len(photo_urls))
 
-        result = await openai_gateway.chat_with_client(
-            user_message=combined_text,
-            articles=articles,
-            chat_history=chat_history,
-            photo_url=photo_url,
+    result = await openai_gateway.chat_with_client(
+        user_message=combined_text,
+        articles=articles,
+        chat_history=chat_history,
+        photo_url=photo_url,
+    )
+
+    response_text = result["response"]
+    classified_article_id = result["article_id"]
+
+    await bot.send_chat_action(
+        chat_id=chat_id,
+        action=ChatAction.TYPING,
+        business_connection_id=business_connection_id,
+    )
+    await asyncio.sleep(config.delay_between_bot_messages)
+
+    if classified_article_id:
+        await add_predialog_chat_history(
+            redis, business_connection_id, chat_id, combined_text, response_text
         )
 
-        response_text = result["response"]
-        classified_article_id = result["article_id"]
-
-        await bot.send_chat_action(
+        await bot.send_message(
             chat_id=chat_id,
-            action=ChatAction.TYPING,
+            text=response_text,
             business_connection_id=business_connection_id,
+            parse_mode=ParseMode.MARKDOWN,
         )
-        await asyncio.sleep(config.delay_between_bot_messages)
 
-        if classified_article_id:
-            await add_predialog_chat_history(
-                redis, business_connection_id, chat_id, combined_text, response_text
-            )
+        predialog_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
+        await clear_predialog_chat_history(redis, business_connection_id, chat_id)
 
-            await bot.send_message(
-                chat_id=chat_id,
-                text=response_text,
-                business_connection_id=business_connection_id,
-                parse_mode=ParseMode.MARKDOWN,
-            )
+        await state.set_state("client_processing")
+        await dialog_manager.start(
+            CashbackArticleStates.check_order,
+            mode=StartMode.RESET_STACK,
+            show_mode=ShowMode.SEND,
+            data={
+                "article_id": classified_article_id,
+                "predialog_history": predialog_history,
+            },
+        )
+    else:
+        await add_predialog_chat_history(
+            redis, business_connection_id, chat_id, combined_text, response_text
+        )
 
-            predialog_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
-            await clear_predialog_chat_history(redis, business_connection_id, chat_id)
-
-            await state.set_state("client_processing")
-            await dialog_manager.start(
-                CashbackArticleStates.check_order,
-                mode=StartMode.RESET_STACK,
-                show_mode=ShowMode.SEND,
-                data={
-                    "article_id": classified_article_id,
-                    "predialog_history": predialog_history,
-                },
-            )
-        else:
-            await add_predialog_chat_history(
-                redis, business_connection_id, chat_id, combined_text, response_text
-            )
-
-            await bot.send_message(
-                chat_id=chat_id,
-                text=response_text,
-                business_connection_id=business_connection_id,
-                parse_mode=ParseMode.MARKDOWN,
-            )
+        await bot.send_message(
+            chat_id=chat_id,
+            text=response_text,
+            business_connection_id=business_connection_id,
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
 
 @router.business_message(StateFilter("skip_messaging"))

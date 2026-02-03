@@ -60,6 +60,7 @@ async def on_input_cut_labels_photo(
     )
 
     bg_manager = dialog_manager.bg()
+    app_container = di_container.parent_container
 
     await message_debouncer.add_message(
         business_connection_id=message.business_connection_id,
@@ -70,7 +71,7 @@ async def on_input_cut_labels_photo(
             bot=bot,
             storage=storage,
             bg_manager=bg_manager,
-            di_container=di_container,
+            di_container=app_container,
             openai_gateway=openai_gateway,
             config=config,
             chat_id=chat_id,
