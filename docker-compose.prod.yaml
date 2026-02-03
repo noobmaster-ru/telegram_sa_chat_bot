@@ -1,6 +1,6 @@
 services:
   tgbot:
-    image: ghcr.io/noobmaster-ru/telegram_sa_chat_bot:develop
+    image: ghcr.io/noobmaster-ru/telegram_sa_chat_bot:main
     container_name: axiomai.tgbot.prod
     env_file:
       - ".env"
@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
     command: "python -m axiomai.tgbot"
   observer:
-    image: ghcr.io/noobmaster-ru/telegram_sa_chat_bot:develop
+    image: ghcr.io/noobmaster-ru/telegram_sa_chat_bot:main
     container_name: axiomai.observer.prod
     env_file:
       - ".env"
@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     command: "python -m axiomai.observer"
   postgres_migration:
-    image: ghcr.io/noobmaster-ru/telegram_sa_chat_bot:develop
+    image: ghcr.io/noobmaster-ru/telegram_sa_chat_bot:main
     container_name: axiomai.postgres.migration.prod
     env_file:
       - ".env"
