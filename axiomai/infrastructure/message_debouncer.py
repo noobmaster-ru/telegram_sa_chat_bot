@@ -122,15 +122,14 @@ class MessageDebouncer:
 
             logger.info("processing accumulated messages. chat: %s, total: %s", chat_id, len(accumulated.messages))
 
+            await self.redis.delete(redis_key)
+            if timer_key in self._active_timers:
+                del self._active_timers[timer_key]
+
             try:
                 await process_callback(business_connection_id, chat_id, accumulated.messages)
             except Exception as e:
                 logger.exception("error processing accumulated messages", exc_info=e)
-            finally:
-                # Очищаем Redis и таймер
-                await self.redis.delete(redis_key)
-                if timer_key in self._active_timers:
-                    del self._active_timers[timer_key]
 
         except asyncio.CancelledError:
             logger.debug("timer cancelled for chat %s", chat_id)
