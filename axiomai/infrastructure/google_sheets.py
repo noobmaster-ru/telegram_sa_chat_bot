@@ -109,7 +109,7 @@ class GoogleSheetsGateway:
                     last_user_msg_time = last_msg.get("created_at", "")
                     last_user_msg_text = last_msg.get("user", "")
 
-            username_link = f"@{buyer.username}" if buyer.username else ""
+            username_link = f"@{buyer.username}" if buyer.username else buyer.fullname
 
             row = [
                 username_link,  # A - ссылка на ник
