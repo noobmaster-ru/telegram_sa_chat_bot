@@ -33,6 +33,7 @@ class DatabaseProvider(Provider):
             config.postgres_uri,
             pool_size=15,
             max_overflow=15,
+            pool_pre_ping=True,
             connect_args={"connect_timeout": 5},
         )
         yield engine

@@ -12,6 +12,7 @@ from aiogram_dialog.widgets.input import MessageInput
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
+from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -35,13 +36,14 @@ async def on_input_order_screenshot(
     storage: FromDishka[BaseStorage],
     message_debouncer: FromDishka[MessageDebouncer],
     config: FromDishka[Config],
+    create_buyer: FromDishka[CreateBuyer]
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
     state: FSMContext = dialog_manager.middleware_data["state"]
 
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
-    buyer_id = await _get_or_create_buyer(dialog_manager, di_container)
+    buyer_id = await _get_or_create_buyer(dialog_manager, create_buyer)
 
     if not message.photo:
         await message.answer("Пожалуйста, отправьте фото скриншота заказа")

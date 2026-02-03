@@ -18,27 +18,25 @@ from axiomai.infrastructure.openai import OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 
-async def _get_or_create_buyer(dialog_manager: DialogManager, di_container: AsyncContainer) -> int:
+async def _get_or_create_buyer(dialog_manager: DialogManager, create_buyer: CreateBuyer) -> int:
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
     if buyer_id:
         return buyer_id
 
-    async with di_container() as r_container:
-        create_buyer = await r_container.get(CreateBuyer)
-        event = dialog_manager.event
-        user = event.from_user if hasattr(event, "from_user") else None
+    event = dialog_manager.event
+    user = event.from_user if hasattr(event, "from_user") else None
 
-        predialog_history = dialog_manager.start_data.get("predialog_history", [])
+    predialog_history = dialog_manager.start_data.get("predialog_history", [])
 
-        buyer = await create_buyer.execute(
-            telegram_id=dialog_manager.event.chat.id,
-            username=user.username if user else None,
-            fullname=user.full_name if user else "",
-            article_id=dialog_manager.start_data["article_id"],
-            chat_history=predialog_history,
-        )
-        dialog_manager.dialog_data["buyer_id"] = buyer.id
-        return buyer.id
+    buyer = await create_buyer.execute(
+        telegram_id=dialog_manager.event.chat.id,
+        username=user.username if user else None,
+        fullname=user.full_name if user else "",
+        article_id=dialog_manager.start_data["article_id"],
+        chat_history=predialog_history,
+    )
+    dialog_manager.dialog_data["buyer_id"] = buyer.id
+    return buyer.id
 
 
 @inject
