@@ -32,7 +32,7 @@ async def on_input_requisites(
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
 
     if not buyer_id:
-        await message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заного.")
+        await message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
         await dialog_manager.done()
         return
 
@@ -71,7 +71,7 @@ async def on_confirm_requisites(
 ) -> None:
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
     if not buyer_id:
-        await callback.message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заного.")
+        await callback.message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
         await dialog_manager.done()
         return
 
