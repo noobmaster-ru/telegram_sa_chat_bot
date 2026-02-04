@@ -1,9 +1,6 @@
 import logging
 
-from axiomai.application.exceptions.payment import (
-    PaymentAlreadyProcessedError,
-    PaymentNotFoundError,
-)
+from axiomai.application.exceptions.payment import PaymentAlreadyProcessedError, PaymentNotFoundError
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
 from axiomai.infrastructure.database.models.payment import PaymentStatus
 from axiomai.infrastructure.database.transaction_manager import TransactionManager

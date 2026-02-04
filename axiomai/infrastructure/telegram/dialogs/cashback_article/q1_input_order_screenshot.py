@@ -36,7 +36,7 @@ async def on_input_order_screenshot(
     storage: FromDishka[BaseStorage],
     message_debouncer: FromDishka[MessageDebouncer],
     config: FromDishka[Config],
-    create_buyer: FromDishka[CreateBuyer]
+    create_buyer: FromDishka[CreateBuyer],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
     state: FSMContext = dialog_manager.middleware_data["state"]

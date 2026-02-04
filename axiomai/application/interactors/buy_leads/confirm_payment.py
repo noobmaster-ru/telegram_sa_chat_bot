@@ -4,10 +4,7 @@ from aiogram import Bot
 
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
 from axiomai.application.exceptions.cashback_table import CashbackTableNotFoundError
-from axiomai.application.exceptions.payment import (
-    PaymentAlreadyProcessedError,
-    PaymentNotFoundError,
-)
+from axiomai.application.exceptions.payment import PaymentAlreadyProcessedError, PaymentNotFoundError
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway

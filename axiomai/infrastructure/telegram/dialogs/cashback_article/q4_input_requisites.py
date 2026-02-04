@@ -7,13 +7,7 @@ from aiogram_dialog import DialogManager, ShowMode
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
-from axiomai.constants import (
-    AMOUNT_PATTERN,
-    BANK_PATTERN,
-    CARD_CLEAN_RE,
-    CARD_PATTERN,
-    PHONE_PATTERN,
-)
+from axiomai.constants import AMOUNT_PATTERN, BANK_PATTERN, CARD_CLEAN_RE, CARD_PATTERN, PHONE_PATTERN
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.superbanking import Superbanking

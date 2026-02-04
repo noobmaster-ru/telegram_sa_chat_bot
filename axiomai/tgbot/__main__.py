@@ -33,12 +33,7 @@ async def main() -> None:
         DatabaseProvider(),
         TgbotInteractorsProvider(),
         GatewaysProvider(),
-        context={
-            Config: config,
-            Redis: redis,
-            Bot: bot,
-            BaseStorage: storage
-        },
+        context={Config: config, Redis: redis, Bot: bot, BaseStorage: storage},
     )
 
     handlers.setup(dispatcher)

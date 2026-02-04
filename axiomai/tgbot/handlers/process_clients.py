@@ -138,9 +138,7 @@ async def _process_accumulated_messages(
     await asyncio.sleep(config.delay_between_bot_messages)
 
     if classified_article_id:
-        await add_predialog_chat_history(
-            redis, business_connection_id, chat_id, combined_text, response_text
-        )
+        await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)
 
         await bot.send_message(
             chat_id=chat_id,
@@ -163,9 +161,7 @@ async def _process_accumulated_messages(
             },
         )
     else:
-        await add_predialog_chat_history(
-            redis, business_connection_id, chat_id, combined_text, response_text
-        )
+        await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)
 
         await bot.send_message(
             chat_id=chat_id,

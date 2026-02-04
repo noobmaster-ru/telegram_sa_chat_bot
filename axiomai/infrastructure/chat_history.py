@@ -45,9 +45,7 @@ def _predialog_redis_key(business_connection_id: str, chat_id: int) -> str:
     return f"predialog_history:{business_connection_id}:{chat_id}"
 
 
-async def get_predialog_chat_history(
-    redis: Redis, business_connection_id: str, chat_id: int
-) -> list[dict[str, str]]:
+async def get_predialog_chat_history(redis: Redis, business_connection_id: str, chat_id: int) -> list[dict[str, str]]:
     key = _predialog_redis_key(business_connection_id, chat_id)
     data = await redis.get(key)
     if not data:
@@ -66,18 +64,18 @@ async def add_predialog_chat_history(
 ) -> list[dict[str, str]]:
     key = _predialog_redis_key(business_connection_id, chat_id)
     history = await get_predialog_chat_history(redis, business_connection_id, chat_id)
-    history.append({
-        "user": user_message,
-        "assistant": assistant_response,
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    history.append(
+        {
+            "user": user_message,
+            "assistant": assistant_response,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    )
     history = history[-MAX_CHAT_HISTORY:]
     await redis.setex(key, PREDIALOG_TTL_SECONDS, json.dumps(history))
     return history
 
 
-async def clear_predialog_chat_history(
-    redis: Redis, business_connection_id: str, chat_id: int
-) -> None:
+async def clear_predialog_chat_history(redis: Redis, business_connection_id: str, chat_id: int) -> None:
     key = _predialog_redis_key(business_connection_id, chat_id)
     await redis.delete(key)
