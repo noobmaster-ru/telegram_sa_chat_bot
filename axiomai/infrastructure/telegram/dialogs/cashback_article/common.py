@@ -1,6 +1,5 @@
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
 
 from aiogram import Bot
 from aiogram.enums import ChatAction, ParseMode
@@ -11,46 +10,33 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.interactors.create_buyer import CreateBuyer
-from axiomai.constants import DELAY_BEETWEEN_BOT_MESSAGES
+from axiomai.config import Config
 from axiomai.infrastructure.chat_history import add_to_chat_history, get_chat_history
-from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
-from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 
-async def _get_or_create_buyer(dialog_manager: DialogManager, di_container: AsyncContainer) -> int:
+async def _get_or_create_buyer(dialog_manager: DialogManager, create_buyer: CreateBuyer) -> int:
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
     if buyer_id:
         return buyer_id
 
-    async with di_container() as r_container:
-        create_buyer = await r_container.get(CreateBuyer)
-        event = dialog_manager.event
-        user = event.from_user if hasattr(event, "from_user") else None
+    event = dialog_manager.event
+    user = event.from_user if hasattr(event, "from_user") else None
 
-        buyer = await create_buyer.execute(
-            telegram_id=dialog_manager.event.chat.id,
-            username=user.username if user else None,
-            fullname=user.full_name if user else "",
-            article_id=dialog_manager.start_data["article_id"],
-        )
-        dialog_manager.dialog_data["buyer_id"] = buyer.id
-        return buyer.id
+    predialog_history = dialog_manager.start_data.get("predialog_history", [])
 
-
-async def _update_buyer_field(di_container: AsyncContainer, buyer_id: int, **fields: Any) -> None:
-    async with di_container() as r_container:
-        buyer_gateway = await r_container.get(BuyerGateway)
-        transaction_manager = await r_container.get(TransactionManager)
-        buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
-        if buyer:
-            for key, value in fields.items():
-                setattr(buyer, key, value)
-            await buyer_gateway.update_buyer(buyer)
-            await transaction_manager.commit()
+    buyer = await create_buyer.execute(
+        telegram_id=dialog_manager.event.chat.id,
+        username=user.username if user else None,
+        fullname=user.full_name if user else "",
+        article_id=dialog_manager.start_data["article_id"],
+        chat_history=predialog_history,
+    )
+    dialog_manager.dialog_data["buyer_id"] = buyer.id
+    return buyer.id
 
 
 @inject
@@ -83,13 +69,14 @@ async def mes_input_handler(
         article_id = dialog_manager.start_data["article_id"]
         buyer_id = dialog_manager.dialog_data.get("buyer_id")
         bg_manager = dialog_manager.bg()
+        app_container = di_container.parent_container
 
         await debouncer.add_message(
             business_connection_id=message.business_connection_id,
             chat_id=message.chat.id,
             message_data=message_data,
             process_callback=lambda biz_id, chat_id, msgs: _process_dialog_messages(
-                biz_id, chat_id, msgs, bot, di_container, step_name, article_id, buyer_id, bg_manager
+                biz_id, chat_id, msgs, bot, app_container, step_name, article_id, buyer_id, bg_manager
             ),
         )
         dialog_manager.show_mode = ShowMode.NO_UPDATE
@@ -111,6 +98,7 @@ async def _process_dialog_messages(
 ) -> None:
     """Обработка накопленных сообщений внутри диалога"""
     async with di_container() as r_container:
+        config = await r_container.get(Config)
         openai_gateway = await r_container.get(OpenAIGateway)
         cashback_table_gateway = await r_container.get(CashbackTableGateway)
 
@@ -124,7 +112,6 @@ async def _process_dialog_messages(
         articles_list = [(art.id, art.title) for art in available_articles]
         valid_ids = {art.id for art in available_articles}
 
-        # Get chat history from PostgreSQL
         chat_history = []
         if buyer_id:
             chat_history = await get_chat_history(di_container, buyer_id)
@@ -150,7 +137,7 @@ async def _process_dialog_messages(
             action=ChatAction.TYPING,
             business_connection_id=business_connection_id,
         )
-        await asyncio.sleep(DELAY_BEETWEEN_BOT_MESSAGES)
+        await asyncio.sleep(config.delay_between_bot_messages)
 
         await bot.send_message(
             chat_id=chat_id,

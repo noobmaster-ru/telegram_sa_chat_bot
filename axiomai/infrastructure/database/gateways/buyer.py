@@ -5,35 +5,18 @@ from axiomai.infrastructure.database.models.buyer import Buyer
 
 
 class BuyerGateway(Gateway):
-    async def create_buyer(self, buyer: Buyer) -> Buyer:
+    async def create_buyer(self, buyer: Buyer) -> None:
         self._session.add(buyer)
         await self._session.flush()
-        return buyer
 
     async def get_buyer_by_id(self, buyer_id: int) -> Buyer | None:
         return await self._session.scalar(select(Buyer).where(Buyer.id == buyer_id))
 
     async def get_buyer_by_telegram_id_and_nm_id(self, telegram_id: int, nm_id: int) -> Buyer | None:
-        """Получить заявку покупателя по telegram_id и артикулу."""
-        return await self._session.scalar(
-            select(Buyer).where(Buyer.telegram_id == telegram_id, Buyer.nm_id == nm_id)
-        )
-
-    async def get_active_buyer_by_telegram_id(self, telegram_id: int) -> Buyer | None:
-        """Получить последнюю незавершённую заявку покупателя."""
-        return await self._session.scalar(
-            select(Buyer)
-            .where(Buyer.telegram_id == telegram_id, Buyer.is_superbanking_paid.is_(False))
-            .order_by(Buyer.created_at.desc())
-        )
+        return await self._session.scalar(select(Buyer).where(Buyer.telegram_id == telegram_id, Buyer.nm_id == nm_id))
 
     async def get_buyers_by_cabinet_id(self, cabinet_id: int) -> list[Buyer]:
-        """Получить все заявки покупателей по кабинету."""
         result = await self._session.scalars(
             select(Buyer).where(Buyer.cabinet_id == cabinet_id).order_by(Buyer.created_at.desc())
         )
         return list(result)
-
-    async def update_buyer(self, buyer: Buyer) -> None:
-        """Обновить заявку покупателя."""
-        await self._session.flush()

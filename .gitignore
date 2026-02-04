@@ -12,7 +12,7 @@ data/
 logs/
 pgdata/
 .pytest_cache/
-
+.idea
 
 DataExport*
 

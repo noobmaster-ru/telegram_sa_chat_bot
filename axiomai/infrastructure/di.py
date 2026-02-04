@@ -1,7 +1,6 @@
 from collections.abc import AsyncIterable
 
 from dishka import Provider, Scope, provide, provide_all
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
@@ -34,6 +33,7 @@ class DatabaseProvider(Provider):
             config.postgres_uri,
             pool_size=15,
             max_overflow=15,
+            pool_pre_ping=True,
             connect_args={"connect_timeout": 5},
         )
         yield engine
@@ -75,12 +75,9 @@ class GatewaysProvider(Provider):
 
 
 class TgbotInteractorsProvider(Provider):
-    @provide(scope=Scope.APP)
-    def get_message_debouncer(self, redis: Redis, config: MessageDebouncerConfig) -> MessageDebouncer:
-        return MessageDebouncer(redis=redis, config=config)
-
     superbanking = provide(Superbanking, scope=Scope.APP)
     openai_gateway = provide(OpenAIGateway, scope=Scope.APP)
+    message_debouncer = provide(MessageDebouncer, scope=Scope.APP)
 
     interactors = provide_all(
         CreateSeller,

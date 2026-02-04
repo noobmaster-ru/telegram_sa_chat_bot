@@ -25,6 +25,7 @@ class CreateBuyer:
         username: str | None,
         fullname: str,
         article_id: int,
+        chat_history: list[dict] | None = None,
     ) -> Buyer:
         article = await self._cashback_table_gateway.get_cashback_article_by_id(article_id)
         if not article:
@@ -45,7 +46,7 @@ class CreateBuyer:
             username=username,
             fullname=fullname,
             nm_id=article.nm_id,
-            chat_history=[],
+            chat_history=chat_history or [],
         )
 
         await self._buyer_gateway.create_buyer(buyer)

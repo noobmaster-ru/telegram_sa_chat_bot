@@ -17,7 +17,7 @@ BANK_PATTERN = re.compile(
 )
 PHONE_PATTERN = re.compile(r"(?:\+7|8|7)[\s\-()]?\d{3}[\s\-()]?\d{3}[\s\-()]?\d{2}[\s\-()]?\d{2}\b")
 AMOUNT_PATTERN = re.compile(
-    r"(?<!\d[ -])\b(\d{1,6}(?:[.,]\d{1,2})?\s?(?:р|руб(?:лей)?|₽|Р|Рублей)?)\b(?![ -]?\d)", re.IGNORECASE
+    r"(?<!\d[ -])\b(\d{1,6}(?:[.,]\d{1,2})?)\s?(?:р|руб(?:лей)?|₽|Р|Рублей)?\b(?![ -]?\d)", re.IGNORECASE
 )
 CARD_CLEAN_RE = re.compile(r"[ -]")
 
@@ -27,5 +27,3 @@ GPT_MAX_TOKENS = 300
 GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS = 850
 GPT_TEMPERATURE = 1.45
 GPT_REASONING = "high"  # "low" | "medium" | "high"
-
-DELAY_BEETWEEN_BOT_MESSAGES = 2.25

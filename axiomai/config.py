@@ -35,6 +35,8 @@ class Config(BaseModel):
     )
     admin_username: str = Field(alias="ADMIN_USERNAME", default="@noobmaster_rus")
 
+    delay_between_bot_messages: float = Field(alias="DELAY_BETWEEN_BOT_MESSAGES", default=2.25)
+
     message_debouncer: MessageDebouncerConfig = Field(default_factory=lambda: MessageDebouncerConfig(**environ))
     superbankink_config: SuperbankingConfig = Field(default_factory=lambda: SuperbankingConfig(**environ))
     openai_config: OpenAIConfig = Field(default_factory=lambda: OpenAIConfig(**environ))

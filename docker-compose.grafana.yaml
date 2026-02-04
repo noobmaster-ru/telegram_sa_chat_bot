@@ -1,0 +1,35 @@
+services:
+  loki:
+    container_name: axiomai.loki.prod
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    ports:
+      - "3101:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+  vector:
+    container_name: axiomai.vector.prod
+    image: timberio/vector:0.43.1-alpine
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+    depends_on:
+      - loki
+    command: --config /etc/vector/vector.yaml
+  grafana:
+    container_name: axiomai.grafana.prod
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    depends_on:
+      - loki
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+volumes:
+  grafana-data:

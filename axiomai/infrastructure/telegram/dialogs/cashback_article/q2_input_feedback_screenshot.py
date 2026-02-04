@@ -1,27 +1,26 @@
 import asyncio
 import logging
+from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.enums import ChatAction
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import DefaultKeyBuilder, StorageKey
-from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from redis.asyncio import Redis
 
-from axiomai.constants import DELAY_BEETWEEN_BOT_MESSAGES
+from axiomai.config import Config
+from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
+from axiomai.infrastructure.database.transaction_manager import TransactionManager
+from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
 from axiomai.infrastructure.openai import OpenAIGateway
-from axiomai.infrastructure.telegram.dialogs.cashback_article.common import _update_buyer_field
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 logger = logging.getLogger(__name__)
-
-_background_tasks: set[asyncio.Task[None]] = set()
 
 
 @inject
@@ -32,7 +31,9 @@ async def on_input_feedback_screenshot(
     openai_gateway: FromDishka[OpenAIGateway],
     cashback_table_gateway: FromDishka[CashbackTableGateway],
     di_container: FromDishka[AsyncContainer],
-    redis: FromDishka[Redis],
+    storage: FromDishka[BaseStorage],
+    message_debouncer: FromDishka[MessageDebouncer],
+    config: FromDishka[Config],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
     state: FSMContext = dialog_manager.middleware_data["state"]
@@ -54,35 +55,47 @@ async def on_input_feedback_screenshot(
     await message.answer("⏳ Проверяю скриншот отзыва...")
     await state.set_state("skip_messaging")
 
-    bg_manager = dialog_manager.bg()
+    message_data = MessageData(
+        text=message.caption,
+        timestamp=datetime.now(UTC).timestamp(),
+        message_id=message.message_id,
+        has_photo=bool(message.photo),
+        photo_url=photo_url,
+    )
 
-    task = asyncio.create_task(
-        _process_feedback_screenshot_background(
+    bg_manager = dialog_manager.bg()
+    app_container = di_container.parent_container
+
+    await message_debouncer.add_message(
+        business_connection_id=message.business_connection_id,
+        chat_id=message.chat.id,
+        message_data=message_data,
+        process_callback=lambda biz_id, chat_id, msgs: _process_feedback_screenshot_background(
+            messages=msgs,
             bot=bot,
-            redis=redis,
+            storage=storage,
             bg_manager=bg_manager,
-            di_container=di_container,
+            di_container=app_container,
             openai_gateway=openai_gateway,
-            photo_url=photo_url,
+            config=config,
             article_title=article.title,
             article_brand_name=article.brand_name,
-            chat_id=message.from_user.id,
+            chat_id=chat_id,
             user_id=message.from_user.id,
-            business_connection_id=message.business_connection_id,
+            business_connection_id=biz_id,
             buyer_id=buyer_id,
-        )
+        ),
     )
-    _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
 
 
 async def _process_feedback_screenshot_background(
+    messages: list[MessageData],
     bot: Bot,
-    redis: Redis,
+    storage: BaseStorage,
     bg_manager: DialogManager,
     di_container: AsyncContainer,
     openai_gateway: OpenAIGateway,
-    photo_url: str,
+    config: Config,
     article_title: str,
     article_brand_name: str,
     chat_id: int,
@@ -90,11 +103,22 @@ async def _process_feedback_screenshot_background(
     business_connection_id: str,
     buyer_id: int | None,
 ) -> None:
-    storage = RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True))
-    state = FSMContext(storage, StorageKey(user_id=user_id, chat_id=chat_id, bot_id=bot.id))
+    state = FSMContext(
+        storage,
+        StorageKey(user_id=user_id, chat_id=chat_id, bot_id=bot.id, business_connection_id=business_connection_id),
+    )
+
+    last_photo = messages[-1]
+    if not last_photo.photo_url:
+        await bot.send_message(
+            chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
+        )
+        return
 
     try:
-        result = await openai_gateway.classify_feedback_screenshot(photo_url, article_title, article_brand_name)
+        result = await openai_gateway.classify_feedback_screenshot(
+            last_photo.photo_url, article_title, article_brand_name
+        )
     except Exception as e:
         logger.exception("classify feedback screenshot error", exc_info=e)
         await bot.send_message(
@@ -108,7 +132,7 @@ async def _process_feedback_screenshot_background(
         action=ChatAction.TYPING,
         business_connection_id=business_connection_id,
     )
-    await asyncio.sleep(DELAY_BEETWEEN_BOT_MESSAGES)
+    await asyncio.sleep(config.delay_between_bot_messages)
 
     if not result["is_feedback"]:
         cancel_reason = result["cancel_reason"]
@@ -122,10 +146,14 @@ async def _process_feedback_screenshot_background(
         await state.set_state("client_processing")
         return
 
+    async with di_container() as r_container:
+        buyer_gateway = await r_container.get(BuyerGateway)
+        transaction_manager = await r_container.get(TransactionManager)
+        buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
+        buyer.is_left_feedback = True
+        await transaction_manager.commit()
+
     await bot.send_message(chat_id, "✅ Скриншот отзыва принят!", business_connection_id=business_connection_id)
 
-    if buyer_id:
-        await _update_buyer_field(di_container, buyer_id, is_left_feedback=True)
-
-    await bg_manager.switch_to(CashbackArticleStates.check_labels_cut, show_mode=ShowMode.SEND)
     await state.set_state("client_processing")
+    await bg_manager.switch_to(CashbackArticleStates.check_labels_cut, show_mode=ShowMode.SEND)

@@ -3,7 +3,7 @@ import logging
 import re
 from contextlib import suppress
 
-from httpx import AsyncClient, HTTPTransport
+from httpx import AsyncClient, AsyncHTTPTransport
 from openai import AsyncOpenAI
 from openai.types.responses import Response
 
@@ -32,7 +32,7 @@ class OpenAIGateway:
     def __init__(self, config: OpenAIConfig) -> None:
         self._client = AsyncOpenAI(
             api_key=config.openai_api_key,
-            http_client=AsyncClient(proxy=config.proxy, transport=HTTPTransport(local_address="0.0.0.0")),
+            http_client=AsyncClient(proxy=config.proxy, transport=AsyncHTTPTransport(local_address="0.0.0.0")),
         )
 
     async def classify_article_from_message(
@@ -332,6 +332,104 @@ class OpenAIGateway:
         result = _extract_response_text(response)
         return _parse_answer_result(result)
 
+    async def chat_with_client(
+        self,
+        user_message: str,
+        articles: list[CashbackArticle],
+        chat_history: list[dict[str, str]] | None = None,
+        photo_url: str | None = None,
+    ) -> dict[str, str | int | None]:
+        """
+        Ведёт pre-dialog общение с клиентом до классификации артикула.
+
+        Returns:
+            dict с ключами:
+            - response: str - текст ответа
+            - article_id: int | None - ID артикула если GPT определил товар
+        """
+        articles_info = "\n".join(
+            f"- ID:{article.id} | Название: {article.title}\n  Условия: {article.instruction_text}"
+            for article in articles
+        )
+        articles_titles = "\n".join(f"- {article.title}" for article in articles)
+        valid_ids = {article.id for article in articles}
+
+        history_text = ""
+        if chat_history:
+            history_lines = []
+            for entry in chat_history[-10:]:
+                history_lines.append(f"Клиент: {entry['user']}")
+                history_lines.append(f"Ты: {entry['assistant']}")
+            history_text = "\n".join(history_lines)
+
+        prompt = f"""
+        Ты — приветливый менеджер кешбек-сервиса на Wildberries. Твоя задача — общаться с клиентом, рассказывать о товарах и помогать получить кешбек.
+        
+        Доступные товары для кешбека (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):
+        {articles_info}
+        
+        Список товаров для показа пользователю:
+        {articles_titles}
+        
+        {"История диалога:" + chr(10) + history_text if history_text else ""}
+        
+        Новое сообщение клиента: "{user_message}"
+        
+        СТРОГИЕ ЗАПРЕТЫ:
+        - НИКОГДА не давай ссылки на изображения или URL
+        - НИКОГДА не угадывай товар — если непонятно, переспроси
+        - НИКОГДА не показывай ID артикулов
+        - НИКОГДА не придумывай информацию о товаре
+        
+        ПРАВИЛА ОБЩЕНИЯ:
+        1. Отвечай кратко и дружелюбно (2-4 предложения)
+        2. Используй разметку Markdown
+        3. НЕ добавляй формальные завершающие фразы
+        
+        ЛОГИКА ДИАЛОГА:
+        - Если клиент просто здоровается или спрашивает "актуально?" — поприветствуй и перечисли доступные товары
+        - Если клиент спрашивает об условиях в общем — скажи что условия разные и попроси уточнить товар
+        - Если клиент задаёт неопределённый вопрос ("это какое?", "фото можно?", "а что это?") — ПЕРЕСПРОСИ о каком именно товаре он спрашивает
+        - Если клиент ЯВНО называет конкретный товар (например "ролик", "губка", "носки") — расскажи условия этого товара и ДОБАВЬ в начало ответа: [ARTICLE:ID]
+        - Добавляй [ARTICLE:ID] ТОЛЬКО когда клиент ОДНОЗНАЧНО выбрал товар
+        
+        ПРИМЕР 1 (неопределённый вопрос):
+        Клиент: "это какое? фото можно?"
+        Ответ: Уточните, пожалуйста, о каком товаре вы спрашиваете? У нас есть: Ролик для одежды, Губка для Фитолампы.
+        
+        ПРИМЕР 2 (явный выбор):
+        Клиент: "ролик"
+        Ответ: [ARTICLE:123]Отлично! Для получения кешбека за ролик: оплатите заказ, оставьте отзыв на 5 звёзд и пришлите фото разрезанных этикеток. Готовы начать?
+        """
+
+        content: list[dict[str, str]] | str
+        if photo_url:
+            content = [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image_url": photo_url},
+            ]
+        else:
+            content = prompt
+
+        messages = [
+            {"role": "system", "content": "Ты вежливый менеджер кешбек-сервиса Wildberries."},
+            {"role": "user", "content": content},
+        ]
+
+        response = await self._client.responses.create(
+            model=CHAT_GPT_4O_LATEST,
+            input=messages,
+            temperature=0.7,
+        )
+
+        result = _extract_response_text(response)
+        parsed = _parse_predialog_result(result)
+
+        if parsed["article_id"] and parsed["article_id"] not in valid_ids:
+            parsed["article_id"] = None
+
+        return parsed
+
 
 def _extract_response_text(response: Response) -> str | None:
     """Извлекает текст ответа из response объекта OpenAI"""
@@ -365,3 +463,18 @@ def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | Non
             result = re.sub(r"\[SWITCH:\d+\]", "", result).strip()
 
     return {"response": result, "wants_to_stop": wants_to_stop, "switch_to_article_id": switch_to_article_id}
+
+
+def _parse_predialog_result(result: str | None) -> dict[str, str | int | None]:
+    """Парсит результат pre-dialog ответа GPT и извлекает article_id"""
+    if not result:
+        return {"response": "Здравствуйте! Чем могу помочь?", "article_id": None}
+
+    article_id = None
+    if "[ARTICLE:" in result:
+        match = re.search(r"\[ARTICLE:(\d+)\]", result)
+        if match:
+            article_id = int(match.group(1))
+            result = re.sub(r"\[ARTICLE:\d+\]", "", result).strip()
+
+    return {"response": result, "article_id": article_id}

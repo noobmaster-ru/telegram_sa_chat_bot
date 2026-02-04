@@ -1,0 +1,28 @@
+sources:
+  docker_logs:
+    type: docker_logs
+    docker_host: /var/run/docker.sock
+    include_containers:
+      - axiomai.tgbot.prod
+      - axiomai.observer.prod
+
+transforms:
+  parse_json:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      structured = object!(parse_json(.message) ?? {})
+      . = merge(., structured)
+
+sinks:
+  loki:
+    type: loki
+    inputs:
+      - parse_json
+    endpoint: http://loki:3100
+    encoding:
+      codec: json
+    labels:
+      container: "{{ container_name }}"
+      level: "{{ level }}"

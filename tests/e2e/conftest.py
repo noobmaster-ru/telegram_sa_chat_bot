@@ -6,20 +6,46 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram import Bot
+from aiogram.fsm.storage.base import BaseStorage
+from aiogram_dialog.test_tools.memory_storage import JsonMemoryStorage
 from alembic.command import upgrade
 from dishka import make_async_container
 from mimesis import Locale, Generic
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from testcontainers.postgres import PostgresContainer
 from alembic.config import Config as AlembicConfig
 
 from axiomai.config import Config
 from axiomai.infrastructure.database.models import Cabinet, CashbackTable
-from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus
+from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus, CashbackArticle
 from axiomai.infrastructure.database.models.user import User
 from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
+from axiomai.infrastructure.message_debouncer import MessageDebouncer
 from axiomai.infrastructure.openai import OpenAIGateway
-from tests.e2e.mocks import MocksProvider
+from axiomai.infrastructure.superbanking import Superbanking
+from tests.e2e.mocks import MocksProvider, FakeMessageDebouncer
+
+
+class FakeRedis:
+    """Fake Redis for testing that stores data in memory."""
+
+    def __init__(self):
+        self._data: dict[str, bytes] = {}
+
+    async def get(self, key: str) -> bytes | None:
+        return self._data.get(key)
+
+    async def set(self, key: str, value: str | bytes) -> None:
+        if isinstance(value, str):
+            value = value.encode()
+        self._data[key] = value
+
+    async def setex(self, key: str, ttl: int, value: str | bytes) -> None:
+        await self.set(key, value)
+
+    async def delete(self, key: str) -> None:
+        self._data.pop(key, None)
 
 
 @pytest.fixture(scope="session")
@@ -28,7 +54,7 @@ def postgres_uri():
 
     try:
         postgres.start()
-        database_uri = postgres.get_connection_url(driver="psycopg")
+        database_uri = postgres.get_connection_url(host="127.0.0.1", driver="psycopg")
         yield database_uri
     finally:
         postgres.stop()
@@ -64,6 +90,8 @@ async def session(engine) -> AsyncIterable[AsyncSession]:
 async def di_container(session):
     google_sheets_mock = AsyncMock()
     google_sheets_mock.sync_buyers_to_sheet = AsyncMock()
+    config = MagicMock()
+    config.delay_between_bot_messages = 0
 
     container = make_async_container(
         MocksProvider(),
@@ -72,7 +100,11 @@ async def di_container(session):
             GoogleSheetsGateway: google_sheets_mock,
             Bot: AsyncMock(),
             OpenAIGateway: AsyncMock(),
-            Config: MagicMock(),
+            Config: config,
+            MessageDebouncer: FakeMessageDebouncer(),
+            Redis: FakeRedis(),
+            BaseStorage: JsonMemoryStorage(),
+            Superbanking: AsyncMock(),
         },
     )
     yield container
@@ -100,7 +132,11 @@ def user_factory(session):
 
 @pytest.fixture
 def cabinet_factory(session, user_factory):
-    async def get_cabinet(user_id: int | None = None, leads_balance: int = 0) -> Cabinet:
+    async def get_cabinet(
+        user_id: int | None = None,
+        leads_balance: int = 0,
+        business_connection_id: str | None = None,
+    ) -> Cabinet:
         if not user_id:
             user = await user_factory()
             user_id = user.id
@@ -110,6 +146,7 @@ def cabinet_factory(session, user_factory):
             leads_balance=leads_balance,
             organization_name="none",
             link_code=secrets.token_urlsafe(16),
+            business_connection_id=business_connection_id,
         )
         session.add(cabinet)
         await session.flush()
@@ -133,3 +170,26 @@ def cashback_table_factory(session, cabinet_factory):
         return cashback_table
 
     return get_cashback_table
+
+
+@pytest.fixture
+def cashback_article_factory(session, cabinet_factory):
+    async def get_cashback_article(cabinet_id: int | None = None, *, in_stock: bool = True) -> CashbackArticle:
+        if not cabinet_id:
+            cabinet = await cabinet_factory()
+            cabinet_id = cabinet.id
+
+        article = CashbackArticle(
+            cabinet_id=cabinet_id,
+            nm_id=randint(1, 1_000_000),
+            title="Test Article",
+            brand_name="Test Brand",
+            image_url="http://example.com/image.jpg",
+            instruction_text="Test Instruction",
+            in_stock=in_stock,
+        )
+        session.add(article)
+        await session.flush()
+        return article
+
+    return get_cashback_article

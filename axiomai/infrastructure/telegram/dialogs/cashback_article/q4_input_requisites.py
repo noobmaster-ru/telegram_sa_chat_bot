@@ -4,9 +4,8 @@ from typing import Any
 from aiogram import Bot
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode
-from dishka import AsyncContainer, FromDishka
+from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from redis.asyncio import Redis
 
 from axiomai.constants import (
     AMOUNT_PATTERN,
@@ -15,8 +14,9 @@ from axiomai.constants import (
     CARD_PATTERN,
     PHONE_PATTERN,
 )
+from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.superbanking import Superbanking
-from axiomai.infrastructure.telegram.dialogs.cashback_article.common import _update_buyer_field
 
 
 @inject
@@ -25,22 +25,29 @@ async def on_input_requisites(
     widget: Any,
     dialog_manager: DialogManager,
     superbanking: FromDishka[Superbanking],
-    redis: FromDishka[Redis],
+    buyer_gateway: FromDishka[BuyerGateway],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
+
+    buyer_id = dialog_manager.dialog_data.get("buyer_id")
+
+    if not buyer_id:
+        await message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
+        await dialog_manager.done()
+        return
+
+    buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
 
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
     requisites = message.text.strip()
 
-    gpt_amount_key = f"gpt_amount:{message.from_user.id}:{message.chat.id}"
-    gpt_amount = await redis.get(gpt_amount_key)
-    if gpt_amount:
-        dialog_manager.dialog_data["amount"] = gpt_amount.decode() if isinstance(gpt_amount, bytes) else gpt_amount
+    if buyer.amount:
+        dialog_manager.dialog_data["amount"] = buyer.amount
 
     if card_match := CARD_PATTERN.search(requisites):
         dialog_manager.dialog_data["card_number"] = CARD_CLEAN_RE.sub("", card_match.group())
-    if (amount_match := AMOUNT_PATTERN.search(requisites)) and (not gpt_amount):
+    if (amount_match := AMOUNT_PATTERN.search(requisites)) and (not buyer.amount):
         dialog_manager.dialog_data["amount"] = amount_match.group(1)
     if phone_match := PHONE_PATTERN.search(requisites):
         dialog_manager.dialog_data["phone_number"] = phone_match.group()
@@ -59,21 +66,27 @@ async def on_confirm_requisites(
     callback: CallbackQuery,
     widget: Any,
     dialog_manager: DialogManager,
-    di_container: FromDishka[AsyncContainer],
+    buyer_gateway: FromDishka[BuyerGateway],
+    transaction_manager: FromDishka[TransactionManager],
 ) -> None:
-
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
-    if buyer_id:
-        update_fields = {}
-        if dialog_manager.dialog_data.get("phone_number"):
-            update_fields["phone_number"] = dialog_manager.dialog_data["phone_number"]
-        if dialog_manager.dialog_data.get("bank"):
-            update_fields["bank"] = dialog_manager.dialog_data["bank"]
-        if dialog_manager.dialog_data.get("amount"):
-            with contextlib.suppress(ValueError, TypeError):
-                update_fields["amount"] = int(dialog_manager.dialog_data["amount"])
-        if update_fields:
-            await _update_buyer_field(di_container, buyer_id, **update_fields)
+    if not buyer_id:
+        await callback.message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
+        await dialog_manager.done()
+        return
+
+    buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
+
+    if dialog_manager.dialog_data.get("phone_number"):
+        buyer.phone_number = dialog_manager.dialog_data["phone_number"]
+    if dialog_manager.dialog_data.get("bank"):
+        buyer.bank = dialog_manager.dialog_data["bank"]
+    if dialog_manager.dialog_data.get("amount"):
+        with contextlib.suppress(ValueError, TypeError):
+            if not buyer.amount:
+                buyer.amount = int(dialog_manager.dialog_data["amount"])
+
+    await transaction_manager.commit()
 
     await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
     await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
