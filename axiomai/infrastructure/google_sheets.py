@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 
 from aiogoogle import Aiogoogle, HTTPError
 from aiogoogle.auth.creds import ServiceAccountCreds
@@ -10,6 +11,7 @@ from axiomai.config import Config
 from axiomai.infrastructure.database.models import Buyer
 
 logger = logging.getLogger(__name__)
+MSK_TZ = timezone(timedelta(hours=3))
 
 
 class GoogleSheetsGateway:
@@ -105,8 +107,8 @@ class GoogleSheetsGateway:
                 if user_messages:
                     first_msg = user_messages[0]
                     last_msg = user_messages[-1]
-                    first_user_msg_time = first_msg.get("created_at", "")
-                    last_user_msg_time = last_msg.get("created_at", "")
+                    first_user_msg_time = _format_time_msk(first_msg.get("created_at", ""))
+                    last_user_msg_time = _format_time_msk(last_msg.get("created_at", ""))
                     last_user_msg_text = last_msg.get("user", "")
 
             username_link = f"@{buyer.username}" if buyer.username else buyer.fullname
@@ -154,3 +156,14 @@ class GoogleSheetsGateway:
                     )
             except HTTPError as err:
                 logger.exception("Failed to sync buyers to sheet %s", table_id, exc_info=err)
+
+
+def _format_time_msk(iso_time: str) -> str:
+    if not iso_time:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso_time)
+        dt_msk = dt.astimezone(MSK_TZ)
+        return dt_msk.strftime("%Y-%m-%d %H-%M-%S")
+    except (ValueError, TypeError):
+        return iso_time
