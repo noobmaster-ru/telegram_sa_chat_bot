@@ -1,5 +1,7 @@
 import json
 import logging
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from aiogoogle import Aiogoogle, HTTPError
 from aiogoogle.auth.creds import ServiceAccountCreds
@@ -10,6 +12,26 @@ from axiomai.config import Config
 from axiomai.infrastructure.database.models import Buyer
 
 logger = logging.getLogger(__name__)
+
+
+_MOSCOW_TZ = ZoneInfo("Europe/Moscow")
+
+
+def _format_ts(value: str | datetime | None) -> str:
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        dt = value
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(_MOSCOW_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(_MOSCOW_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return str(value)
 
 
 class GoogleSheetsGateway:
@@ -105,8 +127,8 @@ class GoogleSheetsGateway:
                 if user_messages:
                     first_msg = user_messages[0]
                     last_msg = user_messages[-1]
-                    first_user_msg_time = first_msg.get("created_at", "")
-                    last_user_msg_time = last_msg.get("created_at", "")
+                    first_user_msg_time = _format_ts(first_msg.get("created_at"))
+                    last_user_msg_time = _format_ts(last_msg.get("created_at"))
                     last_user_msg_text = last_msg.get("user", "")
 
             username_link = f"@{buyer.username}" if buyer.username else buyer.fullname
