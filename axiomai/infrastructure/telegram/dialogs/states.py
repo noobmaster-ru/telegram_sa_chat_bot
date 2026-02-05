@@ -3,6 +3,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 class CreateCashbackTableStates(StatesGroup):
     copy_gs_template = State()
+    ask_superbanking = State()
 
 
 class MyCabinetStates(StatesGroup):

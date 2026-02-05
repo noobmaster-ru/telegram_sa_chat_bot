@@ -32,8 +32,15 @@ class Cabinet(Base):
         String(64), unique=True, comment="Код для первичной привязки бизнес-аккаунта (/link_<code>)"
     )
 
+    balance: Mapped[int] = mapped_column(default=0, comment="Текущий баланс кабинета в рублях")
+
     # 🔹 новое поле — баланс лидов
-    leads_balance: Mapped[int] = mapped_column(server_default="0", comment="Текущий баланс лидов по кабинету")
+    leads_balance: Mapped[int] = mapped_column(default=0, comment="Текущий баланс лидов по кабинету")
+
+    is_superbanking_connect: Mapped[bool] = mapped_column(
+        default=False,
+        comment="Включена ли выплата через Superbanking для этого кабинета",
+    )
 
     created_at: Mapped[datetime.datetime] = mapped_column(
         TIMESTAMP(timezone=True),
