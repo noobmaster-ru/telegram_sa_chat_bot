@@ -4,8 +4,6 @@ from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.enums import ChatAction
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
@@ -33,13 +31,11 @@ async def on_input_order_screenshot(
     openai_gateway: FromDishka[OpenAIGateway],
     cashback_table_gateway: FromDishka[CashbackTableGateway],
     di_container: FromDishka[AsyncContainer],
-    storage: FromDishka[BaseStorage],
     message_debouncer: FromDishka[MessageDebouncer],
     config: FromDishka[Config],
     create_buyer: FromDishka[CreateBuyer],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
-    state: FSMContext = dialog_manager.middleware_data["state"]
 
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
@@ -54,9 +50,6 @@ async def on_input_order_screenshot(
     photo_url = f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
 
     article = await cashback_table_gateway.get_cashback_article_by_id(dialog_manager.start_data["article_id"])
-
-    await message.answer("⏳ Проверяю скриншот заказа...")
-    await state.set_state("skip_messaging")
 
     message_data = MessageData(
         text=message.caption,
@@ -76,7 +69,6 @@ async def on_input_order_screenshot(
         process_callback=lambda biz_id, chat_id, msgs: _process_order_screenshot_background(
             messages=msgs,
             bot=bot,
-            storage=storage,
             bg_manager=bg_manager,
             di_container=app_container,
             openai_gateway=openai_gateway,
@@ -85,7 +77,6 @@ async def on_input_order_screenshot(
             article_brand_name=article.brand_name,
             article_image_url=article.image_url,
             chat_id=chat_id,
-            user_id=message.from_user.id,
             business_connection_id=biz_id,
             buyer_id=buyer_id,
         ),
@@ -95,7 +86,6 @@ async def on_input_order_screenshot(
 async def _process_order_screenshot_background(
     messages: list[MessageData],
     bot: Bot,
-    storage: BaseStorage,
     bg_manager: DialogManager,
     di_container: AsyncContainer,
     openai_gateway: OpenAIGateway,
@@ -104,21 +94,17 @@ async def _process_order_screenshot_background(
     article_brand_name: str,
     article_image_url: str,
     chat_id: int,
-    user_id: int,
     business_connection_id: str,
     buyer_id: int,
 ) -> None:
-    state = FSMContext(
-        storage,
-        StorageKey(user_id=user_id, chat_id=chat_id, bot_id=bot.id, business_connection_id=business_connection_id),
-    )
-
     last_photo = messages[-1]
     if not last_photo.photo_url:
         await bot.send_message(
             chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
         )
         return
+
+    await bot.send_message(chat_id, f"⏳ Проверяю скриншот заказа...", business_connection_id=business_connection_id)
 
     try:
         result = await openai_gateway.classify_order_screenshot(
@@ -129,7 +115,6 @@ async def _process_order_screenshot_background(
         await bot.send_message(
             chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
         )
-        await state.set_state("client_processing")
         return
 
     await bot.send_chat_action(
@@ -148,7 +133,6 @@ async def _process_order_screenshot_background(
             f"❌ Заказ не найден на скриншоте\n\n<code>{cancel_reason}</code>",
             business_connection_id=business_connection_id,
         )
-        await state.set_state("client_processing")
         return
 
     async with di_container() as r_container:
@@ -161,5 +145,4 @@ async def _process_order_screenshot_background(
 
     await bot.send_message(chat_id, "✅ Скриншот заказа принят!", business_connection_id=business_connection_id)
 
-    await state.set_state("client_processing")
     await bg_manager.switch_to(CashbackArticleStates.check_received, show_mode=ShowMode.SEND)

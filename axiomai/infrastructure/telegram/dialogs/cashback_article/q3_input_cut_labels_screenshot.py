@@ -4,8 +4,6 @@ from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.enums import ChatAction
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import Message
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
@@ -29,12 +27,10 @@ async def on_input_cut_labels_photo(
     dialog_manager: DialogManager,
     openai_gateway: FromDishka[OpenAIGateway],
     di_container: FromDishka[AsyncContainer],
-    storage: FromDishka[BaseStorage],
     message_debouncer: FromDishka[MessageDebouncer],
     config: FromDishka[Config],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
-    state: FSMContext = dialog_manager.middleware_data["state"]
 
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
@@ -47,9 +43,6 @@ async def on_input_cut_labels_photo(
     photo_url = f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
 
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
-
-    await message.answer("⏳ Проверяю фотографию разрезанных этикеток...")
-    await state.set_state("skip_messaging")
 
     message_data = MessageData(
         text=message.caption,
@@ -69,13 +62,11 @@ async def on_input_cut_labels_photo(
         process_callback=lambda biz_id, chat_id, msgs: _process_cut_labels_photo_background(
             messages=msgs,
             bot=bot,
-            storage=storage,
             bg_manager=bg_manager,
             di_container=app_container,
             openai_gateway=openai_gateway,
             config=config,
             chat_id=chat_id,
-            user_id=message.from_user.id,
             business_connection_id=biz_id,
             buyer_id=buyer_id,
         ),
@@ -85,27 +76,24 @@ async def on_input_cut_labels_photo(
 async def _process_cut_labels_photo_background(
     messages: list[MessageData],
     bot: Bot,
-    storage: BaseStorage,
     bg_manager: DialogManager,
     di_container: AsyncContainer,
     openai_gateway: OpenAIGateway,
     config: Config,
     chat_id: int,
-    user_id: int,
     business_connection_id: str,
     buyer_id: int | None,
 ) -> None:
-    state = FSMContext(
-        storage,
-        StorageKey(user_id=user_id, chat_id=chat_id, bot_id=bot.id, business_connection_id=business_connection_id),
-    )
-
     last_photo = messages[-1]
     if not last_photo.photo_url:
         await bot.send_message(
             chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
         )
         return
+
+    await bot.send_message(
+        chat_id, "⏳ Проверяю фотографию разрезанных этикеток...", business_connection_id=business_connection_id
+    )
 
     try:
         result = await openai_gateway.classify_cut_labels_photo(last_photo.photo_url)
@@ -114,7 +102,6 @@ async def _process_cut_labels_photo_background(
         await bot.send_message(
             chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
         )
-        await state.set_state("client_processing")
         return
 
     await bot.send_chat_action(
@@ -133,7 +120,6 @@ async def _process_cut_labels_photo_background(
             f"❌ Фото разрезанных штрихкодов не принято\n\n<code>{cancel_reason}</code>",
             business_connection_id=business_connection_id,
         )
-        await state.set_state("client_processing")
         return
 
     async with di_container() as r_container:
@@ -152,5 +138,4 @@ async def _process_cut_labels_photo_background(
         business_connection_id=business_connection_id,
     )
 
-    await state.set_state("client_processing")
     await bg_manager.switch_to(CashbackArticleStates.input_requisites, show_mode=ShowMode.SEND)
