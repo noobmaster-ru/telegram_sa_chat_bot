@@ -9,7 +9,7 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
-from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
+from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkBuyLeadsPaymentWaitingConfirm
 from axiomai.constants import KIRILL_CARD_NUMBER, KIRILL_PHONE_NUMBER, PRICE_PER_LEAD
 from axiomai.infrastructure.telegram.dialogs.states import BuyLeadsStates
 
@@ -51,7 +51,7 @@ async def on_paid_confirmed(
     callback: CallbackQuery,
     button: Button,
     dialog_manager: DialogManager,
-    mark_waiting: FromDishka[MarkPaymentWaitingConfirm],
+    mark_waiting: FromDishka[MarkBuyLeadsPaymentWaitingConfirm],
 ) -> None:
     payment_id = dialog_manager.dialog_data["payment_id"]
 
@@ -61,10 +61,6 @@ async def on_paid_confirmed(
     )
 
     await dialog_manager.done()
-
-
-async def on_paid_declined(callback: CallbackQuery, button: Button, dialog_manager: DialogManager) -> None:
-    await callback.message.answer("Пожалуйста, сделайте перевод на карту и тогда бот заработает.")
 
 
 buy_leads_dialog = Dialog(
@@ -84,7 +80,6 @@ buy_leads_dialog = Dialog(
         ),
         Row(
             Button(Const("✅ Да, оплатил(а)"), id="paid_yes", on_click=on_paid_confirmed),
-            Button(Const("❌ Не оплатил(а)"), id="paid_no", on_click=on_paid_declined),
         ),
         state=BuyLeadsStates.waiting_for_payment_confirm_click,
         getter=waiting_for_payment_confirm_getter,

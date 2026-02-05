@@ -8,9 +8,10 @@ from dishka.integrations.aiogram import inject
 from axiomai.application.exceptions.cabinet import BusinessAccountAlreadyLinkedError, CabinetAlreadyExistsError
 from axiomai.application.exceptions.user import UserAlreadyExistsError
 from axiomai.application.interactors.create_user import CreateSeller
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.telegram.dialogs.states import CreateCashbackTableStates
-from axiomai.infrastructure.telegram.keyboards.reply import kb_add_cabinet, kb_menu
+from axiomai.infrastructure.telegram.keyboards.reply import kb_add_cabinet, get_kb_menu
 from axiomai.infrastructure.telegram.text import (
     ADD_CABINET_INSTRUCTION_TEXT,
     REGISTRATION_ACCOUNT_WARNING_TEXT,
@@ -27,6 +28,7 @@ async def cmd_start(
     dialog_manager: DialogManager,
     create_seller: FromDishka[CreateSeller],
     cashback_table_gateway: FromDishka[CashbackTableGateway],
+    cabinet_gateway: FromDishka[CabinetGateway],
 ) -> None:
     telegram_id = message.from_user.id
     fullname = message.from_user.full_name or "-"
@@ -40,9 +42,10 @@ async def cmd_start(
     except CabinetAlreadyExistsError:
         cashback_table = await cashback_table_gateway.get_active_cashback_table_by_telegram_id(telegram_id)
         if not cashback_table:
-            await dialog_manager.start(CreateCashbackTableStates.copy_gs_template, mode=StartMode.RESET_STACK)
+            await dialog_manager.start(CreateCashbackTableStates.ask_superbanking, mode=StartMode.RESET_STACK)
             return
-        await message.answer("Добро пожаловать!", reply_markup=kb_menu)
+        cabinet = await cabinet_gateway.get_cabinet_by_telegram_id(message.from_user.id)
+        await message.answer("Добро пожаловать!", reply_markup=get_kb_menu(cabinet))
         return
     except UserAlreadyExistsError:
         pass

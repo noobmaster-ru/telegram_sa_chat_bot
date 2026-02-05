@@ -14,9 +14,7 @@ from axiomai.infrastructure.telegram.keyboards.inline import build_payment_admin
 logger = logging.getLogger(__name__)
 
 
-class MarkBuyLeadsPaymentWaitingConfirm:
-    """Интерактор для перевода платежа в статус ожидания подтверждения"""
-
+class MarkRefillBalancePaymentWaitingConfirm:
     def __init__(
         self,
         tm: TransactionManager,
@@ -53,9 +51,8 @@ class MarkBuyLeadsPaymentWaitingConfirm:
             )
 
         text = (
-            f"💸 Новая оплата {payment_id}\n"
+            f"💸 Новое пополнение баланса {payment_id}\n"
             f"Кабинет: {cabinet.organization_name}\n"
-            f"Лидов: {payment.service_data['leads']}\n"
             f"Сумма: {payment.amount} ₽\n\n"
             "Подтвердите, пожалуйста"
         )
@@ -66,4 +63,4 @@ class MarkBuyLeadsPaymentWaitingConfirm:
             reply_markup=build_payment_admin_keyboard(payment_id),
         )
 
-        logger.info("buy leads payment %s marked as waiting confirmation", payment_id)
+        logger.info("refill balance payment %s marked as waiting confirmation", payment_id)

@@ -14,7 +14,7 @@ from axiomai.config import Config, load_config
 from axiomai.infrastructure.di import ConfigProvider, DatabaseProvider, GatewaysProvider, TgbotInteractorsProvider
 from axiomai.infrastructure.logging import setup_logging
 from axiomai.infrastructure.telegram import dialogs
-from axiomai.tgbot import handlers
+from axiomai.tgbot import handlers, bot_commands
 
 
 async def main() -> None:
@@ -43,6 +43,7 @@ async def main() -> None:
     setup_dishka(di_container, dispatcher)
 
     try:
+        await bot_commands.setup(bot)
         await dispatcher.start_polling(bot, di_container=di_container)
     finally:
         await bot.session.close()

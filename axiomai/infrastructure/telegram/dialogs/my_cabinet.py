@@ -34,7 +34,8 @@ my_cabinet_dialog = Dialog(
             "⚡️ Axiom AI · Личный кабинет\n\n"
             "👤 Пользователь: {user}\n"
             "🔥 Бизнес акканут: <code>{cabinet.business_account_id}</code>\n\n"
-            "💎 Баланс лидов: <code>{cabinet.leads_balance}</code> лидов"
+            "💎 Баланс лидов: <code>{cabinet.leads_balance}</code> лидов\n"
+            "💰 Баланс: <code>{cabinet.balance}</code> ₽"
         ),
         state=MyCabinetStates.select_option,
         getter=my_cabinet_getter,

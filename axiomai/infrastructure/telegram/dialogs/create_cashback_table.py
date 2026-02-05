@@ -55,7 +55,7 @@ async def input_gs_link(
         return
 
     await send_insctruction_message(dialog_manager.middleware_data["bot"], message.chat.id, config)
-    await dialog_manager.next()
+    await dialog_manager.done()
 
 
 async def send_insctruction_message(bot: Bot, chat_id: int, config: Config) -> None:
@@ -97,15 +97,13 @@ async def on_superbanking_yes(
         cabinet.is_superbanking_connected = True
         await transaction_manager.commit()
 
-    await callback.message.answer(
-        "Отлично! Автовыплаты подключены.\n\n"
-        "<b>Реквизиты для пополнения счёта автовыплат:</b>\n"
-        "• Банк: [название банка]\n"
-        "• Номер счёта: [номер счёта]\n"
-        "• Получатель: [получатель]\n"
-        "• Назначение: [назначение платежа]"
+    text = callback.message.text.replace("Подключать автовыплаты?", "Подключать автовыплаты: <b>Да</b>")
+    await callback.message.edit_text(text)
+    await callback.answer(
+        "Отлично! Автовыплаты подключены. Вы сможете пополнить баланс после создания кабинета.",
+        show_alert=True,
     )
-    await dialog_manager.done()
+    await dialog_manager.next(show_mode=ShowMode.SEND)
 
 
 async def on_superbanking_no(
@@ -113,11 +111,24 @@ async def on_superbanking_no(
     button: Button,
     dialog_manager: DialogManager,
 ) -> None:
-    await callback.message.answer("Хорошо, автовыплаты не подключены. Вы можете подключить их позже.")
-    await dialog_manager.done()
+    text = callback.message.text.replace("Подключать автовыплаты?", "Подключать автовыплаты: <b>Нет</b>")
+    await callback.message.edit_text(text)
+    await callback.answer("Хорошо, автовыплаты не подключены. Вы можете подключить их позже.", show_alert=True)
+    await dialog_manager.next(show_mode=ShowMode.SEND)
 
 
 create_cashback_table_dialog = Dialog(
+    Window(
+        Const(
+            "Подключать автовыплаты?\n\n"
+            "<code>P.S. Автовыплаты - это когда деньги за кешбэк автоматически перечисляются на карту клиента.</code>"
+        ),
+        Row(
+            Button(Const("✅ Да"), id="superbanking_yes", on_click=on_superbanking_yes),
+            Button(Const("❌ Нет"), id="superbanking_no", on_click=on_superbanking_no),
+        ),
+        state=CreateCashbackTableStates.ask_superbanking,
+    ),
     Window(
         Const(
             "Сделайте себе копию этой таблицы\n\n"
@@ -126,13 +137,5 @@ create_cashback_table_dialog = Dialog(
         ),
         TextInput(id="gs_link", on_success=input_gs_link),
         state=CreateCashbackTableStates.copy_gs_template,
-    ),
-    Window(
-        Const("Подключать автовыплаты?"),
-        Row(
-            Button(Const("✅ Да"), id="superbanking_yes", on_click=on_superbanking_yes),
-            Button(Const("❌ Нет"), id="superbanking_no", on_click=on_superbanking_no),
-        ),
-        state=CreateCashbackTableStates.ask_superbanking,
     ),
 )

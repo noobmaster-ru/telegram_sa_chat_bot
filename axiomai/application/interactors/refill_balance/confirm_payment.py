@@ -9,7 +9,6 @@ from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
 from axiomai.infrastructure.database.gateways.user import UserGateway
-from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus
 from axiomai.infrastructure.database.models.payment import PaymentStatus
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.telegram.keyboards.reply import get_kb_menu
@@ -17,7 +16,7 @@ from axiomai.infrastructure.telegram.keyboards.reply import get_kb_menu
 logger = logging.getLogger(__name__)
 
 
-class ConfirmBuyLeadsPayment:
+class ConfirmRefillBalancePayment:
     def __init__(
         self,
         tm: TransactionManager,
@@ -53,25 +52,18 @@ class ConfirmBuyLeadsPayment:
                 f"Payment {payment_id} has already been processed (status: {payment.status.value})"
             )
 
-        leads = int(payment.service_data.get("leads", 0) or 0)
-
         payment.status = PaymentStatus.SUCCEEDED
-
-        if cashback_table.status != CashbackTableStatus.PAID:
-            cashback_table.status = CashbackTableStatus.PAID
-
-        if leads > 0:
-            cabinet.leads_balance = (cabinet.leads_balance or 0) + leads
+        cabinet.balance += payment.amount
 
         await self._tm.commit()
 
-        logger.info("buy leads payment %s confirmed by admin %s", payment_id, admin_telegram_id)
+        logger.info("refill balance payment %s confirmed by admin %s", payment_id, admin_telegram_id)
 
         user = await self._user_gateway.get_user_by_id(payment.user_id)
         if user and user.telegram_id:
             text = (
                 f"✅ Оплата {payment_id} подтверждена.\n\n"
-                f"На ваш кабинет начислено {leads} лидов.\n"
+                f"На ваш баланс начислено {payment.amount} ₽.\n"
                 "Теперь боту снова можно принимать заявки от клиентов."
             )
             await self._bot.send_message(chat_id=user.telegram_id, text=text, reply_markup=get_kb_menu(cabinet))

@@ -22,4 +22,4 @@ async def add_cabinet_handler(
     with suppress(CabinetAlreadyExistsError):
         await create_cabinet.execute(telegram_id=message.from_user.id)
 
-    await dialog_manager.start(CreateCashbackTableStates.copy_gs_template, mode=StartMode.RESET_STACK)
+    await dialog_manager.start(CreateCashbackTableStates.ask_superbanking, mode=StartMode.RESET_STACK)

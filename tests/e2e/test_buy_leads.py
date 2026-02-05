@@ -2,13 +2,11 @@ import pytest
 from sqlalchemy import select
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
-from axiomai.application.interactors.buy_leads.cancel_payment import CancelPayment
-from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPayment
-from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
+from axiomai.application.interactors.buy_leads.cancel_payment import CancelBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkBuyLeadsPaymentWaitingConfirm
 from axiomai.application.exceptions.payment import (
     PaymentAlreadyProcessedError,
-    PaymentNotFoundError,
-    PermissionDeniedError,
 )
 from axiomai.constants import PRICE_PER_LEAD
 from axiomai.infrastructure.database.models import Payment
@@ -22,18 +20,18 @@ async def buy_leads(di_container) -> BuyLeads:
 
 
 @pytest.fixture
-async def confirm_payment(di_container) -> ConfirmPayment:
-    return await di_container.get(ConfirmPayment)
+async def confirm_payment(di_container) -> ConfirmBuyLeadsPayment:
+    return await di_container.get(ConfirmBuyLeadsPayment)
 
 
 @pytest.fixture
-async def cancel_payment(di_container) -> CancelPayment:
-    return await di_container.get(CancelPayment)
+async def cancel_payment(di_container) -> CancelBuyLeadsPayment:
+    return await di_container.get(CancelBuyLeadsPayment)
 
 
 @pytest.fixture
-async def mark_payment_waiting(di_container) -> MarkPaymentWaitingConfirm:
-    return await di_container.get(MarkPaymentWaitingConfirm)
+async def mark_payment_waiting(di_container) -> MarkBuyLeadsPaymentWaitingConfirm:
+    return await di_container.get(MarkBuyLeadsPaymentWaitingConfirm)
 
 
 async def test_buy_leads_creates_payment(buy_leads, session, user_factory, cabinet_factory, cashback_table_factory):

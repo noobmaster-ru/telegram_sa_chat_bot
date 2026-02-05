@@ -9,6 +9,8 @@ from axiomai.tgbot.handlers import (
     my_cabinet,
     process_clients,
     start,
+    refill_balance,
+    auto_payments,
 )
 
 
@@ -20,6 +22,8 @@ def setup(dispatcher: Dispatcher) -> None:
         process_clients.router,
         my_cabinet.router,
         buy_leads.router,
+        refill_balance.router,
+        auto_payments.router,
         admin_confirms.router,
         start.router,
     )

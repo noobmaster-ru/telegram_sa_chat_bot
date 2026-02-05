@@ -8,7 +8,7 @@ from axiomai.infrastructure.database.transaction_manager import TransactionManag
 logger = logging.getLogger(__name__)
 
 
-class CancelBuyLeadsPayment:
+class CancelRefillBalancePayment:
     def __init__(
         self,
         tm: TransactionManager,
@@ -33,4 +33,4 @@ class CancelBuyLeadsPayment:
 
         await self._tm.commit()
 
-        logger.info("buy leads payment %s canceled by admin %s", payment_id, admin_telegram_id)
+        logger.info("refill balance payment %s canceled by admin %s", payment_id, admin_telegram_id)

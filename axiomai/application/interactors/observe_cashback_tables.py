@@ -9,7 +9,7 @@ from axiomai.infrastructure.database.gateways.user import UserGateway
 from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
-from axiomai.infrastructure.telegram.keyboards.reply import kb_menu
+from axiomai.infrastructure.telegram.keyboards.reply import get_kb_menu
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class ObserveCashbackTables:
                     f"{link_url}\n\n"
                     "После подключения, бот сможет автоматически будет обрабатывать сообщения от клиентов."
                 ),
-                reply_markup=kb_menu,
+                reply_markup=get_kb_menu(cabinet),
             )
 
             logger.info("table %s verified successfully", table.table_id)

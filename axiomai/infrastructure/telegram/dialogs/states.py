@@ -15,6 +15,11 @@ class BuyLeadsStates(StatesGroup):
     waiting_for_payment_confirm_click = State()
 
 
+class RefillBalanceStates(StatesGroup):
+    waiting_for_amount = State()
+    waiting_for_payment_confirm_click = State()
+
+
 class CashbackArticleStates(StatesGroup):
     check_order = State()
     check_received = State()

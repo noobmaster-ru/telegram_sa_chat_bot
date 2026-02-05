@@ -3,7 +3,6 @@ import logging
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
 from axiomai.application.exceptions.cashback_table import CashbackTableNotFoundError
 from axiomai.application.exceptions.user import UserNotFoundError
-from axiomai.constants import PRICE_PER_LEAD
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
@@ -15,7 +14,7 @@ from axiomai.infrastructure.database.transaction_manager import TransactionManag
 logger = logging.getLogger(__name__)
 
 
-class BuyLeads:
+class RefillBalance:
     def __init__(
         self,
         tm: TransactionManager,
@@ -30,7 +29,7 @@ class BuyLeads:
         self._cashback_table_gateway = cashback_table_gateway
         self._payment_gateway = payment_gateway
 
-    async def execute(self, telegram_id: int, leads_amount: int) -> int:
+    async def execute(self, telegram_id: int, amount: int) -> int:
         user = await self._user_gateway.get_user_by_telegram_id(telegram_id)
         if not user:
             raise UserNotFoundError(f"User with telegram_id {telegram_id} not found")
@@ -42,8 +41,6 @@ class BuyLeads:
         cashback_table = await self._cashback_table_gateway.get_active_cashback_table_by_telegram_id(telegram_id)
         if not cashback_table:
             raise CashbackTableNotFoundError(f"No active cashback table found for the user {telegram_id}")
-
-        amount = leads_amount * PRICE_PER_LEAD
 
         payment = Payment(
             user_id=user.id,
@@ -58,16 +55,14 @@ class BuyLeads:
                 "service": "cashback",
                 "service_id": cashback_table.id if cashback_table else None,
                 "months": None,
-                "leads": leads_amount,
                 "discounts": [{"discount": None, "description": None, "fix_price": None}],
-                "price_per_lead": PRICE_PER_LEAD,
-                "type": "buy_leads",
+                "type": "refill_balance",
             },
         )
 
         await self._payment_gateway.create_payment(payment)
         await self._tm.commit()
 
-        logger.info("buy leads payment %s created for user %s: %s leads", payment.id, telegram_id, leads_amount)
+        logger.info("refill balance payment %s created for user %s: %s ₽", payment.id, telegram_id, amount)
 
         return payment.id

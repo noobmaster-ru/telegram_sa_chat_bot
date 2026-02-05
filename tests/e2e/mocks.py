@@ -4,9 +4,9 @@ from dishka import Scope, provide, provide_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
-from axiomai.application.interactors.buy_leads.cancel_payment import CancelPayment
-from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPayment
-from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
+from axiomai.application.interactors.buy_leads.cancel_payment import CancelBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkBuyLeadsPaymentWaitingConfirm
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
@@ -48,8 +48,8 @@ class MocksProvider(GatewaysProvider):
         ObserveCashbackTables,
         SyncCashbackTables,
         BuyLeads,
-        ConfirmPayment,
-        CancelPayment,
-        MarkPaymentWaitingConfirm,
+        ConfirmBuyLeadsPayment,
+        CancelBuyLeadsPayment,
+        MarkBuyLeadsPaymentWaitingConfirm,
         CreateBuyer,
     )
