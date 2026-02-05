@@ -35,49 +35,6 @@ class OpenAIGateway:
             http_client=AsyncClient(proxy=config.proxy, transport=AsyncHTTPTransport(local_address="0.0.0.0")),
         )
 
-    async def classify_article_from_message(
-        self, message_text: str, articles: list[CashbackArticle], photo_url: str | None = None
-    ) -> CashbackArticle | None:
-        if not articles:
-            return None
-
-        articles_list = "\n".join(f"{i + 1}. {article.title}" for i, article in enumerate(articles))
-
-        prompt = f"""
-        Определи, о каком товаре идёт речь на основе изображения и/или текста сообщения клиента.
-        Список доступных товаров:
-        {articles_list}
-
-        Сообщение клиента: "{message_text}"
-
-        Посмотри на текст или изображение. Если текст или изображение относятся к одному из товаров (даже частично), верни его ИНДЕКС из списка (1, 2, 3 и т.д.).
-        Если не можешь определить товар, верни 0.
-
-        Ответь ТОЛЬКО числом - индексом товара из списка (например: 1, 2, 3...) или 0, если товар не определён.
-        """
-        content: list[dict[str, str]] | str
-        if photo_url:
-            content = [
-                {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image_url": photo_url},
-            ]
-        else:
-            content = prompt
-
-        messages = [
-            {"role": "system", "content": "Ты помощник для классификации сообщений клиентов."},
-            {"role": "user", "content": content},
-        ]
-
-        response = await self._client.responses.create(model=CHAT_GPT_4O_LATEST, input=messages, temperature=0)
-
-        with suppress(ValueError, json.JSONDecodeError, AttributeError):
-            result = int(response.output[0].content[0].text.strip())
-            if 1 <= result <= len(articles):
-                return articles[result - 1]
-
-        return None
-
     async def classify_order_screenshot(
         self, photo_url: str, article_title: str, brand_name: str, article_image_url: str | None = None
     ) -> dict[str, bool | str | int | None]:
@@ -387,7 +344,7 @@ class OpenAIGateway:
         3. НЕ добавляй формальные завершающие фразы
         
         ЛОГИКА ДИАЛОГА:
-        - Если клиент просто здоровается или спрашивает "актуально?" — поприветствуй и перечисли доступные товары
+        - Если клиент просто здоровается или спрашивает "актуально?" — поприветствуй, скажи, "Напишите название товара, по которому хотите кэшбек" и перечисли доступные товары
         - Если клиент спрашивает об условиях в общем — скажи что условия разные и попроси уточнить товар
         - Если клиент задаёт неопределённый вопрос ("это какое?", "фото можно?", "а что это?") — ПЕРЕСПРОСИ о каком именно товаре он спрашивает
         - Если клиент ЯВНО называет конкретный товар (например "ролик", "губка", "носки") — расскажи условия этого товара и ДОБАВЬ в начало ответа: [ARTICLE:ID]
