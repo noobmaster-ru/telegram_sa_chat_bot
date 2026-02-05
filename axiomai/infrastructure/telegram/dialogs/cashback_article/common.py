@@ -106,7 +106,7 @@ async def _process_dialog_messages(
         combined_text = merge_messages_text(messages)
 
         available_articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(
-            article.cabinet_id
+            cabinet_id=article.cabinet_id, telegram_id=chat_id
         )
         # Список (id, title) для GPT
         articles_list = [(art.id, art.title) for art in available_articles]
