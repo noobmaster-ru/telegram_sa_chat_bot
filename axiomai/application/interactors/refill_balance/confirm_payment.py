@@ -54,6 +54,7 @@ class ConfirmRefillBalancePayment:
 
         payment.status = PaymentStatus.SUCCEEDED
         cabinet.balance += payment.amount
+        cabinet.initial_balance = cabinet.balance
 
         await self._tm.commit()
 

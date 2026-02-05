@@ -33,6 +33,9 @@ class Cabinet(Base):
     )
 
     balance: Mapped[int] = mapped_column(default=0, comment="Текущий баланс кабинета в рублях")
+    initial_balance: Mapped[int] = mapped_column(
+        default=0, comment="Баланс после последнего пополнения (для расчёта порогов уведомлений)"
+    )
 
     # 🔹 новое поле — баланс лидов
     leads_balance: Mapped[int] = mapped_column(default=0, comment="Текущий баланс лидов по кабинету")

@@ -1,4 +1,5 @@
 __all__ = [
+    "BalanceNotification",
     "Base",
     "Buyer",
     "Cabinet",
@@ -7,6 +8,7 @@ __all__ = [
     "User",
 ]
 
+from axiomai.infrastructure.database.models.balance_notification import BalanceNotification
 from axiomai.infrastructure.database.models.base import Base
 from axiomai.infrastructure.database.models.buyer import Buyer
 from axiomai.infrastructure.database.models.cabinet import Cabinet

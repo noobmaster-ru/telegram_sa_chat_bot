@@ -11,6 +11,7 @@ from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.application.interactors.create_cabinet import CreateCabinet
 from axiomai.application.interactors.create_cashback_table import CreateCashbackTable
 from axiomai.application.interactors.create_user import CreateSeller
+from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
 from axiomai.application.interactors.refill_balance.cancel_payment import CancelRefillBalancePayment
 from axiomai.application.interactors.refill_balance.confirm_payment import ConfirmRefillBalancePayment
@@ -20,6 +21,7 @@ from axiomai.application.interactors.refill_balance.mark_payment_waiting_confirm
 from axiomai.application.interactors.refill_balance.refill_balance import RefillBalance
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.config import Config, MessageDebouncerConfig, OpenAIConfig, SuperbankingConfig
+from axiomai.infrastructure.database.gateways.balance_notification import BalanceNotificationGateway
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -77,7 +79,7 @@ class GatewaysProvider(Provider):
 
     google_sheets_gateway = provide(GoogleSheetsGateway, scope=Scope.APP)
 
-    gateways = provide_all(BuyerGateway, CabinetGateway, CashbackTableGateway, PaymentGateway, UserGateway)
+    gateways = provide_all(BalanceNotificationGateway, BuyerGateway, CabinetGateway, CashbackTableGateway, PaymentGateway, UserGateway)
 
 
 class TgbotInteractorsProvider(Provider):
@@ -104,6 +106,7 @@ class TgbotInteractorsProvider(Provider):
 
 class ObserverInteractorsProvider(Provider):
     interactors = provide_all(
+        ObserveBalanceNotifications,
         ObserveCashbackTables,
         SyncCashbackTables,
         scope=Scope.REQUEST,
