@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 .DS_Store
 .ruff_cache/
-*.json
 *.csv
 *.log
 data/
@@ -15,6 +14,7 @@ pgdata/
 .idea
 
 DataExport*
+sunny-might*
 
 *pgdata_dev/
 .VSCodeCounter*
