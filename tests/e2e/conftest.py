@@ -135,6 +135,8 @@ def cabinet_factory(session, user_factory):
     async def get_cabinet(
         user_id: int | None = None,
         leads_balance: int = 0,
+        balance: int = 0,
+        initial_balance: int = 0,
         business_connection_id: str | None = None,
     ) -> Cabinet:
         if not user_id:
@@ -144,6 +146,8 @@ def cabinet_factory(session, user_factory):
         cabinet = Cabinet(
             user_id=user_id,
             leads_balance=leads_balance,
+            balance=balance,
+            initial_balance=initial_balance,
             organization_name="none",
             link_code=secrets.token_urlsafe(16),
             business_connection_id=business_connection_id,

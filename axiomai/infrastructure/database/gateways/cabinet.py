@@ -40,7 +40,7 @@ class CabinetGateway(Gateway):
             await self._session.scalars(
                 select(Cabinet).where(
                     Cabinet.initial_balance > 0,
-                    Cabinet.balance < Cabinet.initial_balance * 0.5,
+                    Cabinet.balance <= Cabinet.initial_balance * 0.5,
                 )
             )
         )
