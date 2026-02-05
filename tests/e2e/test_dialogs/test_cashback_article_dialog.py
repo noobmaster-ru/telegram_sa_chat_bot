@@ -62,6 +62,49 @@ async def test_cashback_article_when_not_classified_message(
     assert "Здравствуйте" in last_message.text
 
 
+async def test_cashback_article_filters_already_bought_articles(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article_bought = await cashback_article_factory(cabinet_id=cabinet.id)
+    article_other = await cashback_article_factory(cabinet_id=cabinet.id)
+
+    article_bought.nm_id = 111
+    article_other.nm_id = 222
+    await session.flush()
+
+    buyer = Buyer(
+        cabinet_id=cabinet.id,
+        username=None,
+        fullname="Test User",
+        telegram_id=bot_client.user.id,
+        nm_id=article_bought.nm_id,
+    )
+    session.add(buyer)
+    await session.flush()
+
+    openai_gateway = await di_container.get(OpenAIGateway)
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Здравствуйте! У нас есть товары для кешбека.",
+        "article_id": None,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+
+    called_args, called_kwargs = openai_gateway.chat_with_client.call_args
+    articles_arg = called_kwargs.get("articles", called_args[1] if len(called_args) > 1 else None)
+    assert articles_arg is not None
+    assert {article.nm_id for article in articles_arg} == {article_other.nm_id}
+
+
 async def test_cashback_article_q1_input_order_screenshot(
     cabinet_factory,
     cashback_table_factory,
