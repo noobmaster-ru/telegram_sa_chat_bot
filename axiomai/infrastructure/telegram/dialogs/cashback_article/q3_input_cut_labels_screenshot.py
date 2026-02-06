@@ -84,19 +84,25 @@ async def _process_cut_labels_photo_background(
     business_connection_id: str,
     buyer_id: int | None,
 ) -> None:
-    last_photo = messages[-1]
-    if not last_photo.photo_url:
+    photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
+
+    if len(photo_urls) > 1:
         await bot.send_message(
-            chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
+            chat_id,
+            "Пожалуйста, отправьте только одну фотографию разрезанных этикеток. "
+            "Я получил несколько фото, и не могу понять, какое из них правильное.",
+            business_connection_id=business_connection_id,
         )
         return
+
+    photo_url = photo_urls[0]
 
     await bot.send_message(
         chat_id, "⏳ Проверяю фотографию разрезанных этикеток...", business_connection_id=business_connection_id
     )
 
     try:
-        result = await openai_gateway.classify_cut_labels_photo(last_photo.photo_url)
+        result = await openai_gateway.classify_cut_labels_photo(photo_url)
     except Exception as e:
         logger.exception("classify cut labels photo error", exc_info=e)
         await bot.send_message(

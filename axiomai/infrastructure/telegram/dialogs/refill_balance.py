@@ -1,7 +1,7 @@
 from typing import Any
 
-from aiogram.types import Message, CallbackQuery
-from aiogram_dialog import Dialog, Window, DialogManager
+from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.text import Const, Format
