@@ -53,7 +53,7 @@ async def on_close(
     _: dict[str, Any], dialog_manager: DialogManager, bot: FromDishka[Bot], redis: FromDishka[Redis]
 ) -> None:
     state = FSMContext(
-        RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True)),
+        RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True, with_business_connection_id=True)),
         StorageKey(user_id=dialog_manager.event.from_user.id, chat_id=dialog_manager.event.from_user.id, bot_id=bot.id),
     )
 
