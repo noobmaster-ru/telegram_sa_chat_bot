@@ -62,6 +62,24 @@ async def test_cashback_article_when_not_classified_message(
     assert "Здравствуйте" in last_message.text
 
 
+async def test_skip_message_when_cabinet_has_zero_leads_balance(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id, leads_balance=0)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+
+    await bot_client.send_business("хочу кешбек")
+
+    assert len(fake_bot.sent_messages) == 0
+
+
 async def test_cashback_article_q1_input_order_screenshot(
     cabinet_factory,
     cashback_table_factory,
@@ -89,6 +107,7 @@ async def test_cashback_article_q1_input_order_screenshot(
     last_message = fake_bot.sent_messages[-1]
     assert last_message.text == "✅ Скриншот заказа принят!"
     assert buyer.is_ordered is True
+    assert cabinet.leads_balance == 999
 
 
 async def test_cashback_article_q2_input_feedback_screenshot(

@@ -134,7 +134,7 @@ def user_factory(session):
 def cabinet_factory(session, user_factory):
     async def get_cabinet(
         user_id: int | None = None,
-        leads_balance: int = 0,
+        leads_balance: int = 1000,
         business_connection_id: str | None = None,
     ) -> Cabinet:
         if not user_id:

@@ -18,6 +18,7 @@ from axiomai.infrastructure.chat_history import (
     clear_predialog_chat_history,
     get_predialog_chat_history,
 )
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
@@ -39,7 +40,13 @@ async def process_clients_business_message(
     dialog_manager: DialogManager,
     di_container: FromDishka[AsyncContainer],
     debouncer: FromDishka[MessageDebouncer],
+    cabinet_gateway: FromDishka[CabinetGateway],
 ) -> None:
+    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
+    if cabinet and cabinet.leads_balance <= 0:
+        logger.info("skip message from chat %s due to zero leads balance for cabinet %s", message.chat.id, cabinet.id)
+        return
+
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
     message_text = message.text or message.caption or ""
