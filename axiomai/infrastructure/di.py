@@ -10,6 +10,7 @@ from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm impo
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.application.interactors.create_cabinet import CreateCabinet
 from axiomai.application.interactors.create_cashback_table import CreateCashbackTable
+from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
@@ -26,6 +27,7 @@ from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
+from axiomai.infrastructure.database.gateways.superbanking_payout import SuperbankingPayoutGateway
 from axiomai.infrastructure.database.gateways.user import UserGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
@@ -79,7 +81,15 @@ class GatewaysProvider(Provider):
 
     google_sheets_gateway = provide(GoogleSheetsGateway, scope=Scope.APP)
 
-    gateways = provide_all(BalanceNotificationGateway, BuyerGateway, CabinetGateway, CashbackTableGateway, PaymentGateway, UserGateway)
+    gateways = provide_all(
+        BalanceNotificationGateway,
+        BuyerGateway,
+        CabinetGateway,
+        CashbackTableGateway,
+        PaymentGateway,
+        SuperbankingPayoutGateway,
+        UserGateway,
+    )
 
 
 class TgbotInteractorsProvider(Provider):
@@ -92,6 +102,7 @@ class TgbotInteractorsProvider(Provider):
         CreateCabinet,
         CreateCashbackTable,
         CreateBuyer,
+        CreateSuperbankingPayment,
         BuyLeads,
         MarkBuyLeadsPaymentWaitingConfirm,
         ConfirmBuyLeadsPayment,
