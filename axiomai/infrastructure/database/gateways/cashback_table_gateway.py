@@ -86,7 +86,7 @@ class CashbackTableGateway(Gateway):
         )
         articles = await self._session.scalars(
             select(CashbackArticle).where(
-                CashbackArticle.cabinet_id == cabinet_id, 
+                CashbackArticle.cabinet_id == cabinet_id,
                 CashbackArticle.in_stock.is_(True),
                 ~already_bought_something_subq,
             )

@@ -12,6 +12,11 @@ class SuperbankingPayout(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     buyer_id: Mapped[int] = mapped_column(ForeignKey("buyers.id"), comment="Покупатель, которому делаем выплату")
     nm_id: Mapped[int] = mapped_column(comment="Артикул товара")
+    order_number: Mapped[str] = mapped_column(
+        String(30),
+        unique=True,
+        comment="Уникальный номер перевода для идемпотентности",
+    )
     phone_number: Mapped[str] = mapped_column(String(32), comment="Номер телефона для выплаты")
     bank: Mapped[str] = mapped_column(String(128), comment="Название банка")
     amount: Mapped[int] = mapped_column(comment="Сумма кешбека в рублях")

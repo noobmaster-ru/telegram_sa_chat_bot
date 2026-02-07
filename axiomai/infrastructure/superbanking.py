@@ -1,9 +1,7 @@
-import hashlib
 import json
 import logging
 import re
-import uuid
-from urllib import error, request
+from urllib import error, parse, request
 
 from axiomai.config import SuperbankingConfig
 from axiomai.constants import URL_CONFIRM_PAYMENT, URL_CREATE_PAYMENT, URL_SIGN_PAYMENT
@@ -112,7 +110,6 @@ BANK_ALIASES: dict[str, str] = {
 
 class Superbanking:
     def __init__(self, superbanking_config: SuperbankingConfig) -> None:
-        #  [api_key, cabinet_id, project_id, clearing_center_id]
         self._superbanking_config = superbanking_config
         
         with open("./assets/superbanking.json") as f:
@@ -132,7 +129,7 @@ class Superbanking:
     
     @staticmethod
     def _convert_phone_number_to_superbanking_format(phone_number: str) -> str:
-        digits = re.sub(r'\D', '', phone_number)
+        digits = re.sub(r"\D", "", phone_number)
         if digits.startswith("8"):
             digits = "7" + digits[1:]
         return f"00{digits}"
@@ -152,53 +149,47 @@ class Superbanking:
         return None
     
     def create_payment(
-        self, 
-        phone_number: str, 
-        bank_name_rus: str, 
-        amount: int, 
+        self,
+        phone_number: str,
+        bank_name_rus: str,
+        amount: int,
         order_number: str
     ) -> str:
-        try:
-            phone_number_superbanking_format = self._convert_phone_number_to_superbanking_format(
-                phone_number=phone_number
-            )
-            bank_identifier = self._get_bank_identifier_by_bank_name_rus(
-                bank_name_rus=bank_name_rus
-            )
-            if not bank_identifier:
-                message = f"Unknown bank: {bank_name_rus}"
-                raise ValueError(message)
-            
-            payload = {
-                "cabinetId": self._superbanking_config.cabinet_id,
-                "projectId": self._superbanking_config.project_id,
-                "clearingCenterId": self._superbanking_config.clearing_center_id,
-                "orderNumber": order_number,
-                "phone": phone_number_superbanking_format,
-                "bank": bank_identifier,
-                "amount": amount,
-                "purposePayment": "Выплата кэшбека",
-                "comment": "Выплата кэшбека"
-            }
+        phone_number_superbanking_format = self._convert_phone_number_to_superbanking_format(
+            phone_number=phone_number
+        )
+        bank_identifier = self._get_bank_identifier_by_bank_name_rus(
+            bank_name_rus=bank_name_rus
+        )
+        if not bank_identifier:
+            message = f"Unknown bank: {bank_name_rus}"
+            raise ValueError(message)
 
+        payload = {
+            "cabinetId": self._superbanking_config.cabinet_id,
+            "projectId": self._superbanking_config.project_id,
+            "clearingCenterId": self._superbanking_config.clearing_center_id,
+            "orderNumber": order_number,
+            "phone": phone_number_superbanking_format,
+            "bank": bank_identifier,
+            "amount": amount,
+            "purposePayment": "Выплата кэшбека",
+            "comment": "Выплата кэшбека"
+        }
+
+        try:
             response_data = self._post_json(
                 url=URL_CREATE_PAYMENT,
                 payload=payload,
                 log_context="create payout",
+                order_number=order_number,
             )
-            data = response_data.get("data") if isinstance(response_data.get("data"), dict) else None
-            payout = data.get("payout") if isinstance(data, dict) else None
-            cabinet_transaction_id = payout.get("id") 
-
-            if cabinet_transaction_id is None:
-                message = f"Unexpected Superbanking response: {response_data}"
-                raise ValueError(message)
-
+            cabinet_transaction_id = self._extract_cabinet_transaction_id(response_data)
             return str(cabinet_transaction_id)
         
         except Exception:
             logger.exception(
-                "Superbanking create_payment() failed for order_number=%s", 
+                "Superbanking create_payment() failed for order_number=%s",
                 order_number,
             )
             raise
@@ -213,12 +204,9 @@ class Superbanking:
                 url=URL_SIGN_PAYMENT,
                 payload=payload,
                 log_context="sign payout",
+                add_idempotency_token=False,
             )
-            result = response_data.get("result")
-            if isinstance(result, bool):
-                return result
-            message = f"Unexpected Superbanking sign response: {response_data}"
-            raise ValueError(message)
+            return self._extract_sign_result(response_data)
         except Exception:
             logger.exception(
                 "Superbanking sign_payment() failed for cabinet_transaction_id=%s",
@@ -238,31 +226,37 @@ class Superbanking:
                 log_context="confirm operation",
                 add_idempotency_token=False,
             )
-            data = response_data.get("data")
-            chect_url = data.get("url")
-            if not chect_url:
-                message = f"Unexpected Superbanking confirm response: {response_data}"
-                raise ValueError(message)
-            return chect_url
+            return self._extract_confirm_url(response_data)
         except Exception:
             logger.exception("Superbanking confirm_operation() failed for order_number=%s", order_number)
             raise
     
 
-    def _post_json(self, url: str, payload: dict, log_context: str, *, add_idempotency_token: bool = True) -> dict:
-        req = request.Request(
+    def _post_json(
+        self,
+        url: str,
+        payload: dict,
+        log_context: str,
+        *,
+        order_number: str | None = None,
+        add_idempotency_token: bool = True,
+    ) -> dict:
+        parsed_url = parse.urlparse(url)
+        if parsed_url.scheme != "https":
+            raise ValueError(f"Unsupported URL scheme: {parsed_url.scheme}")
+        req = request.Request(  # noqa: S310
             url,
             data=json.dumps(payload).encode("utf-8"),
             method="POST",
         )
         req.add_header("Content-Type", "application/json")
         req.add_header("x-token-user-api", self._superbanking_config.api_key)
-        if add_idempotency_token:
-            idempotency_token = str(uuid.uuid4())
-            req.add_header("x-idempotency-token", idempotency_token)
+        if add_idempotency_token and order_number:
+            req.add_header("x-idempotency-token", order_number)
+
 
         try:
-            with request.urlopen(req, timeout=30) as response:
+            with request.urlopen(req, timeout=30) as response:  # noqa: S310
                 body = response.read().decode("utf-8")
         except error.HTTPError as exc:
             error_body = exc.read().decode("utf-8") if exc.fp else ""
@@ -273,8 +267,35 @@ class Superbanking:
                 error_body,
             )
             raise
-        except error.URLError as exc:
-            logger.exception("Superbanking %s request failed: %s", log_context, exc)
+        except error.URLError:
+            logger.exception("Superbanking %s request failed", log_context)
             raise
 
         return json.loads(body) if body else {}
+
+    @staticmethod
+    def _extract_cabinet_transaction_id(response_data: dict) -> str:
+        data = response_data.get("data") if isinstance(response_data.get("data"), dict) else None
+        payout = data.get("payout") if isinstance(data, dict) else None
+        cabinet_transaction_id = payout.get("id") if isinstance(payout, dict) else None
+        if cabinet_transaction_id is None:
+            message = f"Unexpected Superbanking response: {response_data}"
+            raise ValueError(message)
+        return str(cabinet_transaction_id)
+
+    @staticmethod
+    def _extract_sign_result(response_data: dict) -> bool:
+        result = response_data.get("result")
+        if isinstance(result, bool):
+            return result
+        message = f"Unexpected Superbanking sign response: {response_data}"
+        raise ValueError(message)
+
+    @staticmethod
+    def _extract_confirm_url(response_data: dict) -> str:
+        data = response_data.get("data") if isinstance(response_data.get("data"), dict) else None
+        chect_url = data.get("url") if isinstance(data, dict) else None
+        if not chect_url:
+            message = f"Unexpected Superbanking confirm response: {response_data}"
+            raise ValueError(message)
+        return chect_url

@@ -2,15 +2,15 @@ from aiogram import Dispatcher
 
 from axiomai.tgbot.handlers import (
     admin_confirms,
+    auto_payments,
     buy_leads,
     create_cashback_table,
     exception,
     link_business_account,
     my_cabinet,
     process_clients,
-    start,
     refill_balance,
-    auto_payments,
+    start,
 )
 
 

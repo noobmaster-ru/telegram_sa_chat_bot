@@ -11,7 +11,7 @@ from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.telegram.dialogs.states import CreateCashbackTableStates
-from axiomai.infrastructure.telegram.keyboards.reply import kb_add_cabinet, get_kb_menu
+from axiomai.infrastructure.telegram.keyboards.reply import get_kb_menu, kb_add_cabinet
 from axiomai.infrastructure.telegram.text import (
     ADD_CABINET_INSTRUCTION_TEXT,
     REGISTRATION_ACCOUNT_WARNING_TEXT,

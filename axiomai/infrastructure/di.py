@@ -10,6 +10,7 @@ from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm impo
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.application.interactors.create_cabinet import CreateCabinet
 from axiomai.application.interactors.create_cashback_table import CreateCashbackTable
+from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
@@ -101,6 +102,7 @@ class TgbotInteractorsProvider(Provider):
         CreateCabinet,
         CreateCashbackTable,
         CreateBuyer,
+        CreateSuperbankingPayment,
         BuyLeads,
         MarkBuyLeadsPaymentWaitingConfirm,
         ConfirmBuyLeadsPayment,

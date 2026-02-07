@@ -19,10 +19,18 @@ def test_create_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
     captured: dict = {}
 
-    def fake_post_json(*, url: str, payload: dict, log_context: str, add_idempotency_token: bool = True) -> dict:
+    def fake_post_json(
+        *,
+        url: str,
+        payload: dict,
+        log_context: str,
+        order_number: str | None = None,
+        add_idempotency_token: bool = True,
+    ) -> dict:
         captured["url"] = url
         captured["payload"] = payload
         captured["log_context"] = log_context
+        captured["order_number"] = order_number
         captured["add_idempotency_token"] = add_idempotency_token
         return {"data": {"payout": {"id": 123}}}
 
@@ -41,6 +49,7 @@ def test_create_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["payload"]["projectId"] == "project-1"
     assert captured["payload"]["clearingCenterId"] == "clearing-1"
     assert captured["payload"]["orderNumber"] == order_number
+    assert captured["order_number"] == order_number
     assert captured["payload"]["phone"].startswith("00")
     assert captured["payload"]["amount"] == 100
     assert captured["payload"]["bank"] == superbanking._get_bank_identifier_by_bank_name_rus("Газпромбанк")
@@ -67,7 +76,14 @@ def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
     captured: dict = {}
 
-    def fake_post_json(*, url: str, payload: dict, log_context: str, add_idempotency_token: bool = True) -> dict:
+    def fake_post_json(
+        *,
+        url: str,
+        payload: dict,
+        log_context: str,
+        order_number: str | None = None,
+        add_idempotency_token: bool = True,
+    ) -> dict:
         captured["payload"] = payload
         return {"result": True}
 
@@ -81,7 +97,14 @@ def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
 
-    def fake_post_json(*, url: str, payload: dict, log_context: str, add_idempotency_token: bool = True) -> dict:
+    def fake_post_json(
+        *,
+        url: str,
+        payload: dict,
+        log_context: str,
+        order_number: str | None = None,
+        add_idempotency_token: bool = True,
+    ) -> dict:
         return {"result": "not-bool"}
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
@@ -94,7 +117,14 @@ def test_confirm_operation_success(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
     captured: dict = {}
 
-    def fake_post_json(*, url: str, payload: dict, log_context: str, add_idempotency_token: bool = True) -> dict:
+    def fake_post_json(
+        *,
+        url: str,
+        payload: dict,
+        log_context: str,
+        order_number: str | None = None,
+        add_idempotency_token: bool = True,
+    ) -> dict:
         captured["payload"] = payload
         captured["add_idempotency_token"] = add_idempotency_token
         return {"data": {"url": "https://example.com/receipt.pdf"}}
@@ -111,7 +141,14 @@ def test_confirm_operation_success(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_confirm_operation_missing_url_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
 
-    def fake_post_json(*, url: str, payload: dict, log_context: str, add_idempotency_token: bool = True) -> dict:
+    def fake_post_json(
+        *,
+        url: str,
+        payload: dict,
+        log_context: str,
+        order_number: str | None = None,
+        add_idempotency_token: bool = True,
+    ) -> dict:
         return {"data": {}}
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)

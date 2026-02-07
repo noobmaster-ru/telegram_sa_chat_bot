@@ -4,7 +4,6 @@ import re
 SUPERBANKING_ORDER_PREFIX = "payment-"
 URL_CREATE_PAYMENT = "https://api.superbanking.ru/cabinet/payout/create?v=1.0.0"
 URL_SIGN_PAYMENT = "https://api.superbanking.ru/cabinet/payout/sign?v=1.0.1"
-# URL_BINDING_CARD = "https://api.superbanking.ru/cabinet/payout/bindingCard?v=1.0.0"
 TIME_SLEEP_BEFORE_CONFIRM_PAYMENT = 10
 URL_CONFIRM_PAYMENT = "https://api.superbanking.ru/cabinet/confirmOperation/createOne?v=1.0.0"
 
