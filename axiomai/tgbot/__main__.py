@@ -22,7 +22,7 @@ async def main() -> None:
     setup_logging(json_logs=config.json_logs)
 
     redis = Redis.from_url(config.redis_uri)
-    storage = RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True))
+    storage = RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True, with_business_connection_id=True))
 
     bot = Bot(token=config.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dispatcher = Dispatcher(storage=storage)
