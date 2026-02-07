@@ -154,3 +154,20 @@ class GoogleSheetsGateway:
                     )
             except HTTPError as err:
                 logger.exception("Failed to sync buyers to sheet %s", table_id, exc_info=err)
+
+    async def update_settings(self, table_id: str, leads_balance: int, updated_at: str) -> None:
+        """Обновляет лист 'Настройка': A2 - остаток лидов, B2 - время обновления."""
+        async with self._aiogoogle as aiogoogle:
+            sheets_v4 = await aiogoogle.discover("sheets", "v4")
+
+            try:
+                await aiogoogle.as_service_account(
+                    sheets_v4.spreadsheets.values.update(
+                        spreadsheetId=table_id,
+                        range="Настройка!A2:B2",
+                        valueInputOption="RAW",
+                        json={"values": [[leads_balance, updated_at]]},
+                    )
+                )
+            except HTTPError as err:
+                logger.exception("Failed to update settings sheet %s", table_id, exc_info=err)
