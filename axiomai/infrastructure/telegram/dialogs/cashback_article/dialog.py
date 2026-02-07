@@ -54,7 +54,12 @@ async def on_close(
 ) -> None:
     state = FSMContext(
         RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True, with_business_connection_id=True)),
-        StorageKey(user_id=dialog_manager.event.from_user.id, chat_id=dialog_manager.event.from_user.id, bot_id=bot.id),
+        StorageKey(
+            user_id=dialog_manager.event.from_user.id,
+            chat_id=dialog_manager.event.from_user.id,
+            bot_id=bot.id,
+            business_connection_id=dialog_manager.event.business_connection_id,
+        ),
     )
 
     await state.clear()
