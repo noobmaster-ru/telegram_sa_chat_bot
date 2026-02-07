@@ -6,8 +6,8 @@ from axiomai.infrastructure.telegram.text import (
     ADD_CABINET_BUTTON_TEXT,
     BUY_LEADS_BUTTON_TEXT,
     MY_CABINET_BUTTON_TEXT,
-    SUPPORT_BUTTON_TEXT,
     REFILL_BALANCE_BUTTON_TEXT,
+    SUPPORT_BUTTON_TEXT,
 )
 
 kb_add_cabinet = ReplyKeyboardMarkup(

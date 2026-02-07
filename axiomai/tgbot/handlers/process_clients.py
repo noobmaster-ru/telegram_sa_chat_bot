@@ -171,8 +171,3 @@ async def _process_accumulated_messages(
             business_connection_id=business_connection_id,
             parse_mode=ParseMode.MARKDOWN,
         )
-
-
-@router.business_message(StateFilter("skip_messaging"))
-async def skip_messaging(message: Message, bot: Bot) -> None:
-    await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
