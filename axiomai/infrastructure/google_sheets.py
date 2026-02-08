@@ -164,6 +164,6 @@ def _format_time_msk(iso_time: str) -> str:
     try:
         dt = datetime.fromisoformat(iso_time)
         dt_msk = dt.astimezone(MSK_TZ)
-        return dt_msk.strftime("%Y-%m-%d %H-%M-%S")
+        return dt_msk.strftime("%Y-%m-%d %H:%M:%S")
     except (ValueError, TypeError):
         return iso_time
