@@ -114,13 +114,17 @@ class OpenAIGateway:
         self, photo_url: str, article_title: str, brand_name: str
     ) -> dict[str, bool | str | None]:
         prompt = f"""
-        Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries.
-        Подпись у товара может быть названием целевого товара или его брендом.
-        На скриншоте клиента обязательно должны быть 5 оранжевых звёзд ⭐️.
-        Звёзды могут быть прямо на фотографии товара. Текст отзыва может и не быть, при этом звезды должны быть обязательно.
+        Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries, сделанный согласно нашим КРИТЕРИЯМ. 
+        
+        КРИТЕРИИ:
+            - Подпись у товара может быть названием целевого товара или его брендом.
+            - На скриншоте клиента обязательно должны быть 5 оранжевых звёзд ⭐️. Звёзды могут быть прямо на фотографии товара. 
+            - Текст отзыва НЕ должен содержать описание товара. Только общие фразы МОГУТ БЫТЬ, например: "товар хороший", "всё хорошо", "отличный товар", и тд
+            - На скриншоте НЕ должно быть замазок/блюра и других изменений, только обычный скриншот с телефона без исправлений
+
         
         Верни ответ в формате JSON: {{"is_feedback": bool, "cancel_reason": str|null}}
-        Где is_feedback = true, если на скриншоте есть отзыв с 5 звёздами на наш товар,
+        Где is_feedback = true, если на скриншоте есть отзыв с 5 звёздами на наш товар, согласно нашим КРИТЕРИЯМ 
         cancel_reason = причина отказа, если is_feedback = false
 
         ЦЕЛЕВОЙ ТОВАР:
@@ -198,7 +202,7 @@ class OpenAIGateway:
         response = await self._client.responses.create(
             model=MODEL_FOR_PHOTO_CLASSIFICATIONS,
             input=messages,
-            reasoning={"effort": GPT_REASONING},
+            reasoning={"effort":  "high"},
             tools=PHOTO_ANALISE_TOOLS,
             max_output_tokens=GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
             prompt_cache_key=_build_prompt_cache_key("classify_cut_labels_photo"),
