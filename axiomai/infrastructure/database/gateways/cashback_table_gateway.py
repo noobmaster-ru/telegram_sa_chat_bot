@@ -17,9 +17,6 @@ class CashbackTableGateway(Gateway):
         self._session.add(article)
         await self._session.flush()
 
-    async def delete_article(self, article: CashbackArticle) -> None:
-        await self._session.delete(article)
-
     async def get_new_cashback_tables(self) -> list[CashbackTable]:
         since = datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=24)
         cashback_tables = await self._session.scalars(
@@ -88,6 +85,7 @@ class CashbackTableGateway(Gateway):
             select(CashbackArticle).where(
                 CashbackArticle.cabinet_id == cabinet_id,
                 CashbackArticle.in_stock.is_(True),
+                CashbackArticle.is_deleted.is_(False),
                 ~already_bought_something_subq,
             )
         )

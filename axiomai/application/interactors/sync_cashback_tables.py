@@ -46,6 +46,7 @@ class SyncCashbackTables:
                     article.brand_name = dto.brand_name
                     article.instruction_text = dto.instruction_text
                     article.in_stock = dto.in_stock
+                    article.is_deleted = False
                 else:
                     new_article = CashbackArticle(
                         cabinet_id=table.cabinet_id,
@@ -58,10 +59,10 @@ class SyncCashbackTables:
                     )
                     await self._cashback_table_gateway.create_article(new_article)
 
-            # Delete removed
+            # Mark deleted, removed from sheet
             for nm_id, article in existing_by_nm_id.items():
                 if nm_id not in new_nm_ids:
-                    await self._cashback_table_gateway.delete_article(article)
+                    article.is_deleted = True
 
             # Sync buyers to Google Sheets
             try:

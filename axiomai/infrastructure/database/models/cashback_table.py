@@ -67,6 +67,7 @@ class CashbackArticle(Base):
     brand_name: Mapped[str]
     instruction_text: Mapped[str]
     in_stock: Mapped[bool]
+    is_deleted: Mapped[bool] = mapped_column(default=False)
 
     created_at: Mapped[datetime.datetime] = mapped_column(
         TIMESTAMP(timezone=True),
