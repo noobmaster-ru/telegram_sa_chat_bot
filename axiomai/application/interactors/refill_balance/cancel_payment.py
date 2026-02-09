@@ -24,7 +24,7 @@ class CancelRefillBalancePayment:
 
         if payment.status != PaymentStatus.WAITING_CONFIRM:
             raise PaymentAlreadyProcessedError(
-                f"Payment {payment_id} has already been processed (status: {payment.status.value})"
+                f"Payment with id = {payment_id} has already been processed (status: {payment.status.value})"
             )
 
         payment.status = PaymentStatus.CANCELED

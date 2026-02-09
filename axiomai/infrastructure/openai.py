@@ -8,7 +8,7 @@ from openai import AsyncOpenAI
 from openai.types.responses import Response
 
 from axiomai.config import OpenAIConfig
-from axiomai.constants import CHAT_GPT_4O_LATEST, CHAT_GPT_5_1, GPT_REASONING
+from axiomai.constants import CHAT_GPT_4O_LATEST, CHAT_GPT_5_1, GPT_REASONING, GPT_TEMPERATURE
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 
 logger = logging.getLogger(__name__)
@@ -283,7 +283,7 @@ class OpenAIGateway:
         response = await self._client.responses.create(
             model=CHAT_GPT_4O_LATEST,
             input=messages,
-            temperature=0.7,
+            temperature=GPT_TEMPERATURE,
         )
 
         result = _extract_response_text(response)
@@ -376,7 +376,7 @@ class OpenAIGateway:
         response = await self._client.responses.create(
             model=CHAT_GPT_4O_LATEST,
             input=messages,
-            temperature=0.7,
+            temperature=GPT_TEMPERATURE,
         )
 
         result = _extract_response_text(response)
