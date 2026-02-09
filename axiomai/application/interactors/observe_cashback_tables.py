@@ -37,7 +37,7 @@ class ObserveCashbackTables:
         for table in tables:
             user = await self._user_gateway.get_user_by_cabinet_id(table.cabinet_id)
             if not user:
-                logger.error("user not found for cabinet_id=%s", table.cabinet_id)
+                logger.error("user telegram_id = %s, not found for cabinet_id=%s", user.telegram_id, table.cabinet_id)
                 continue
 
             try:

@@ -34,7 +34,7 @@ class ObserveBalanceNotifications:
         for cabinet in cabinets:
             user = await self._user_gateway.get_user_by_cabinet_id(cabinet.id)
             if not user or not user.telegram_id:
-                logger.warning("user not found for cabinet_id=%s", cabinet.id)
+                logger.warning("user telegram_id =  %s not found for cabinet_id=%s", user.telegram_id, cabinet.id)
                 continue
 
             sent_thresholds = await self._balance_notification_gateway.get_sent_thresholds(

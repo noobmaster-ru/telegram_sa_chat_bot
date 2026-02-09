@@ -121,14 +121,14 @@ class GoogleSheetsGateway:
                 last_user_msg_time,  # E - последнее сообщение
                 last_user_msg_text[:500] if last_user_msg_text else "",  # F - текст последнего сообщения
                 str(buyer.nm_id),  # G - nm_id
-                "TRUE" if buyer.is_ordered else "FALSE",  # H - is_ordered
-                "TRUE" if buyer.is_left_feedback else "FALSE",  # I - is_left_feedback
-                "TRUE" if buyer.is_cut_labels else "FALSE",  # J - is_cut_labels
+                "Да" if buyer.is_ordered else "",  # H - is_ordered
+                "ДА" if buyer.is_left_feedback else "",  # I - is_left_feedback
+                "Да" if buyer.is_cut_labels else "",  # J - is_cut_labels
                 buyer.phone_number or "",  # K - phone_number
                 buyer.bank or "",  # L - bank
                 str(buyer.amount) if buyer.amount else "",  # M - amount
                 buyer.username or "",  # N - username
-                "TRUE" if buyer.is_superbanking_paid else "FALSE",  # O - is_superbanking_paid
+                "ДА" if buyer.is_superbanking_paid else "",  # O - is_superbanking_paid
             ]
             rows.append(row)
 
@@ -155,7 +155,7 @@ class GoogleSheetsGateway:
                         )
                     )
             except HTTPError as err:
-                logger.exception("Failed to sync buyers to sheet %s", table_id, exc_info=err)
+                logger.exception("Failed to sync buyers to table.id = %s", table_id, exc_info=err)
 
 
 def _format_time_msk(iso_time: str) -> str:

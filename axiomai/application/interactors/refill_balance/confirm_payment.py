@@ -41,15 +41,15 @@ class ConfirmRefillBalancePayment:
         cashback_table = await self._cashback_table_gateway.get_cashback_table_by_id(payment.cashback_table_id)
         if not cashback_table:
             raise CashbackTableNotFoundError(
-                f"Cashback table {payment.cashback_table_id} not found for the confirm payment"
+                f"Cashback_table.id = {payment.cashback_table_id} not found for the confirm payment"
             )
         cabinet = await self._cabinet_gateway.get_cabinet_by_id(cashback_table.cabinet_id)
         if not cabinet:
-            raise CabinetNotFoundError(f"Cabinet {cashback_table.cabinet_id} not found for the confirm payment")
+            raise CabinetNotFoundError(f"Cashback_table.id =  {cashback_table.cabinet_id} not found for the confirm payment")
 
         if payment.status != PaymentStatus.WAITING_CONFIRM:
             raise PaymentAlreadyProcessedError(
-                f"Payment {payment_id} has already been processed (status: {payment.status.value})"
+                f"Payment with id = {payment_id} has already been processed (status: {payment.status.value})"
             )
 
         payment.status = PaymentStatus.SUCCEEDED

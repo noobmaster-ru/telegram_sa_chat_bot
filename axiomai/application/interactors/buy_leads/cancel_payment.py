@@ -20,11 +20,11 @@ class CancelBuyLeadsPayment:
     async def execute(self, admin_telegram_id: int, payment_id: int, reason: str | None = None) -> None:
         payment = await self._payment_gateway.get_payment_by_id(payment_id)
         if not payment:
-            raise PaymentNotFoundError(f"Payment with id {payment_id} not found")
+            raise PaymentNotFoundError(f"Payment with id = {payment_id} not found")
 
         if payment.status != PaymentStatus.WAITING_CONFIRM:
             raise PaymentAlreadyProcessedError(
-                f"Payment {payment_id} has already been processed (status: {payment.status.value})"
+                f"Payment with id = {payment_id} has already been processed (status: {payment.status.value})"
             )
 
         payment.status = PaymentStatus.CANCELED
