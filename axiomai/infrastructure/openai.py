@@ -1,7 +1,7 @@
+import hashlib
 import json
 import logging
 import re
-import hashlib
 from contextlib import suppress
 
 from httpx import AsyncClient, AsyncHTTPTransport
@@ -10,12 +10,12 @@ from openai.types.responses import Response
 
 from axiomai.config import OpenAIConfig
 from axiomai.constants import (
-    MODEL_FOR_TEXT_PROMPTS, 
+    GPT_MAX_OUTPUT_TOKENS,
+    GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+    GPT_REASONING,
+    GPT_TEMPERATURE,
     MODEL_FOR_PHOTO_CLASSIFICATIONS,
-    GPT_REASONING, 
-    GPT_TEMPERATURE, 
-    GPT_MAX_OUTPUT_TOKENS, 
-    GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS
+    MODEL_FOR_TEXT_PROMPTS,
 )
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 
