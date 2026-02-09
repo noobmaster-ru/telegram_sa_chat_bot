@@ -4,10 +4,7 @@ from aiogram import Bot
 
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
 from axiomai.application.exceptions.cashback_table import CashbackTableNotFoundError
-from axiomai.application.exceptions.payment import (
-    PaymentAlreadyProcessedError,
-    PaymentNotFoundError,
-)
+from axiomai.application.exceptions.payment import PaymentAlreadyProcessedError, PaymentNotFoundError
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
@@ -15,12 +12,12 @@ from axiomai.infrastructure.database.gateways.user import UserGateway
 from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus
 from axiomai.infrastructure.database.models.payment import PaymentStatus
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
-from axiomai.infrastructure.telegram.keyboards.reply import kb_menu
+from axiomai.infrastructure.telegram.keyboards.reply import get_kb_menu
 
 logger = logging.getLogger(__name__)
 
 
-class ConfirmPayment:
+class ConfirmBuyLeadsPayment:
     def __init__(
         self,
         tm: TransactionManager,
@@ -40,20 +37,22 @@ class ConfirmPayment:
     async def execute(self, admin_telegram_id: int, payment_id: int) -> None:
         payment = await self._payment_gateway.get_payment_by_id(payment_id)
         if not payment:
-            raise PaymentNotFoundError(f"Payment with id {payment_id} not found")
+            raise PaymentNotFoundError(f"Payment with id = {payment_id} not found")
 
         cashback_table = await self._cashback_table_gateway.get_cashback_table_by_id(payment.cashback_table_id)
         if not cashback_table:
             raise CashbackTableNotFoundError(
-                f"Cashback table {payment.cashback_table_id} not found for the confirm payment"
+                f"Cashback_table.cabinet_id =  {payment.cashback_table_id} not found for the confirm payment"
             )
         cabinet = await self._cabinet_gateway.get_cabinet_by_id(cashback_table.cabinet_id)
         if not cabinet:
-            raise CabinetNotFoundError(f"Cabinet {cashback_table.cabinet_id} not found for the confirm payment")
+            raise CabinetNotFoundError(
+                f"Cashback_table.cabinet_id = {cashback_table.cabinet_id} not found for the confirm payment"
+            )
 
         if payment.status != PaymentStatus.WAITING_CONFIRM:
             raise PaymentAlreadyProcessedError(
-                f"Payment {payment_id} has already been processed (status: {payment.status.value})"
+                f"Payment with id = {payment_id} has already been processed (status: {payment.status.value})"
             )
 
         leads = int(payment.service_data.get("leads", 0) or 0)
@@ -68,7 +67,7 @@ class ConfirmPayment:
 
         await self._tm.commit()
 
-        logger.info("payment %s confirmed by admin %s", payment_id, admin_telegram_id)
+        logger.info("buy leads payment %s confirmed by admin %s", payment_id, admin_telegram_id)
 
         user = await self._user_gateway.get_user_by_id(payment.user_id)
         if user and user.telegram_id:
@@ -77,4 +76,4 @@ class ConfirmPayment:
                 f"На ваш кабинет начислено {leads} лидов.\n"
                 "Теперь боту снова можно принимать заявки от клиентов."
             )
-            await self._bot.send_message(chat_id=user.telegram_id, text=text, reply_markup=kb_menu)
+            await self._bot.send_message(chat_id=user.telegram_id, text=text, reply_markup=get_kb_menu(cabinet))

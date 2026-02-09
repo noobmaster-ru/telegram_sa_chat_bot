@@ -3,6 +3,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 class CreateCashbackTableStates(StatesGroup):
     copy_gs_template = State()
+    ask_superbanking = State()
 
 
 class MyCabinetStates(StatesGroup):
@@ -11,6 +12,11 @@ class MyCabinetStates(StatesGroup):
 
 class BuyLeadsStates(StatesGroup):
     waiting_for_lead_amount = State()
+    waiting_for_payment_confirm_click = State()
+
+
+class RefillBalanceStates(StatesGroup):
+    waiting_for_amount = State()
     waiting_for_payment_confirm_click = State()
 
 

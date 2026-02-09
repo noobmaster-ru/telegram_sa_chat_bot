@@ -1,22 +1,28 @@
-import contextlib
+import asyncio
+import logging
 from typing import Any
+from urllib import error
 
 from aiogram import Bot
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, URLInputFile
 from aiogram_dialog import DialogManager, ShowMode
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
+from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError
+from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.constants import (
     AMOUNT_PATTERN,
     BANK_PATTERN,
     CARD_CLEAN_RE,
     CARD_PATTERN,
     PHONE_PATTERN,
+    TIME_SLEEP_BEFORE_CONFIRM_PAYMENT,
 )
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
-from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.superbanking import Superbanking
+
+logger = logging.getLogger(__name__)
 
 
 @inject
@@ -66,8 +72,8 @@ async def on_confirm_requisites(
     callback: CallbackQuery,
     widget: Any,
     dialog_manager: DialogManager,
-    buyer_gateway: FromDishka[BuyerGateway],
-    transaction_manager: FromDishka[TransactionManager],
+    superbanking: FromDishka[Superbanking],
+    create_superbanking_payment: FromDishka[CreateSuperbankingPayment],
 ) -> None:
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
     if not buyer_id:
@@ -75,22 +81,68 @@ async def on_confirm_requisites(
         await dialog_manager.done()
         return
 
-    buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
-
-    if dialog_manager.dialog_data.get("phone_number"):
-        buyer.phone_number = dialog_manager.dialog_data["phone_number"]
-    if dialog_manager.dialog_data.get("bank"):
-        buyer.bank = dialog_manager.dialog_data["bank"]
-    if dialog_manager.dialog_data.get("amount"):
-        with contextlib.suppress(ValueError, TypeError):
-            if not buyer.amount:
-                buyer.amount = int(dialog_manager.dialog_data["amount"])
-
-    await transaction_manager.commit()
-
     await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
     await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
+
+    try:
+        order_number = await create_superbanking_payment.execute(
+            buyer_id=buyer_id,
+            phone_number=dialog_manager.dialog_data.get("phone_number"),
+            bank=dialog_manager.dialog_data.get("bank"),
+            amount=dialog_manager.dialog_data.get("amount"),
+        )
+    except CreatePaymentError:
+        await callback.message.answer("Не удалось инициировать выплату. Мы свяжемся с вами.")
+        await dialog_manager.done()
+        return
+    except SignPaymentError:
+        await callback.message.answer("Не удалось отправить выплату. Мы свяжемся с вами.")
+        await dialog_manager.done()
+        return
+    except Exception:
+        logger.exception("Failed to create Superbanking payout for buyer_id=%s", buyer_id)
+        await callback.message.answer("Не удалось инициировать выплату. Мы свяжемся с вами.")
+        await dialog_manager.done()
+        return
+
+    if order_number:
+        task = asyncio.create_task(
+            _send_receipt_after_confirm(
+                superbanking=superbanking,
+                message=callback.message,
+                order_number=order_number,
+                buyer_id=buyer_id,
+            )
+        )
+        task.add_done_callback(lambda _: None)
+
     await dialog_manager.done()
+
+
+async def _send_receipt_after_confirm(
+    *,
+    superbanking: Superbanking,
+    message: Message,
+    order_number: str,
+    buyer_id: int,
+) -> None:
+    try:
+        await asyncio.sleep(TIME_SLEEP_BEFORE_CONFIRM_PAYMENT)
+        check_url = superbanking.confirm_operation(order_number=order_number)
+        pdf_file = URLInputFile(
+            check_url,
+            filename="Чек.pdf",
+        )
+        await message.answer_document(
+            document=pdf_file,
+            caption="Чек по выплате",
+        )
+    except (ValueError, error.HTTPError, error.URLError):
+        logger.exception(
+            "Failed to confirm_operation() Superbanking payout for buyer_id=%s",
+            buyer_id,
+        )
+        await message.answer("Чек будет доступен чуть позже. Мы пришлём его дополнительно.")
 
 
 async def on_decline_requisites(callback: CallbackQuery, widget: Any, dialog_manager: DialogManager) -> None:

@@ -71,8 +71,14 @@ async def test_sync_cashback_tables_deletes_removed_articles(
     await sync_cashback_tables.execute()
 
     articles = list(await session.scalars(select(CashbackArticle).where(CashbackArticle.cabinet_id == cashback_table.cabinet_id)))
-    assert len(articles) == 1
-    assert articles[0].nm_id == 111
+    assert len(articles) == 2
+
+    active_articles = [a for a in articles if not a.is_deleted]
+    deleted_articles = [a for a in articles if a.is_deleted]
+    assert len(active_articles) == 1
+    assert active_articles[0].nm_id == 111
+    assert len(deleted_articles) == 1
+    assert deleted_articles[0].nm_id == 999
 
 
 async def test_sync_cashback_tables_updates_existing_articles(

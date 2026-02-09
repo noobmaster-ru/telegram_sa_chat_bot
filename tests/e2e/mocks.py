@@ -4,11 +4,13 @@ from dishka import Scope, provide, provide_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
-from axiomai.application.interactors.buy_leads.cancel_payment import CancelPayment
-from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPayment
-from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
+from axiomai.application.interactors.buy_leads.cancel_payment import CancelBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkBuyLeadsPaymentWaitingConfirm
 from axiomai.application.interactors.create_buyer import CreateBuyer
+from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.application.interactors.create_user import CreateSeller
+from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
@@ -45,11 +47,13 @@ class MocksProvider(GatewaysProvider):
 
     interactors = provide_all(
         CreateSeller,
+        ObserveBalanceNotifications,
         ObserveCashbackTables,
         SyncCashbackTables,
         BuyLeads,
-        ConfirmPayment,
-        CancelPayment,
-        MarkPaymentWaitingConfirm,
+        ConfirmBuyLeadsPayment,
+        CancelBuyLeadsPayment,
+        MarkBuyLeadsPaymentWaitingConfirm,
         CreateBuyer,
+        CreateSuperbankingPayment,
     )

@@ -104,7 +104,7 @@ async def di_container(session):
             MessageDebouncer: FakeMessageDebouncer(),
             Redis: FakeRedis(),
             BaseStorage: JsonMemoryStorage(),
-            Superbanking: AsyncMock(),
+            Superbanking: MagicMock(),
         },
     )
     yield container
@@ -134,6 +134,8 @@ def user_factory(session):
 def cabinet_factory(session, user_factory):
     async def get_cabinet(
         user_id: int | None = None,
+        balance: int = 0,
+        initial_balance: int = 0,
         leads_balance: int = 1000,
         business_connection_id: str | None = None,
     ) -> Cabinet:
@@ -144,6 +146,8 @@ def cabinet_factory(session, user_factory):
         cabinet = Cabinet(
             user_id=user_id,
             leads_balance=leads_balance,
+            balance=balance,
+            initial_balance=initial_balance,
             organization_name="none",
             link_code=secrets.token_urlsafe(16),
             business_connection_id=business_connection_id,

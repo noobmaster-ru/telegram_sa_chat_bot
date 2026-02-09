@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from axiomai.infrastructure.database.gateways.base import Gateway
 from axiomai.infrastructure.database.models import Cabinet, User
+from axiomai.infrastructure.database.models.buyer import Buyer
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle, CashbackTable, CashbackTableStatus
 
 
@@ -15,9 +16,6 @@ class CashbackTableGateway(Gateway):
     async def create_article(self, article: CashbackArticle) -> None:
         self._session.add(article)
         await self._session.flush()
-
-    async def delete_article(self, article: CashbackArticle) -> None:
-        await self._session.delete(article)
 
     async def get_new_cashback_tables(self) -> list[CashbackTable]:
         since = datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=24)
@@ -70,9 +68,26 @@ class CashbackTableGateway(Gateway):
         articles = await self._session.scalars(select(CashbackArticle).where(CashbackArticle.cabinet_id == cabinet_id))
         return list(articles)
 
-    async def get_in_stock_cashback_articles_by_cabinet_id(self, cabinet_id: int) -> list[CashbackArticle]:
+    async def get_in_stock_cashback_articles_by_cabinet_id(
+        self, cabinet_id: int, telegram_id: int
+    ) -> list[CashbackArticle]:
+        # True if user already bought smt
+        already_bought_something_subq = (
+            select(Buyer.id)
+            .where(
+                Buyer.telegram_id == telegram_id,
+                Buyer.nm_id == CashbackArticle.nm_id,
+                Buyer.cabinet_id == cabinet_id,
+            )
+            .exists()
+        )
         articles = await self._session.scalars(
-            select(CashbackArticle).where(CashbackArticle.cabinet_id == cabinet_id, CashbackArticle.in_stock.is_(True))
+            select(CashbackArticle).where(
+                CashbackArticle.cabinet_id == cabinet_id,
+                CashbackArticle.in_stock.is_(True),
+                CashbackArticle.is_deleted.is_(False),
+                ~already_bought_something_subq,
+            )
         )
 
         return list(articles)

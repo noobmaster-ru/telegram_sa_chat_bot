@@ -49,6 +49,7 @@ class SyncCashbackTables:
                     article.brand_name = dto.brand_name
                     article.instruction_text = dto.instruction_text
                     article.in_stock = dto.in_stock
+                    article.is_deleted = False
                 else:
                     new_article = CashbackArticle(
                         cabinet_id=table.cabinet_id,
@@ -61,17 +62,17 @@ class SyncCashbackTables:
                     )
                     await self._cashback_table_gateway.create_article(new_article)
 
-            # Delete removed
+            # Mark deleted, removed from sheet
             for nm_id, article in existing_by_nm_id.items():
                 if nm_id not in new_nm_ids:
-                    await self._cashback_table_gateway.delete_article(article)
+                    article.is_deleted = True
 
             # Sync buyers to Google Sheets
             try:
                 buyers = await self._buyer_gateway.get_buyers_by_cabinet_id(table.cabinet_id)
                 await self._google_sheets_gateway.sync_buyers_to_sheet(table.table_id, buyers)
             except Exception as e:
-                logger.exception("failed to sync buyers to table %s", table.table_id, exc_info=e)
+                logger.exception("failed to sync buyers to table.id =  %s", table.table_id, exc_info=e)
 
             # Update settings sheet with leads balance and update time
             try:
@@ -79,9 +80,7 @@ class SyncCashbackTables:
                 if cabinet:
                     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))  # MSK timezone
                     updated_at = now.strftime("%Y-%m-%d %H:%M:%S")
-                    await self._google_sheets_gateway.update_settings(
-                        table.table_id, cabinet.leads_balance, updated_at
-                    )
+                    await self._google_sheets_gateway.update_settings(table.table_id, cabinet.leads_balance, updated_at)
             except Exception as e:
                 logger.exception("failed to update settings sheet %s", table.table_id, exc_info=e)
 

@@ -1,8 +1,9 @@
 import datetime
 import enum
 
-from sqlalchemy import TIMESTAMP, ForeignKey, String, func
+from sqlalchemy import TIMESTAMP
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from axiomai.infrastructure.database.models.base import Base
@@ -67,6 +68,7 @@ class CashbackArticle(Base):
     brand_name: Mapped[str]
     instruction_text: Mapped[str]
     in_stock: Mapped[bool]
+    is_deleted: Mapped[bool] = mapped_column(default=False)
 
     created_at: Mapped[datetime.datetime] = mapped_column(
         TIMESTAMP(timezone=True),

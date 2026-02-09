@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from dishka import AsyncContainer, make_async_container
 
+from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.config import Config, load_config
@@ -35,6 +36,16 @@ async def run_sync_cashback_tables(di_container: AsyncContainer) -> None:
         await asyncio.sleep(10)
 
 
+async def run_balance_notifications_observer(di_container: AsyncContainer) -> None:
+    logger.info("start balance notifications observer...")
+    while True:
+        async with di_container() as r_container:
+            observe_balance_notifications = await r_container.get(ObserveBalanceNotifications)
+            await observe_balance_notifications.execute()
+
+        await asyncio.sleep(10)
+
+
 async def main() -> None:
     config = load_config()
     setup_logging(json_logs=config.json_logs)
@@ -49,6 +60,7 @@ async def main() -> None:
         await asyncio.gather(
             asyncio.create_task(run_cashback_tables_observer(di_container)),
             asyncio.create_task(run_sync_cashback_tables(di_container)),
+            asyncio.create_task(run_balance_notifications_observer(di_container)),
         )
     finally:
         await di_container.close()

@@ -14,7 +14,7 @@ from axiomai.infrastructure.telegram.keyboards.inline import build_payment_admin
 logger = logging.getLogger(__name__)
 
 
-class MarkPaymentWaitingConfirm:
+class MarkBuyLeadsPaymentWaitingConfirm:
     """Интерактор для перевода платежа в статус ожидания подтверждения"""
 
     def __init__(
@@ -38,7 +38,7 @@ class MarkPaymentWaitingConfirm:
 
         if payment.status != PaymentStatus.CREATED:
             raise PaymentAlreadyProcessedError(
-                f"Payment {payment_id} cannot be marked as waiting (status: {payment.status.value})"
+                f"Payment with id = {payment_id} cannot be marked as waiting (status: {payment.status.value})"
             )
 
         payment.status = PaymentStatus.WAITING_CONFIRM
@@ -49,12 +49,12 @@ class MarkPaymentWaitingConfirm:
         cabinet = await self._cabinet_gateway.get_cabinet_by_cashback_table_id(payment.cashback_table_id)
         if not cabinet:
             raise CabinetNotFoundError(
-                f"Cabinet by cashback table {payment.cashback_table_id} not found for mark waiting"
+                f"Cabinet by cashback_table.id = {payment.cashback_table_id} not found for mark waiting"
             )
 
         text = (
             f"💸 Новая оплата {payment_id}\n"
-            f"Кабинет: {cabinet.organization_name}\n"
+            f"Кабинет ID: {cabinet.id}\n"
             f"Лидов: {payment.service_data['leads']}\n"
             f"Сумма: {payment.amount} ₽\n\n"
             "Подтвердите, пожалуйста"
@@ -66,4 +66,4 @@ class MarkPaymentWaitingConfirm:
             reply_markup=build_payment_admin_keyboard(payment_id),
         )
 
-        logger.info("payment %s marked as waiting confirmation", payment_id)
+        logger.info("buy leads payment %s marked as waiting confirmation", payment_id)

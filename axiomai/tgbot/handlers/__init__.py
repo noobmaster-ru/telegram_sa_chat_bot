@@ -2,12 +2,14 @@ from aiogram import Dispatcher
 
 from axiomai.tgbot.handlers import (
     admin_confirms,
+    auto_payments,
     buy_leads,
     create_cashback_table,
     exception,
     link_business_account,
     my_cabinet,
     process_clients,
+    refill_balance,
     start,
 )
 
@@ -20,6 +22,8 @@ def setup(dispatcher: Dispatcher) -> None:
         process_clients.router,
         my_cabinet.router,
         buy_leads.router,
+        refill_balance.router,
+        auto_payments.router,
         admin_confirms.router,
         start.router,
     )

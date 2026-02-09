@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import re
@@ -8,7 +9,14 @@ from openai import AsyncOpenAI
 from openai.types.responses import Response
 
 from axiomai.config import OpenAIConfig
-from axiomai.constants import CHAT_GPT_4O_LATEST, CHAT_GPT_5_1, GPT_REASONING
+from axiomai.constants import (
+    GPT_MAX_OUTPUT_TOKENS,
+    GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+    GPT_REASONING,
+    GPT_TEMPERATURE,
+    MODEL_FOR_PHOTO_CLASSIFICATIONS,
+    MODEL_FOR_TEXT_PROMPTS,
+)
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 
 logger = logging.getLogger(__name__)
@@ -35,55 +43,12 @@ class OpenAIGateway:
             http_client=AsyncClient(proxy=config.proxy, transport=AsyncHTTPTransport(local_address="0.0.0.0")),
         )
 
-    async def classify_article_from_message(
-        self, message_text: str, articles: list[CashbackArticle], photo_url: str | None = None
-    ) -> CashbackArticle | None:
-        if not articles:
-            return None
-
-        articles_list = "\n".join(f"{i + 1}. {article.title}" for i, article in enumerate(articles))
-
-        prompt = f"""
-        Определи, о каком товаре идёт речь на основе изображения и/или текста сообщения клиента.
-        Список доступных товаров:
-        {articles_list}
-
-        Сообщение клиента: "{message_text}"
-
-        Посмотри на текст или изображение. Если текст или изображение относятся к одному из товаров (даже частично), верни его ИНДЕКС из списка (1, 2, 3 и т.д.).
-        Если не можешь определить товар, верни 0.
-
-        Ответь ТОЛЬКО числом - индексом товара из списка (например: 1, 2, 3...) или 0, если товар не определён.
-        """
-        content: list[dict[str, str]] | str
-        if photo_url:
-            content = [
-                {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image_url": photo_url},
-            ]
-        else:
-            content = prompt
-
-        messages = [
-            {"role": "system", "content": "Ты помощник для классификации сообщений клиентов."},
-            {"role": "user", "content": content},
-        ]
-
-        response = await self._client.responses.create(model=CHAT_GPT_4O_LATEST, input=messages, temperature=0)
-
-        with suppress(ValueError, json.JSONDecodeError, AttributeError):
-            result = int(response.output[0].content[0].text.strip())
-            if 1 <= result <= len(articles):
-                return articles[result - 1]
-
-        return None
-
     async def classify_order_screenshot(
         self, photo_url: str, article_title: str, brand_name: str, article_image_url: str | None = None
     ) -> dict[str, bool | str | int | None]:
         prompt = f"""
         Проанализируй скриншот заказа на Wildberries и определи:
-        1. Есть ли на скриншоте ЗАКАЗ нашего товара с названием "{article_title}" или бренд "{brand_name}"
+        1. Есть ли на скриншоте ЗАКАЗ целевого товара
         2. Какая цена указана для этого товара в рублях (₽)
         
         ВАЖНЫЕ признаки заказа на Wildberries:
@@ -98,6 +63,10 @@ class OpenAIGateway:
         Где is_order = true, если заказ нашего товара присутствует на скриншоте,
         price = цена товара в рублях, или null если цена не видна,
         cancel_reason = причина отказа, если is_order = false
+
+        ЦЕЛЕВОЙ ТОВАР:
+        - Название: "{article_title}"
+        - Бренд: "{brand_name}"
         """
 
         content = [
@@ -117,11 +86,15 @@ class OpenAIGateway:
         ]
 
         response = await self._client.responses.create(
-            model=CHAT_GPT_5_1,
+            model=MODEL_FOR_PHOTO_CLASSIFICATIONS,
             input=messages,
             reasoning={"effort": GPT_REASONING},
             tools=PHOTO_ANALISE_TOOLS,
+            max_output_tokens=GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+            prompt_cache_key=_build_prompt_cache_key("classify_order_screenshot"),
+            prompt_cache_retention="24h",
         )
+        _log_response_usage("classify_order_screenshot", response)
 
         logger.debug("classified order screenshot response %s ", response)
 
@@ -141,13 +114,22 @@ class OpenAIGateway:
         self, photo_url: str, article_title: str, brand_name: str
     ) -> dict[str, bool | str | None]:
         prompt = f"""
-        Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries.
-        Подпись у товара может быть "{article_title}" или "{brand_name}" и 5 оранжевых звёзд ⭐️ должны быть на скриншоте клиента.
-        Звёзды могут быть прямо на фотографии товара. Текст отзыва может и не быть, при этом звезды должны быть обязательно.
+        Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries, сделанный согласно нашим КРИТЕРИЯМ.
+        
+        КРИТЕРИИ:
+            - Подпись у товара может быть названием целевого товара или его брендом.
+            - На скриншоте клиента обязательно должны быть 5 оранжевых звёзд ⭐️. Звёзды могут быть прямо на фотографии товара.
+            - Текст отзыва НЕ должен содержать описание товара. Только общие фразы МОГУТ БЫТЬ, например: "товар хороший", "всё хорошо", "отличный товар", и тд
+            - На скриншоте НЕ должно быть замазок/блюра и других изменений, только обычный скриншот с телефона без исправлений
+
         
         Верни ответ в формате JSON: {{"is_feedback": bool, "cancel_reason": str|null}}
-        Где is_feedback = true, если на скриншоте есть отзыв с 5 звёздами на наш товар,
+        Где is_feedback = true, если на скриншоте есть отзыв с 5 звёздами на наш товар, согласно нашим КРИТЕРИЯМ.
         cancel_reason = причина отказа, если is_feedback = false
+
+        ЦЕЛЕВОЙ ТОВАР:
+        - Название: "{article_title}"
+        - Бренд: "{brand_name}"
         """
 
         content = [
@@ -164,11 +146,15 @@ class OpenAIGateway:
         ]
 
         response = await self._client.responses.create(
-            model=CHAT_GPT_5_1,
+            model=MODEL_FOR_PHOTO_CLASSIFICATIONS,
             input=messages,
             reasoning={"effort": GPT_REASONING},
             tools=PHOTO_ANALISE_TOOLS,
+            max_output_tokens=GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+            prompt_cache_key=_build_prompt_cache_key("classify_feedback_screenshot"),
+            prompt_cache_retention="24h",
         )
+        _log_response_usage("classify_feedback_screenshot", response)
 
         logger.debug("classified feedback screenshot response %s ", response)
 
@@ -214,11 +200,15 @@ class OpenAIGateway:
         ]
 
         response = await self._client.responses.create(
-            model=CHAT_GPT_5_1,
+            model=MODEL_FOR_PHOTO_CLASSIFICATIONS,
             input=messages,
-            reasoning={"effort": GPT_REASONING},
+            reasoning={"effort": "high"},
             tools=PHOTO_ANALISE_TOOLS,
+            max_output_tokens=GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
+            prompt_cache_key=_build_prompt_cache_key("classify_cut_labels_photo"),
+            prompt_cache_retention="24h",
         )
+        _log_response_usage("classify_cut_labels_photo", response)
 
         logger.debug("classified cut labels screenshot response %s ", response)
 
@@ -275,24 +265,13 @@ class OpenAIGateway:
             articles_for_user = "\n".join([f"- {title}" for _, title in available_articles])
 
         prompt = f"""
-        Ты — вежливый помощник кешбек-сервиса. Клиент получает кешбек за покупку товара "{article_title}" на Wildberries.
+        Ты — вежливый помощник кешбек-сервиса Wildberries.
 
         Процесс получения кешбека:
         1. Скриншот заказа — клиент отправляет скриншот оформленного заказа
         2. Скриншот отзыва — после получения товара клиент оставляет отзыв на 5 звёзд и присылает скриншот
         3. Фото разрезанных этикеток — клиент разрезает этикетки со штрихкодом/QR-кодом и присылает фото
         4. Реквизиты — клиент отправляет данные для перевода кешбека
-
-        Сейчас клиент находится на шаге: {current_step_desc}
-
-        Инструкция для клиента:
-        {instruction_text}
-
-        {"Доступные артикулы (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):" + chr(10) + articles_text if articles_text else ""}
-
-        {"История диалога:" + chr(10) + history_text if history_text else ""}
-
-        Новое сообщение клиента: "{user_message}"
 
         ВАЖНО:
         - Ответь кратко и по делу (не более 3-4 предложений)
@@ -304,7 +283,7 @@ class OpenAIGateway:
         СПЕЦИАЛЬНЫЕ КОМАНДЫ (добавляй в начало ответа если нужно):
 
         1. Если клиент ОДНОЗНАЧНО хочет прекратить процесс по текущему товару
-           (например: "не хочу", "отмена", "стоп", "передумал"),
+           (например: "Не хочу", "Отмена", "Стоп", "Передумал", "Нет, спасибо", "Спасибо пока не нужно"),
            напиши [STOP] в начале ответа.
 
         2. Если клиент хочет получить кешбек за ДРУГОЙ товар из списка доступных,
@@ -312,10 +291,24 @@ class OpenAIGateway:
            Например: [SWITCH:123]
            После этого напиши приветствие для нового артикула (БЕЗ упоминания ID).
 
-        3. Если клиент спрашивает какие товары доступны — перечисли ТОЛЬКО названия:
-        {articles_for_user}
+        3. Если клиент спрашивает какие товары доступны — перечисли ТОЛЬКО названия из блока "ДОСТУПНЫЕ ТОВАРЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ" ниже.
 
         Не путай вопросы или сомнения с командами — только явные намерения.
+
+        КОНТЕКСТ:
+        - Текущий товар: "{article_title}"
+        - Текущий шаг: {current_step_desc}
+
+        Инструкция для клиента:
+        {instruction_text}
+
+        {"Доступные артикулы (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):" + chr(10) + articles_text if articles_text else ""}
+
+        {"ДОСТУПНЫЕ ТОВАРЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ:" + chr(10) + articles_for_user if articles_for_user else ""}
+
+        {"История диалога:" + chr(10) + history_text if history_text else ""}
+
+        Новое сообщение клиента: "{user_message}"
         """
 
         messages = [
@@ -324,10 +317,14 @@ class OpenAIGateway:
         ]
 
         response = await self._client.responses.create(
-            model=CHAT_GPT_4O_LATEST,
+            model=MODEL_FOR_TEXT_PROMPTS,
             input=messages,
-            temperature=0.7,
+            temperature=GPT_TEMPERATURE,
+            max_output_tokens=GPT_MAX_OUTPUT_TOKENS,
+            prompt_cache_key=_build_prompt_cache_key("answer_user_question"),
+            prompt_cache_retention="24h",
         )
+        _log_response_usage("answer_user_question", response)
 
         result = _extract_response_text(response)
         return _parse_answer_result(result)
@@ -347,10 +344,7 @@ class OpenAIGateway:
             - response: str - текст ответа
             - article_id: int | None - ID артикула если GPT определил товар
         """
-        articles_info = "\n".join(
-            f"- ID:{article.id} | Название: {article.title}\n  Условия: {article.instruction_text}"
-            for article in articles
-        )
+        articles_info = "\n".join(f"- ID:{article.id} | Название: {article.title}" for article in articles)
         articles_titles = "\n".join(f"- {article.title}" for article in articles)
         valid_ids = {article.id for article in articles}
 
@@ -363,18 +357,8 @@ class OpenAIGateway:
             history_text = "\n".join(history_lines)
 
         prompt = f"""
-        Ты — приветливый менеджер кешбек-сервиса на Wildberries. Твоя задача — общаться с клиентом, рассказывать о товарах и помогать получить кешбек.
-        
-        Доступные товары для кешбека (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):
-        {articles_info}
-        
-        Список товаров для показа пользователю:
-        {articles_titles}
-        
-        {"История диалога:" + chr(10) + history_text if history_text else ""}
-        
-        Новое сообщение клиента: "{user_message}"
-        
+        Ты — приветливый менеджер кешбек-сервиса на Wildberries. Твоя задача — помочь клиенту выбрать товар для кешбека.
+
         СТРОГИЕ ЗАПРЕТЫ:
         - НИКОГДА не давай ссылки на изображения или URL
         - НИКОГДА не угадывай товар — если непонятно, переспроси
@@ -387,10 +371,10 @@ class OpenAIGateway:
         3. НЕ добавляй формальные завершающие фразы
         
         ЛОГИКА ДИАЛОГА:
-        - Если клиент просто здоровается или спрашивает "актуально?" — поприветствуй и перечисли доступные товары
-        - Если клиент спрашивает об условиях в общем — скажи что условия разные и попроси уточнить товар
+        - Если клиент просто здоровается или спрашивает "актуально?" — поприветствуй, скажи, "Напишите название товара, по которому хотите кэшбек" и перечисли доступные товары
+        - Если клиент спрашивает об условиях в общем — кратко скажи, что условия зависят от товара, и попроси уточнить название
         - Если клиент задаёт неопределённый вопрос ("это какое?", "фото можно?", "а что это?") — ПЕРЕСПРОСИ о каком именно товаре он спрашивает
-        - Если клиент ЯВНО называет конкретный товар (например "ролик", "губка", "носки") — расскажи условия этого товара и ДОБАВЬ в начало ответа: [ARTICLE:ID]
+        - Если клиент ЯВНО называет конкретный товар (например "ролик", "губка", "носки") — подтвердить выбор товара и ДОБАВЬ в начало ответа: [ARTICLE:ID]
         - Добавляй [ARTICLE:ID] ТОЛЬКО когда клиент ОДНОЗНАЧНО выбрал товар
         
         ПРИМЕР 1 (неопределённый вопрос):
@@ -399,7 +383,17 @@ class OpenAIGateway:
         
         ПРИМЕР 2 (явный выбор):
         Клиент: "ролик"
-        Ответ: [ARTICLE:123]Отлично! Для получения кешбека за ролик: оплатите заказ, оставьте отзыв на 5 звёзд и пришлите фото разрезанных этикеток. Готовы начать?
+        Ответ: [ARTICLE:123]Отлично, оформляем кешбек по этому товару. Дальше пришлю точные шаги.
+
+        Доступные товары для кешбека (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):
+        {articles_info}
+
+        Список товаров для показа пользователю:
+        {articles_titles}
+
+        {"История диалога:" + chr(10) + history_text if history_text else ""}
+
+        Новое сообщение клиента: "{user_message}"
         """
 
         content: list[dict[str, str]] | str
@@ -417,10 +411,14 @@ class OpenAIGateway:
         ]
 
         response = await self._client.responses.create(
-            model=CHAT_GPT_4O_LATEST,
+            model=MODEL_FOR_TEXT_PROMPTS,
             input=messages,
-            temperature=0.7,
+            temperature=GPT_TEMPERATURE,
+            max_output_tokens=GPT_MAX_OUTPUT_TOKENS,
+            prompt_cache_key=_build_prompt_cache_key("chat_with_client"),
+            prompt_cache_retention="24h",
         )
+        _log_response_usage("chat_with_client", response)
 
         result = _extract_response_text(response)
         parsed = _parse_predialog_result(result)
@@ -440,6 +438,28 @@ def _extract_response_text(response: Response) -> str | None:
                 if text:
                     return text.strip()
     return None
+
+
+def _build_prompt_cache_key(scope: str, *parts: str) -> str:
+    normalized = "|".join(part.strip().lower() for part in parts if part and part.strip())
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return f"axiomai:{scope}:{digest}"
+
+
+def _log_response_usage(operation: str, response: Response) -> None:
+    usage = getattr(response, "usage", None)
+    if not usage:
+        return
+
+    cached_tokens = getattr(getattr(usage, "input_tokens_details", None), "cached_tokens", None)
+    logger.debug(
+        "%s usage: input_tokens=%s, cached_tokens=%s, output_tokens=%s, total_tokens=%s",
+        operation,
+        getattr(usage, "input_tokens", None),
+        cached_tokens,
+        getattr(usage, "output_tokens", None),
+        getattr(usage, "total_tokens", None),
+    )
 
 
 def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | None]:

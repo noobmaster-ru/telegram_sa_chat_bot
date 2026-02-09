@@ -34,6 +34,17 @@ class CabinetGateway(Gateway):
             select(Cabinet).join(CashbackTable).where(CashbackTable.id == cashback_table_id)
         )
 
+    async def get_cabinets_with_low_balance(self) -> list[Cabinet]:
+        """Получить кабинеты с initial_balance > 0 и balance < 50% от initial_balance."""
+        return list(
+            await self._session.scalars(
+                select(Cabinet).where(
+                    Cabinet.initial_balance > 0,
+                    Cabinet.balance <= Cabinet.initial_balance * 0.5,
+                )
+            )
+        )
+
     async def get_cabinet_by_business_connection_id(self, business_connection_id: str) -> Cabinet | None:
         return await self._session.scalar(
             select(Cabinet).where(Cabinet.business_connection_id == business_connection_id)

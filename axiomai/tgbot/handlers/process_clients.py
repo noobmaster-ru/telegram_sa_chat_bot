@@ -107,7 +107,9 @@ async def _process_accumulated_messages(
             )
             return
 
-        articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(cashback_table.cabinet_id)
+        articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(
+            cabinet_id=cashback_table.cabinet_id, telegram_id=chat_id
+        )
 
         if not articles:
             await bot.send_message(
@@ -145,9 +147,7 @@ async def _process_accumulated_messages(
     await asyncio.sleep(config.delay_between_bot_messages)
 
     if classified_article_id:
-        await add_predialog_chat_history(
-            redis, business_connection_id, chat_id, combined_text, response_text
-        )
+        await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)
 
         await bot.send_message(
             chat_id=chat_id,
@@ -170,9 +170,7 @@ async def _process_accumulated_messages(
             },
         )
     else:
-        await add_predialog_chat_history(
-            redis, business_connection_id, chat_id, combined_text, response_text
-        )
+        await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)
 
         await bot.send_message(
             chat_id=chat_id,
@@ -180,8 +178,3 @@ async def _process_accumulated_messages(
             business_connection_id=business_connection_id,
             parse_mode=ParseMode.MARKDOWN,
         )
-
-
-@router.business_message(StateFilter("skip_messaging"))
-async def skip_messaging(message: Message, bot: Bot) -> None:
-    await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)

@@ -9,7 +9,7 @@ from axiomai.infrastructure.database.gateways.user import UserGateway
 from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
-from axiomai.infrastructure.telegram.keyboards.reply import kb_menu
+from axiomai.infrastructure.telegram.keyboards.reply import get_kb_menu
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,8 @@ class ObserveCashbackTables:
         for table in tables:
             user = await self._user_gateway.get_user_by_cabinet_id(table.cabinet_id)
             if not user:
-                logger.error("user not found for cabinet_id=%s", table.cabinet_id)
+                user_id_val = user.id if user else "Unknown"
+                logger.error("user.id=%s, not found for cabinet_id=%s", user_id_val, table.cabinet_id)
                 continue
 
             try:
@@ -77,7 +78,7 @@ class ObserveCashbackTables:
                     f"{link_url}\n\n"
                     "После подключения, бот сможет автоматически будет обрабатывать сообщения от клиентов."
                 ),
-                reply_markup=kb_menu,
+                reply_markup=get_kb_menu(cabinet),
             )
 
             logger.info("table %s verified successfully", table.table_id)

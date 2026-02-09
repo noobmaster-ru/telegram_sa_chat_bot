@@ -1,9 +1,10 @@
 from typing import Any
 
 from aiogram import Bot
-from aiogram.types import FSInputFile, InputMediaPhoto, Message
+from aiogram.types import CallbackQuery, FSInputFile, InputMediaPhoto, Message
 from aiogram_dialog import Dialog, DialogManager, ShowMode, Window
 from aiogram_dialog.widgets.input import TextInput
+from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.text import Const
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
@@ -12,6 +13,8 @@ from axiomai.application.exceptions.cashback_table import CashbackTableAlredyExi
 from axiomai.application.interactors.create_cashback_table import CreateCashbackTable
 from axiomai.config import Config
 from axiomai.constants import GOOGLE_SHEETS_TEMPLATE_URL
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
+from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.telegram.dialogs.states import CreateCashbackTableStates
 
 
@@ -81,7 +84,51 @@ async def send_insctruction_message(bot: Bot, chat_id: int, config: Config) -> N
     await bot.send_media_group(chat_id=chat_id, media=media_group)
 
 
+@inject
+async def on_superbanking_yes(
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
+    cabinet_gateway: FromDishka[CabinetGateway],
+    transaction_manager: FromDishka[TransactionManager],
+) -> None:
+    cabinet = await cabinet_gateway.get_cabinet_by_telegram_id(callback.from_user.id)
+    if cabinet:
+        cabinet.is_superbanking_connected = True
+        await transaction_manager.commit()
+
+    text = callback.message.text.replace("Подключать автовыплаты?", "Подключать автовыплаты: <b>Да</b>")
+    await callback.message.edit_text(text)
+    await callback.answer(
+        "Отлично! Автовыплаты подключены. Вы сможете пополнить баланс после создания кабинета.",
+        show_alert=True,
+    )
+    await dialog_manager.next(show_mode=ShowMode.SEND)
+
+
+async def on_superbanking_no(
+    callback: CallbackQuery,
+    button: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    text = callback.message.text.replace("Подключать автовыплаты?", "Подключать автовыплаты: <b>Нет</b>")
+    await callback.message.edit_text(text)
+    await callback.answer("Хорошо, автовыплаты не подключены. Вы можете подключить их позже.", show_alert=True)
+    await dialog_manager.next(show_mode=ShowMode.SEND)
+
+
 create_cashback_table_dialog = Dialog(
+    Window(
+        Const(
+            "Подключать автовыплаты?\n\n"
+            "<code>P.S. Автовыплаты - это когда деньги за кешбэк автоматически перечисляются на карту клиента.</code>"
+        ),
+        Row(
+            Button(Const("✅ Да"), id="superbanking_yes", on_click=on_superbanking_yes),
+            Button(Const("❌ Нет"), id="superbanking_no", on_click=on_superbanking_no),
+        ),
+        state=CreateCashbackTableStates.ask_superbanking,
+    ),
     Window(
         Const(
             "Сделайте себе копию этой таблицы\n\n"

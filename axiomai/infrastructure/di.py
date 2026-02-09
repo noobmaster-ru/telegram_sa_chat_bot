@@ -4,20 +4,30 @@ from dishka import Provider, Scope, provide, provide_all
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from axiomai.application.interactors.buy_leads.buy_leads import BuyLeads
-from axiomai.application.interactors.buy_leads.cancel_payment import CancelPayment
-from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmPayment
-from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkPaymentWaitingConfirm
+from axiomai.application.interactors.buy_leads.cancel_payment import CancelBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.confirm_payment import ConfirmBuyLeadsPayment
+from axiomai.application.interactors.buy_leads.mark_payment_waiting_confirm import MarkBuyLeadsPaymentWaitingConfirm
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.application.interactors.create_cabinet import CreateCabinet
 from axiomai.application.interactors.create_cashback_table import CreateCashbackTable
+from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.application.interactors.create_user import CreateSeller
+from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
+from axiomai.application.interactors.refill_balance.cancel_payment import CancelRefillBalancePayment
+from axiomai.application.interactors.refill_balance.confirm_payment import ConfirmRefillBalancePayment
+from axiomai.application.interactors.refill_balance.mark_payment_waiting_confirm import (
+    MarkRefillBalancePaymentWaitingConfirm,
+)
+from axiomai.application.interactors.refill_balance.refill_balance import RefillBalance
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.config import Config, MessageDebouncerConfig, OpenAIConfig, SuperbankingConfig
+from axiomai.infrastructure.database.gateways.balance_notification import BalanceNotificationGateway
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.gateways.payment import PaymentGateway
+from axiomai.infrastructure.database.gateways.superbanking_payout import SuperbankingPayoutGateway
 from axiomai.infrastructure.database.gateways.user import UserGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
@@ -71,7 +81,15 @@ class GatewaysProvider(Provider):
 
     google_sheets_gateway = provide(GoogleSheetsGateway, scope=Scope.APP)
 
-    gateways = provide_all(BuyerGateway, CabinetGateway, CashbackTableGateway, PaymentGateway, UserGateway)
+    gateways = provide_all(
+        BalanceNotificationGateway,
+        BuyerGateway,
+        CabinetGateway,
+        CashbackTableGateway,
+        PaymentGateway,
+        SuperbankingPayoutGateway,
+        UserGateway,
+    )
 
 
 class TgbotInteractorsProvider(Provider):
@@ -84,16 +102,22 @@ class TgbotInteractorsProvider(Provider):
         CreateCabinet,
         CreateCashbackTable,
         CreateBuyer,
+        CreateSuperbankingPayment,
         BuyLeads,
-        MarkPaymentWaitingConfirm,
-        ConfirmPayment,
-        CancelPayment,
+        MarkBuyLeadsPaymentWaitingConfirm,
+        ConfirmBuyLeadsPayment,
+        CancelBuyLeadsPayment,
+        RefillBalance,
+        MarkRefillBalancePaymentWaitingConfirm,
+        ConfirmRefillBalancePayment,
+        CancelRefillBalancePayment,
         scope=Scope.REQUEST,
     )
 
 
 class ObserverInteractorsProvider(Provider):
     interactors = provide_all(
+        ObserveBalanceNotifications,
         ObserveCashbackTables,
         SyncCashbackTables,
         scope=Scope.REQUEST,

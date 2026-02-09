@@ -12,9 +12,11 @@ logs/
 pgdata/
 .pytest_cache/
 .idea
+.vscode/
 
 DataExport*
 sunny-might*
 
 *pgdata_dev/
 .VSCodeCounter*
+sunny-might*
