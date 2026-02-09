@@ -31,9 +31,9 @@ AMOUNT_PATTERN = re.compile(
 CARD_CLEAN_RE = re.compile(r"[ -]")
 
 # OpenAI API
-CHAT_GPT_4O_LATEST = "chatgpt-4o-latest"
-CHAT_GPT_5_1 = "gpt-5.1"
-GPT_MAX_TOKENS = 300
-GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS = 850
-GPT_TEMPERATURE = 1.45
-GPT_REASONING = "high"  # "low" | "medium" | "high"
+MODEL_FOR_TEXT_PROMPTS = "gpt-5.1-chat-latest"
+MODEL_FOR_PHOTO_CLASSIFICATIONS = "gpt-5.1"
+GPT_MAX_OUTPUT_TOKENS = 150
+GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS = 800
+GPT_TEMPERATURE = 0.5
+GPT_REASONING = "medium"  # "low" | "medium" | "high"
