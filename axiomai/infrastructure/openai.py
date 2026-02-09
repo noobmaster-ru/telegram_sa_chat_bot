@@ -449,7 +449,7 @@ def _log_response_usage(operation: str, response: Response) -> None:
         return
 
     cached_tokens = getattr(getattr(usage, "input_tokens_details", None), "cached_tokens", None)
-    logger.debug(
+    logger.info(
         "%s usage: input_tokens=%s, cached_tokens=%s, output_tokens=%s, total_tokens=%s",
         operation,
         getattr(usage, "input_tokens", None),
