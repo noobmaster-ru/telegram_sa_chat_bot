@@ -107,7 +107,7 @@ class GoogleSheetsGateway:
                 rows = [_buyer_to_row(buyer) for buyer in buyers]
                 await _write_buyers_to_sheet(aiogoogle, sheets_v4, table_id, rows)
             except HTTPError as err:
-                logger.exception("Failed to write buyers to sheet %s", table_id, exc_info=err)
+                logger.exception("Failed to sync buyers to table.id = %s", table_id, exc_info=err)
 
 async def _read_is_paid_manually_from_sheet(
     aiogoogle: Aiogoogle, sheets_v4: Any, table_id: str, buyer_index: dict[tuple[int, int], Buyer]
