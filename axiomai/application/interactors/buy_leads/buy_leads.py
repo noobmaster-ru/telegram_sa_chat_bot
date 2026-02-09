@@ -37,11 +37,11 @@ class BuyLeads:
 
         cabinet = await self._cabinet_gateway.get_cabinet_by_telegram_id(telegram_id)
         if not cabinet:
-            raise CabinetNotFoundError(f"Cabinet for user {telegram_id} not found")
+            raise CabinetNotFoundError(f"Cabinet for user.telegram_id =  {telegram_id} not found")
 
         cashback_table = await self._cashback_table_gateway.get_active_cashback_table_by_telegram_id(telegram_id)
         if not cashback_table:
-            raise CashbackTableNotFoundError(f"No active cashback table found for the user {telegram_id}")
+            raise CashbackTableNotFoundError(f"No active cashback+table found for the user.telegram_id = {telegram_id}")
 
         amount = leads_amount * PRICE_PER_LEAD
 

@@ -19,7 +19,7 @@ class CreateCabinet:
     async def execute(self, telegram_id: int) -> None:
         user = await self._user_gateway.get_user_by_telegram_id(telegram_id)
         if not user:
-            raise UserNotFoundError(f"User by telegram id {telegram_id} not found")
+            raise UserNotFoundError(f"User by telegram_id = {telegram_id} not found")
 
         cabinet = await self._cabinet_gateway.get_cabinet_by_telegram_id(telegram_id)
         if cabinet:

@@ -68,7 +68,7 @@ class SyncCashbackTables:
                 buyers = await self._buyer_gateway.get_buyers_by_cabinet_id(table.cabinet_id)
                 await self._google_sheets_gateway.sync_buyers_to_sheet(table.table_id, buyers)
             except Exception as e:
-                logger.exception("failed to sync buyers to table %s", table.table_id, exc_info=e)
+                logger.exception("failed to sync buyers to table.id =  %s", table.table_id, exc_info=e)
 
             table.last_synced_at = datetime.datetime.now(datetime.UTC)
             await self._transaction_manager.commit()

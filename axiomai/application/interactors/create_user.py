@@ -41,4 +41,4 @@ class CreateSeller:
 
         await self._transaction_manager.commit()
 
-        logger.info("user created with telegram_id %s", telegram_id)
+        logger.info("user created with telegram_id = %s", telegram_id)

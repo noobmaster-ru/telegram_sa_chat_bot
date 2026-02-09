@@ -32,15 +32,15 @@ class RefillBalance:
     async def execute(self, telegram_id: int, amount: int) -> int:
         user = await self._user_gateway.get_user_by_telegram_id(telegram_id)
         if not user:
-            raise UserNotFoundError(f"User with telegram_id {telegram_id} not found")
+            raise UserNotFoundError(f"User with telegram_id = {telegram_id} not found")
 
         cabinet = await self._cabinet_gateway.get_cabinet_by_telegram_id(telegram_id)
         if not cabinet:
-            raise CabinetNotFoundError(f"Cabinet for user {telegram_id} not found")
+            raise CabinetNotFoundError(f"Cabinet for user telegram_id = {telegram_id} not found")
 
         cashback_table = await self._cashback_table_gateway.get_active_cashback_table_by_telegram_id(telegram_id)
         if not cashback_table:
-            raise CashbackTableNotFoundError(f"No active cashback table found for the user {telegram_id}")
+            raise CashbackTableNotFoundError(f"No active cashback table found for the user telegram_id = {telegram_id}")
 
         payment = Payment(
             user_id=user.id,
@@ -63,6 +63,6 @@ class RefillBalance:
         await self._payment_gateway.create_payment(payment)
         await self._tm.commit()
 
-        logger.info("refill balance payment %s created for user %s: %s ₽", payment.id, telegram_id, amount)
+        logger.info("refill balance payment.id = %s created for user.telegram_id = %s: amount = %s ₽", payment.id, telegram_id, amount)
 
         return payment.id
