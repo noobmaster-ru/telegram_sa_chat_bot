@@ -35,6 +35,7 @@ class Buyer(Base):
     amount: Mapped[int | None] = mapped_column(comment="Сумма кешбека в рублях")
 
     is_superbanking_paid: Mapped[bool] = mapped_column(default=False, comment="Выплата произведена через Superbanking")
+    is_paid_manually: Mapped[bool] = mapped_column(default=False, comment="Выплата проставлена вручную в таблице")
 
     chat_history: Mapped[list[dict]] = mapped_column(JSONB, default=list, comment="История сообщений чата")
 
