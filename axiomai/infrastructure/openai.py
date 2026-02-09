@@ -13,7 +13,6 @@ from axiomai.constants import (
     GPT_MAX_OUTPUT_TOKENS,
     GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
     GPT_REASONING,
-    GPT_TEMPERATURE,
     MODEL_FOR_PHOTO_CLASSIFICATIONS,
     MODEL_FOR_TEXT_PROMPTS,
 )
@@ -319,7 +318,6 @@ class OpenAIGateway:
         response = await self._client.responses.create(
             model=MODEL_FOR_TEXT_PROMPTS,
             input=messages,
-            temperature=GPT_TEMPERATURE,
             max_output_tokens=GPT_MAX_OUTPUT_TOKENS,
             prompt_cache_key=_build_prompt_cache_key("answer_user_question"),
             prompt_cache_retention="24h",
@@ -413,7 +411,6 @@ class OpenAIGateway:
         response = await self._client.responses.create(
             model=MODEL_FOR_TEXT_PROMPTS,
             input=messages,
-            temperature=GPT_TEMPERATURE,
             max_output_tokens=GPT_MAX_OUTPUT_TOKENS,
             prompt_cache_key=_build_prompt_cache_key("chat_with_client"),
             prompt_cache_retention="24h",
