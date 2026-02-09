@@ -2,6 +2,7 @@ import datetime
 import logging
 
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
@@ -15,11 +16,13 @@ class SyncCashbackTables:
         self,
         cashback_table_gateway: CashbackTableGateway,
         buyer_gateway: BuyerGateway,
+        cabinet_gateway: CabinetGateway,
         google_sheets_gateway: GoogleSheetsGateway,
         transaction_manager: TransactionManager,
     ) -> None:
         self._cashback_table_gateway = cashback_table_gateway
         self._buyer_gateway = buyer_gateway
+        self._cabinet_gateway = cabinet_gateway
         self._google_sheets_gateway = google_sheets_gateway
         self._transaction_manager = transaction_manager
 
@@ -70,6 +73,16 @@ class SyncCashbackTables:
                 await self._google_sheets_gateway.sync_buyers_to_sheet(table.table_id, buyers)
             except Exception as e:
                 logger.exception("failed to sync buyers to table.id =  %s", table.table_id, exc_info=e)
+
+            # Update settings sheet with leads balance and update time
+            try:
+                cabinet = await self._cabinet_gateway.get_cabinet_by_id(table.cabinet_id)
+                if cabinet:
+                    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))  # MSK timezone
+                    updated_at = now.strftime("%Y-%m-%d %H:%M:%S")
+                    await self._google_sheets_gateway.update_settings(table.table_id, cabinet.leads_balance, updated_at)
+            except Exception as e:
+                logger.exception("failed to update settings sheet %s", table.table_id, exc_info=e)
 
             table.last_synced_at = datetime.datetime.now(datetime.UTC)
             await self._transaction_manager.commit()

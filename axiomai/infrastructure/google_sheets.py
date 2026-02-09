@@ -109,6 +109,24 @@ class GoogleSheetsGateway:
             except HTTPError as err:
                 logger.exception("Failed to sync buyers to table.id = %s", table_id, exc_info=err)
 
+    async def update_settings(self, table_id: str, leads_balance: int, updated_at: str) -> None:
+        """Обновляет лист 'Настройка': A2 - остаток лидов, B2 - время обновления."""
+        async with self._aiogoogle as aiogoogle:
+            sheets_v4 = await aiogoogle.discover("sheets", "v4")
+
+            try:
+                await aiogoogle.as_service_account(
+                    sheets_v4.spreadsheets.values.update(
+                        spreadsheetId=table_id,
+                        range="Настройка!A2:B2",
+                        valueInputOption="RAW",
+                        json={"values": [[leads_balance, updated_at]]},
+                    )
+                )
+            except HTTPError as err:
+                logger.exception("Failed to update settings to table.id %s", table_id, exc_info=err)
+
+
 async def _read_is_paid_manually_from_sheet(
     aiogoogle: Aiogoogle, sheets_v4: Any, table_id: str, buyer_index: dict[tuple[int, int], Buyer]
 ) -> None:
@@ -130,9 +148,7 @@ async def _read_is_paid_manually_from_sheet(
                 buyer_index[key].is_paid_manually = is_paid_manually
 
 
-async def _write_buyers_to_sheet(
-    aiogoogle: Aiogoogle, sheets_v4: Any, table_id: str, rows: list[list]
-) -> None:
+async def _write_buyers_to_sheet(aiogoogle: Aiogoogle, sheets_v4: Any, table_id: str, rows: list[list]) -> None:
     """Записывает данные покупателей в Google Sheets."""
     spreadsheet = await aiogoogle.as_service_account(
         sheets_v4.spreadsheets.get(
@@ -158,17 +174,19 @@ async def _write_buyers_to_sheet(
         requests.append({"deleteConditionalFormatRule": {"sheetId": sheet_id, "index": i}})
 
     # Очищаем старые данные
-    requests.append({
-        "updateCells": {
-            "range": {
-                "sheetId": sheet_id,
-                "startRowIndex": 1,
-                "startColumnIndex": 0,
-                "endColumnIndex": 16,
-            },
-            "fields": "userEnteredValue,dataValidation",
+    requests.append(
+        {
+            "updateCells": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 1,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": 16,
+                },
+                "fields": "userEnteredValue,dataValidation",
+            }
         }
-    })
+    )
 
     if rows:
         # Формируем данные для записи
@@ -179,52 +197,60 @@ async def _write_buyers_to_sheet(
             cells.append({"userEnteredValue": {"boolValue": row[-1]}})
             row_data.append({"values": cells})
 
-        requests.append({
-            "updateCells": {
-                "rows": row_data,
-                "start": {"sheetId": sheet_id, "rowIndex": 1, "columnIndex": 0},
-                "fields": "userEnteredValue",
+        requests.append(
+            {
+                "updateCells": {
+                    "rows": row_data,
+                    "start": {"sheetId": sheet_id, "rowIndex": 1, "columnIndex": 0},
+                    "fields": "userEnteredValue",
+                }
             }
-        })
+        )
 
         # Data validation для checkbox в колонке P
-        requests.append({
-            "setDataValidation": {
-                "range": {
-                    "sheetId": sheet_id,
-                    "startRowIndex": 1,
-                    "endRowIndex": len(rows) + 1,
-                    "startColumnIndex": 15,
-                    "endColumnIndex": 16,
-                },
-                "rule": {"condition": {"type": "BOOLEAN"}, "strict": True},
-            }
-        })
-
-        # Conditional formatting: зеленый фон при checked checkbox
-        requests.append({
-            "addConditionalFormatRule": {
-                "rule": {
-                    "ranges": [{
+        requests.append(
+            {
+                "setDataValidation": {
+                    "range": {
                         "sheetId": sheet_id,
                         "startRowIndex": 1,
                         "endRowIndex": len(rows) + 1,
-                        "startColumnIndex": 0,
+                        "startColumnIndex": 15,
                         "endColumnIndex": 16,
-                    }],
-                    "booleanRule": {
-                        "condition": {
-                            "type": "CUSTOM_FORMULA",
-                            "values": [{"userEnteredValue": "=$P2=TRUE"}],
-                        },
-                        "format": {
-                            "backgroundColor": {"red": 0.85, "green": 0.95, "blue": 0.85},
+                    },
+                    "rule": {"condition": {"type": "BOOLEAN"}, "strict": True},
+                }
+            }
+        )
+
+        # Conditional formatting: зеленый фон при checked checkbox
+        requests.append(
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [
+                            {
+                                "sheetId": sheet_id,
+                                "startRowIndex": 1,
+                                "endRowIndex": len(rows) + 1,
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 16,
+                            }
+                        ],
+                        "booleanRule": {
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [{"userEnteredValue": "=$P2=TRUE"}],
+                            },
+                            "format": {
+                                "backgroundColor": {"red": 0.85, "green": 0.95, "blue": 0.85},
+                            },
                         },
                     },
-                },
-                "index": 0,
+                    "index": 0,
+                }
             }
-        })
+        )
 
     await aiogoogle.as_service_account(
         sheets_v4.spreadsheets.batchUpdate(spreadsheetId=table_id, json={"requests": requests})

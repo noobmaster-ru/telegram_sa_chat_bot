@@ -44,3 +44,8 @@ class CabinetGateway(Gateway):
                 )
             )
         )
+
+    async def get_cabinet_by_business_connection_id(self, business_connection_id: str) -> Cabinet | None:
+        return await self._session.scalar(
+            select(Cabinet).where(Cabinet.business_connection_id == business_connection_id)
+        )

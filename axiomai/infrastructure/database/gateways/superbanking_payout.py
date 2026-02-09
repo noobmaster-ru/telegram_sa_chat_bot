@@ -20,7 +20,7 @@ class SuperbankingPayoutGateway(Gateway):
         normalized_bank = bank.strip().lower()
         normalized_phone = "".join(ch for ch in phone_number if ch.isdigit())
         raw_key = f"{buyer_id}:{nm_id}:{amount}:{normalized_phone}:{normalized_bank}"
-        
+
         # orderNumber max length is 30 chars (Superbanking API limit)
         max_digest_len = 30 - len(SUPERBANKING_ORDER_PREFIX)
         digest = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()[:max_digest_len]

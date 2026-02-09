@@ -29,7 +29,9 @@ class CreateBuyer:
     ) -> Buyer:
         article = await self._cashback_table_gateway.get_cashback_article_by_id(article_id)
         if not article:
-            raise ValueError(f"Article with id {article_id} not found, telegram_id = {telegram_id}, username = {username}, fullname = {fullname}")
+            raise ValueError(
+                f"Article with id {article_id} not found, telegram_id = {telegram_id}, username = {username}, fullname = {fullname}"
+            )
 
         existing_buyer = await self._buyer_gateway.get_buyer_by_telegram_id_and_nm_id(
             telegram_id=telegram_id,
@@ -37,7 +39,12 @@ class CreateBuyer:
         )
 
         if existing_buyer:
-            logger.error("buyer already exists for telegram_id %s and nm_id %s, username = %s", telegram_id, article.nm_id, username)
+            logger.error(
+                "buyer already exists for telegram_id %s and nm_id %s, username = %s",
+                telegram_id,
+                article.nm_id,
+                username,
+            )
             return existing_buyer
 
         buyer = Buyer(

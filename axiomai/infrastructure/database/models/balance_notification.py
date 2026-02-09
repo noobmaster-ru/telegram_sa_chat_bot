@@ -19,9 +19,7 @@ class BalanceNotification(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     cabinet_id: Mapped[int] = mapped_column(ForeignKey("cabinets.id"), index=True)
     initial_balance: Mapped[int] = mapped_column(comment="Баланс на момент пополнения")
-    threshold: Mapped[Decimal] = mapped_column(
-        Numeric(3, 2), comment="Порог уведомления (0.50, 0.10, 0.01)"
-    )
+    threshold: Mapped[Decimal] = mapped_column(Numeric(3, 2), comment="Порог уведомления (0.50, 0.10, 0.01)")
     sent_at: Mapped[datetime.datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),

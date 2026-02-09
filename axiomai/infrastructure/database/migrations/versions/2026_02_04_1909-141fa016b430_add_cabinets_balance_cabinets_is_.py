@@ -5,6 +5,7 @@ Revises: 3b30b39e9e4e
 Create Date: 2026-02-04 19:09:59.242330
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -19,8 +20,22 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("cabinets", sa.Column("balance", sa.Integer(), nullable=False, comment="Текущий баланс кабинета в рублях", server_default="0"))
-    op.add_column("cabinets", sa.Column("is_superbanking_connect", sa.Boolean(), nullable=False, comment="Включена ли выплата через Superbanking для этого кабинета", server_default="false"))
+    op.add_column(
+        "cabinets",
+        sa.Column(
+            "balance", sa.Integer(), nullable=False, comment="Текущий баланс кабинета в рублях", server_default="0"
+        ),
+    )
+    op.add_column(
+        "cabinets",
+        sa.Column(
+            "is_superbanking_connect",
+            sa.Boolean(),
+            nullable=False,
+            comment="Включена ли выплата через Superbanking для этого кабинета",
+            server_default="false",
+        ),
+    )
 
 
 def downgrade() -> None:

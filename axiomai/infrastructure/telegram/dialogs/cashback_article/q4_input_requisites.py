@@ -24,6 +24,7 @@ from axiomai.infrastructure.superbanking import Superbanking
 
 logger = logging.getLogger(__name__)
 
+
 @inject
 async def on_input_requisites(
     message: Message,
@@ -82,7 +83,7 @@ async def on_confirm_requisites(
 
     await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
     await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
-    
+
     try:
         order_number = await create_superbanking_payment.execute(
             buyer_id=buyer_id,
@@ -114,7 +115,6 @@ async def on_confirm_requisites(
             )
         )
         task.add_done_callback(lambda _: None)
-
 
     await dialog_manager.done()
 

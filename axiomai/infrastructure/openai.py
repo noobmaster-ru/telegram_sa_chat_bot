@@ -202,7 +202,7 @@ class OpenAIGateway:
         response = await self._client.responses.create(
             model=MODEL_FOR_PHOTO_CLASSIFICATIONS,
             input=messages,
-            reasoning={"effort":  "high"},
+            reasoning={"effort": "high"},
             tools=PHOTO_ANALISE_TOOLS,
             max_output_tokens=GPT_MAX_OUTPUT_TOKENS_PHOTO_ANALYSIS,
             prompt_cache_key=_build_prompt_cache_key("classify_cut_labels_photo"),

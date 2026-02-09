@@ -46,7 +46,9 @@ class ConfirmBuyLeadsPayment:
             )
         cabinet = await self._cabinet_gateway.get_cabinet_by_id(cashback_table.cabinet_id)
         if not cabinet:
-            raise CabinetNotFoundError(f"Cashback_table.cabinet_id = {cashback_table.cabinet_id} not found for the confirm payment")
+            raise CabinetNotFoundError(
+                f"Cashback_table.cabinet_id = {cashback_table.cabinet_id} not found for the confirm payment"
+            )
 
         if payment.status != PaymentStatus.WAITING_CONFIRM:
             raise PaymentAlreadyProcessedError(

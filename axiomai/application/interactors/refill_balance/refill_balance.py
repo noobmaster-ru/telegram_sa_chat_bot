@@ -63,6 +63,11 @@ class RefillBalance:
         await self._payment_gateway.create_payment(payment)
         await self._tm.commit()
 
-        logger.info("refill balance payment.id = %s created for user.telegram_id = %s: amount = %s ₽", payment.id, telegram_id, amount)
+        logger.info(
+            "refill balance payment.id = %s created for user.telegram_id = %s: amount = %s ₽",
+            payment.id,
+            telegram_id,
+            amount,
+        )
 
         return payment.id

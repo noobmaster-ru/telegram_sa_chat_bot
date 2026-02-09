@@ -111,7 +111,7 @@ BANK_ALIASES: dict[str, str] = {
 class Superbanking:
     def __init__(self, superbanking_config: SuperbankingConfig) -> None:
         self._superbanking_config = superbanking_config
-        
+
         with open("./assets/superbanking.json") as f:
             self._superbanking_banks = json.loads(f.read())
 
@@ -126,15 +126,14 @@ class Superbanking:
         if bank_name:
             return self._bank_name_map.get(bank_name.upper())
         return None
-    
+
     @staticmethod
     def _convert_phone_number_to_superbanking_format(phone_number: str) -> str:
         digits = re.sub(r"\D", "", phone_number)
         if digits.startswith("8"):
             digits = "7" + digits[1:]
         return f"00{digits}"
-   
-    
+
     def _get_bank_identifier_by_bank_name_rus(self, bank_name_rus: str) -> str | None:
         normalized = re.sub(r"[\s\-]", "", bank_name_rus.lower())
         if bank_name := BANK_ALIASES.get(normalized):
@@ -147,20 +146,10 @@ class Superbanking:
             if str(bank.get("nameRus", "")).strip().lower() == normalized_name_rus:
                 return bank.get("identifier")
         return None
-    
-    def create_payment(
-        self,
-        phone_number: str,
-        bank_name_rus: str,
-        amount: int,
-        order_number: str
-    ) -> str:
-        phone_number_superbanking_format = self._convert_phone_number_to_superbanking_format(
-            phone_number=phone_number
-        )
-        bank_identifier = self._get_bank_identifier_by_bank_name_rus(
-            bank_name_rus=bank_name_rus
-        )
+
+    def create_payment(self, phone_number: str, bank_name_rus: str, amount: int, order_number: str) -> str:
+        phone_number_superbanking_format = self._convert_phone_number_to_superbanking_format(phone_number=phone_number)
+        bank_identifier = self._get_bank_identifier_by_bank_name_rus(bank_name_rus=bank_name_rus)
         if not bank_identifier:
             message = f"Unknown bank: {bank_name_rus}"
             raise ValueError(message)
@@ -174,7 +163,7 @@ class Superbanking:
             "bank": bank_identifier,
             "amount": amount,
             "purposePayment": "Выплата кэшбека",
-            "comment": "Выплата кэшбека"
+            "comment": "Выплата кэшбека",
         }
 
         try:
@@ -186,14 +175,14 @@ class Superbanking:
             )
             cabinet_transaction_id = self._extract_cabinet_transaction_id(response_data)
             return str(cabinet_transaction_id)
-        
+
         except Exception:
             logger.exception(
                 "Superbanking create_payment() failed for order_number=%s",
                 order_number,
             )
             raise
-        
+
     def sign_payment(self, cabinet_transaction_id: str) -> bool:
         try:
             payload = {
@@ -230,7 +219,6 @@ class Superbanking:
         except Exception:
             logger.exception("Superbanking confirm_operation() failed for order_number=%s", order_number)
             raise
-    
 
     def _post_json(
         self,
@@ -253,7 +241,6 @@ class Superbanking:
         req.add_header("x-token-user-api", self._superbanking_config.api_key)
         if add_idempotency_token and order_number:
             req.add_header("x-idempotency-token", order_number)
-
 
         try:
             with request.urlopen(req, timeout=30) as response:  # noqa: S310

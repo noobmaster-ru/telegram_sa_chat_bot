@@ -13,6 +13,7 @@ from dishka.integrations.aiogram_dialog import inject
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
@@ -142,10 +143,15 @@ async def _process_order_screenshot_background(
 
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)
+        cabinet_gateway = await r_container.get(CabinetGateway)
         transaction_manager = await r_container.get(TransactionManager)
+
+        cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
         buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
         buyer.is_ordered = True
         buyer.amount = result["price"]
+        cabinet.leads_balance = cabinet.leads_balance - 1 if cabinet.leads_balance >= 1 else 0
+
         await transaction_manager.commit()
 
     await bot.send_message(chat_id, "✅ Скриншот заказа принят!", business_connection_id=business_connection_id)

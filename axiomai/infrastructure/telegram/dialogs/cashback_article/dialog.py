@@ -5,6 +5,7 @@ from aiogram.enums import ContentType
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import DefaultKeyBuilder, StorageKey
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import Message
 from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Row
@@ -52,9 +53,19 @@ async def requisites_getter(dialog_manager: DialogManager, **kwargs: dict[str, A
 async def on_close(
     _: dict[str, Any], dialog_manager: DialogManager, bot: FromDishka[Bot], redis: FromDishka[Redis]
 ) -> None:
+    if isinstance(dialog_manager.event, Message):
+        business_connection_id = dialog_manager.event.business_connection_id
+    else:
+        business_connection_id = dialog_manager.event.message.business_connection_id
+
     state = FSMContext(
-        RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True)),
-        StorageKey(user_id=dialog_manager.event.from_user.id, chat_id=dialog_manager.event.from_user.id, bot_id=bot.id),
+        RedisStorage(redis, key_builder=DefaultKeyBuilder(with_destiny=True, with_business_connection_id=True)),
+        StorageKey(
+            user_id=dialog_manager.event.from_user.id,
+            chat_id=dialog_manager.event.from_user.id,
+            bot_id=bot.id,
+            business_connection_id=business_connection_id,
+        ),
     )
 
     await state.clear()
