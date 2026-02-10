@@ -1,6 +1,7 @@
 import secrets
 import uuid
 from collections.abc import AsyncIterable
+from datetime import datetime
 from random import randint
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,7 +18,7 @@ from testcontainers.postgres import PostgresContainer
 from alembic.config import Config as AlembicConfig
 
 from axiomai.config import Config
-from axiomai.infrastructure.database.models import Cabinet, CashbackTable
+from axiomai.infrastructure.database.models import Cabinet, CashbackTable, Buyer
 from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus, CashbackArticle
 from axiomai.infrastructure.database.models.user import User
 from axiomai.infrastructure.google_sheets import GoogleSheetsGateway
@@ -197,3 +198,46 @@ def cashback_article_factory(session, cabinet_factory):
         return article
 
     return get_cashback_article
+
+
+@pytest.fixture
+def buyer_factory(session, cabinet_factory):
+    async def get_buyer(
+        cabinet_id: int | None = None,
+        is_ordered: bool = False,
+        is_left_feedback: bool = False,
+        is_cut_labels: bool = False,
+        phone_number: str | None = None,
+        bank: str | None = None,
+        amount: int | None = None,
+        chat_history: list[dict] | None = None,
+        updated_at: datetime | None = None,
+    ) -> Buyer:
+        if not cabinet_id:
+            cabinet = await cabinet_factory()
+            cabinet_id = cabinet.id
+
+        buyer = Buyer(
+            cabinet_id=cabinet_id,
+            username="test_user",
+            fullname="Test User",
+            telegram_id=123456789,
+            nm_id=777,
+            is_ordered=is_ordered,
+            is_left_feedback=is_left_feedback,
+            is_cut_labels=is_cut_labels,
+            phone_number=phone_number,
+            bank=bank,
+            amount=amount,
+            chat_history=chat_history if chat_history is not None else [{"role": "user", "text": "hi"}],
+        )
+        session.add(buyer)
+        await session.flush()
+
+        if updated_at:
+            buyer.updated_at = updated_at
+            await session.flush()
+
+        return buyer
+
+    return get_buyer

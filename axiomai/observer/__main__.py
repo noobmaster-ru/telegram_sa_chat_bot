@@ -8,6 +8,7 @@ from dishka import AsyncContainer, make_async_container
 
 from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
+from axiomai.application.interactors.observe_inactive_reminders import ObserveInactiveReminders
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.config import Config, load_config
 from axiomai.infrastructure.di import DatabaseProvider, GatewaysProvider, ObserverInteractorsProvider
@@ -46,6 +47,16 @@ async def run_balance_notifications_observer(di_container: AsyncContainer) -> No
         await asyncio.sleep(10)
 
 
+async def run_inactive_reminders_observer(di_container: AsyncContainer) -> None:
+    logger.info("start inactive reminders observer...")
+    while True:
+        async with di_container() as r_container:
+            observe_inactive_reminders = await r_container.get(ObserveInactiveReminders)
+            await observe_inactive_reminders.execute()
+
+        await asyncio.sleep(3600)  # Проверяем раз в час
+
+
 async def main() -> None:
     config = load_config()
     setup_logging(json_logs=config.json_logs)
@@ -61,6 +72,7 @@ async def main() -> None:
             asyncio.create_task(run_cashback_tables_observer(di_container)),
             asyncio.create_task(run_sync_cashback_tables(di_container)),
             asyncio.create_task(run_balance_notifications_observer(di_container)),
+            asyncio.create_task(run_inactive_reminders_observer(di_container)),
         )
     finally:
         await di_container.close()
