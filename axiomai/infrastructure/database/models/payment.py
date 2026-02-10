@@ -2,9 +2,8 @@ import datetime
 import enum
 from typing import Any
 
-from sqlalchemy import JSON, TIMESTAMP
+from sqlalchemy import JSON, TIMESTAMP, ForeignKey, String, func
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from axiomai.infrastructure.database.models.base import Base
