@@ -343,7 +343,12 @@ class OpenAIGateway:
                 history_lines.append(f"Ты: {entry['assistant']}")
             history_text = "\n".join(history_lines)
 
-
+        # во тут вообще без понятия как в промпт передать конктретную инструкцию, поэтому передаю самую первую
+        instructions = []
+        for article in articles:
+            instructions.append(article.instruction_text)
+        first_instruction_text = instructions[0]
+        
         system_content = """
         Ты — приветливый менеджер кешбек-сервиса на Wildberries. Твоя задача — помочь клиенту выбрать товар для кешбека.
         
@@ -374,7 +379,10 @@ class OpenAIGateway:
         Ответ: [ARTICLE:123]Отлично, оформляем кешбек по этому товару. Дальше пришлю точные шаги.
         """
         
-        prompt = f"""
+        prompt = f"""   
+        ИНСТРУКЦИЯ, что и как нужно делать клиенту:
+        {first_instruction_text}
+        
         Доступные товары для кешбека (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):
         {articles_info}
 
