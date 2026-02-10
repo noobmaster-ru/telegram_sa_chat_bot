@@ -5,7 +5,7 @@ from aiogram.enums import ContentType
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import DefaultKeyBuilder, StorageKey
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Row

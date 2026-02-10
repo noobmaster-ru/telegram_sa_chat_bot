@@ -72,6 +72,7 @@ async def on_input_feedback_screenshot(
             config=config,
             article_title=article.title,
             article_brand_name=article.brand_name,
+            article_image_url=article.image_url,
             chat_id=chat_id,
             business_connection_id=biz_id,
             buyer_id=buyer_id,
@@ -88,6 +89,7 @@ async def _process_feedback_screenshot_background(
     config: Config,
     article_title: str,
     article_brand_name: str,
+    article_image_url: str,
     chat_id: int,
     business_connection_id: str,
     buyer_id: int | None,
@@ -107,7 +109,9 @@ async def _process_feedback_screenshot_background(
     await bot.send_message(chat_id, "⏳ Проверяю скриншот отзыва...", business_connection_id=business_connection_id)
 
     try:
-        result = await openai_gateway.classify_feedback_screenshot(photo_url, article_title, article_brand_name)
+        result = await openai_gateway.classify_feedback_screenshot(
+            photo_url, article_title, article_brand_name, article_image_url
+        )
     except Exception as e:
         logger.exception("classify feedback screenshot error", exc_info=e)
         await bot.send_message(

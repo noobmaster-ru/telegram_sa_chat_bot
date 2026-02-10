@@ -14,6 +14,7 @@ from axiomai.application.interactors.create_superbanking_payment import CreateSu
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
+from axiomai.application.interactors.observe_inactive_reminders import ObserveInactiveReminders
 from axiomai.application.interactors.refill_balance.cancel_payment import CancelRefillBalancePayment
 from axiomai.application.interactors.refill_balance.confirm_payment import ConfirmRefillBalancePayment
 from axiomai.application.interactors.refill_balance.mark_payment_waiting_confirm import (
@@ -119,6 +120,7 @@ class ObserverInteractorsProvider(Provider):
     interactors = provide_all(
         ObserveBalanceNotifications,
         ObserveCashbackTables,
+        ObserveInactiveReminders,
         SyncCashbackTables,
         scope=Scope.REQUEST,
     )
