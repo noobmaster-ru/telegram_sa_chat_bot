@@ -1,10 +1,11 @@
 import logging
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError
 
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.models.buyer import Buyer
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 
@@ -17,10 +18,12 @@ class ObserveInactiveReminders:
     def __init__(
         self,
         buyer_gateway: BuyerGateway,
+        cabinet_gateway: CabinetGateway,
         transaction_manager: TransactionManager,
         bot: Bot,
     ) -> None:
         self._buyer_gateway = buyer_gateway
+        self._cabinet_gateway = cabinet_gateway
         self._transaction_manager = transaction_manager
         self._bot = bot
 
@@ -33,8 +36,15 @@ class ObserveInactiveReminders:
             if not reminder_text:
                 continue
 
+            cabinet = await self._cabinet_gateway.get_cabinet_by_id(buyer.cabinet_id)
+            business_connection_id = cabinet.business_connection_id if cabinet else None
+
             try:
-                await self._bot.send_message(chat_id=buyer.telegram_id, text=reminder_text)
+                await self._bot.send_message(
+                    chat_id=buyer.telegram_id,
+                    text=reminder_text,
+                    business_connection_id=business_connection_id,
+                )
                 logger.info("sent reminder to buyer_id=%s, telegram_id=%s", buyer.id, buyer.telegram_id)
             except TelegramForbiddenError:
                 logger.warning("user blocked bot: buyer_id=%s, telegram_id=%s", buyer.id, buyer.telegram_id)
@@ -46,7 +56,7 @@ class ObserveInactiveReminders:
             await self._transaction_manager.commit()
 
 
-def _get_reminder_text(buyer: Buyer) -> str | None:
+def _get_reminder_text(buyer: Buyer) -> str | None:  # noqa: PLR0911
     """Определяет текст напоминания в зависимости от состояния покупателя."""
     if not buyer.is_ordered:
         return "⏰ Ждём скриншот вашего заказа"
