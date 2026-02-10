@@ -13,6 +13,7 @@ pgdata/
 .pytest_cache/
 .idea
 .vscode/
+.mypy_cache
 
 DataExport*
 sunny-might*
