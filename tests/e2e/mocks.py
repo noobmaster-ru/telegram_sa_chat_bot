@@ -12,6 +12,7 @@ from axiomai.application.interactors.create_superbanking_payment import CreateSu
 from axiomai.application.interactors.create_user import CreateSeller
 from axiomai.application.interactors.observe_balance_notifications import ObserveBalanceNotifications
 from axiomai.application.interactors.observe_cashback_tables import ObserveCashbackTables
+from axiomai.application.interactors.observe_inactive_reminders import ObserveInactiveReminders
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.di import GatewaysProvider
@@ -49,6 +50,7 @@ class MocksProvider(GatewaysProvider):
         CreateSeller,
         ObserveBalanceNotifications,
         ObserveCashbackTables,
+        ObserveInactiveReminders,
         SyncCashbackTables,
         BuyLeads,
         ConfirmBuyLeadsPayment,

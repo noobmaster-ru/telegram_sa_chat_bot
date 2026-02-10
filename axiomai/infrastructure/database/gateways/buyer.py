@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 
 from axiomai.infrastructure.database.gateways.base import Gateway
@@ -18,5 +20,16 @@ class BuyerGateway(Gateway):
     async def get_buyers_by_cabinet_id(self, cabinet_id: int) -> list[Buyer]:
         result = await self._session.scalars(
             select(Buyer).where(Buyer.cabinet_id == cabinet_id).order_by(Buyer.created_at.desc())
+        )
+        return list(result)
+
+    async def get_inactive_buyers(self, inactive_since: datetime) -> list[Buyer]:
+        result = await self._session.scalars(
+            select(Buyer).where(
+                Buyer.is_superbanking_paid.is_(False),
+                Buyer.is_paid_manually.is_(False),
+                Buyer.updated_at < inactive_since,
+                Buyer.chat_history != [],
+            )
         )
         return list(result)
