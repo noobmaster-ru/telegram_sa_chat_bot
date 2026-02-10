@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 from typing import Any
 from urllib import error
@@ -21,6 +22,7 @@ from axiomai.constants import (
 )
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
+from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.superbanking import Superbanking
 
 logger = logging.getLogger(__name__)
@@ -69,13 +71,15 @@ async def on_input_requisites(
 
 
 @inject
-async def on_confirm_requisites(
+async def on_confirm_requisites( # noqa: C901
     callback: CallbackQuery,
     widget: Any,
     dialog_manager: DialogManager,
     superbanking: FromDishka[Superbanking],
     create_superbanking_payment: FromDishka[CreateSuperbankingPayment],
     cabinet_gateway: FromDishka[CabinetGateway],
+    buyer_gateway: FromDishka[BuyerGateway],
+    transaction_manager: FromDishka[TransactionManager],
 ) -> None:
     buyer_id = dialog_manager.dialog_data.get("buyer_id")
     logger.info("on_confirm_requisites started: buyer_id=%s", buyer_id)
@@ -100,6 +104,26 @@ async def on_confirm_requisites(
         else None
     )
     if not cabinet or not cabinet.is_superbanking_connect:
+        buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
+        if buyer:
+            if phone_number := dialog_manager.dialog_data.get("phone_number"):
+                buyer.phone_number = phone_number
+            if bank := dialog_manager.dialog_data.get("bank"):
+                buyer.bank = bank
+            if amount := dialog_manager.dialog_data.get("amount"):
+                with contextlib.suppress(ValueError, TypeError):
+                    if not buyer.amount:
+                        buyer.amount = int(amount)
+            await transaction_manager.commit()
+            logger.info(
+                "on_confirm_requisites saved requisites without Superbanking payout: buyer_id=%s",
+                buyer_id,
+            )
+        else:
+            logger.warning(
+                "on_confirm_requisites could not save requisites: buyer not found, buyer_id=%s",
+                buyer_id,
+            )
         logger.info(
             "on_confirm_requisites skipping Superbanking: buyer_id=%s, cabinet_found=%s, is_superbanking_connect=%s",
             buyer_id,
