@@ -11,6 +11,7 @@ from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
+from axiomai.constants import OK_WORDS
 from axiomai.infrastructure.chat_history import add_to_chat_history, get_chat_history
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
@@ -104,6 +105,14 @@ async def _process_dialog_messages(
 
         article = await cashback_table_gateway.get_cashback_article_by_id(article_id)
         combined_text = merge_messages_text(messages)
+       
+        # find ok_words in user message
+        normalized_combined_text = combined_text.strip().casefold()
+        normalized_ok_words = {ok_word.strip().casefold() for ok_word in OK_WORDS}
+        has_ok_word = normalized_combined_text in normalized_ok_words
+
+        if has_ok_word:
+            return
 
         available_articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(
             cabinet_id=article.cabinet_id, telegram_id=chat_id
