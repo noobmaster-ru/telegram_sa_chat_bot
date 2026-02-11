@@ -16,6 +16,7 @@ KIRILL_CARD_NUMBER = "5536 9140 2640 7977"
 KIRILL_PHONE_NUMBER = "89109681153"
 
 # Регулярки
+OK_WORDS = ["Хорошо", "Ок" ,"Ок, хорошо", "Окей", "Ладно"]
 CARD_PATTERN = re.compile(r"\b(?:\d{16}|\d{4}(?:[ -]\d{4}){3})\b")
 BANK_PATTERN = re.compile(
     r"(?<!\w)("
