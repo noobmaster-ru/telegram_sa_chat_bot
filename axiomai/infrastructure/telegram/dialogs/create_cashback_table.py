@@ -40,7 +40,7 @@ async def input_gs_link(
         return
 
     try:
-        part1 = link.split("/d/")[-1]
+        part1 = link.rsplit("/d/", maxsplit=1)[-1]
         table_id = part1.split("/edit")[0]
     except IndexError:
         await message.answer("Пожалуйста, пришлите корректную ссылку на гугл-таблицу")
