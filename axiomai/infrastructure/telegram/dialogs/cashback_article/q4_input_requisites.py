@@ -19,6 +19,7 @@ from axiomai.constants import (
     CARD_PATTERN,
     PHONE_PATTERN,
     TIME_SLEEP_BEFORE_CONFIRM_PAYMENT,
+    WB_CHANNEL_NAME
 )
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
@@ -91,7 +92,8 @@ async def on_confirm_requisites( # noqa: C901
 
     await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
     await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
-
+    await callback.message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
+    
     business_connection_id = callback.message.business_connection_id if callback.message else None
     logger.info(
         "on_confirm_requisites resolving cabinet: buyer_id=%s, business_connection_id=%s",

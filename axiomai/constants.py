@@ -1,5 +1,8 @@
 import re
 
+# Telegram 
+WB_CHANNEL_NAME = "@best_wb_hits"
+
 # Superbanking
 SUPERBANKING_ORDER_PREFIX = "payment-"
 URL_CREATE_PAYMENT = "https://api.superbanking.ru/cabinet/payout/create?v=1.0.0"
