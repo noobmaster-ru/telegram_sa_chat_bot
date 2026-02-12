@@ -1,6 +1,6 @@
 import re
 
-# Telegram 
+# Telegram
 WB_CHANNEL_NAME = "@best_wb_hits"
 
 # Superbanking
