@@ -19,7 +19,7 @@ from axiomai.constants import (
     CARD_PATTERN,
     PHONE_PATTERN,
     TIME_SLEEP_BEFORE_CONFIRM_PAYMENT,
-    WB_CHANNEL_NAME
+    WB_CHANNEL_NAME,
 )
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
@@ -72,7 +72,7 @@ async def on_input_requisites(
 
 
 @inject
-async def on_confirm_requisites( # noqa: C901
+async def on_confirm_requisites(
     callback: CallbackQuery,
     widget: Any,
     dialog_manager: DialogManager,
@@ -106,26 +106,12 @@ async def on_confirm_requisites( # noqa: C901
         else None
     )
     if not cabinet or not cabinet.is_superbanking_connect:
-        buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
-        if buyer:
-            if phone_number := dialog_manager.dialog_data.get("phone_number"):
-                buyer.phone_number = phone_number
-            if bank := dialog_manager.dialog_data.get("bank"):
-                buyer.bank = bank
-            if amount := dialog_manager.dialog_data.get("amount"):
-                with contextlib.suppress(ValueError, TypeError):
-                    if not buyer.amount:
-                        buyer.amount = int(amount)
-            await transaction_manager.commit()
-            logger.info(
-                "on_confirm_requisites saved requisites without Superbanking payout: buyer_id=%s",
-                buyer_id,
-            )
-        else:
-            logger.warning(
-                "on_confirm_requisites could not save requisites: buyer not found, buyer_id=%s",
-                buyer_id,
-            )
+        await _save_requisites_without_superbanking(
+            buyer_id=buyer_id,
+            dialog_manager=dialog_manager,
+            buyer_gateway=buyer_gateway,
+            transaction_manager=transaction_manager,
+        )
         logger.info(
             "on_confirm_requisites skipping Superbanking: buyer_id=%s, cabinet_found=%s, is_superbanking_connect=%s",
             buyer_id,
@@ -135,32 +121,13 @@ async def on_confirm_requisites( # noqa: C901
         await dialog_manager.done()
         return
 
-    logger.info("on_confirm_requisites creating Superbanking payment: buyer_id=%s", buyer_id)
-    try:
-        order_number = await create_superbanking_payment.execute(
-            buyer_id=buyer_id,
-            phone_number=dialog_manager.dialog_data.get("phone_number"),
-            bank=dialog_manager.dialog_data.get("bank"),
-            amount=dialog_manager.dialog_data.get("amount"),
-        )
-        logger.info(
-            "on_confirm_requisites Superbanking payment created: buyer_id=%s, order_number=%s",
-            buyer_id,
-            order_number,
-        )
-    except CreatePaymentError:
-        logger.warning("on_confirm_requisites create_payment failed: buyer_id=%s", buyer_id)
-        await callback.message.answer("Не удалось инициировать выплату. Мы свяжемся с вами.")
-        await dialog_manager.done()
-        return
-    except SignPaymentError:
-        logger.warning("on_confirm_requisites sign_payment failed: buyer_id=%s", buyer_id)
-        await callback.message.answer("Не удалось отправить выплату. Мы свяжемся с вами.")
-        await dialog_manager.done()
-        return
-    except Exception:
-        logger.exception("Failed to create Superbanking payout for buyer_id=%s", buyer_id)
-        await callback.message.answer("Не удалось инициировать выплату. Мы свяжемся с вами.")
+    order_number, payout_error_message = await _create_superbanking_payout(
+        buyer_id=buyer_id,
+        dialog_manager=dialog_manager,
+        create_superbanking_payment=create_superbanking_payment,
+    )
+    if order_number is None:
+        await callback.message.answer(payout_error_message)
         await dialog_manager.done()
         return
 
@@ -181,6 +148,69 @@ async def on_confirm_requisites( # noqa: C901
         task.add_done_callback(lambda _: None)
 
     await dialog_manager.done()
+
+
+async def _save_requisites_without_superbanking(
+    *,
+    buyer_id: int,
+    dialog_manager: DialogManager,
+    buyer_gateway: BuyerGateway,
+    transaction_manager: TransactionManager,
+) -> None:
+    buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
+    if not buyer:
+        logger.warning(
+            "on_confirm_requisites could not save requisites: buyer not found, buyer_id=%s",
+            buyer_id,
+        )
+        return
+
+    if phone_number := dialog_manager.dialog_data.get("phone_number"):
+        buyer.phone_number = phone_number
+    if bank := dialog_manager.dialog_data.get("bank"):
+        buyer.bank = bank
+    if amount := dialog_manager.dialog_data.get("amount"):
+        with contextlib.suppress(ValueError, TypeError):
+            if not buyer.amount:
+                buyer.amount = int(amount)
+
+    await transaction_manager.commit()
+    logger.info(
+        "on_confirm_requisites saved requisites without Superbanking payout: buyer_id=%s",
+        buyer_id,
+    )
+
+
+async def _create_superbanking_payout(
+    *,
+    buyer_id: int,
+    dialog_manager: DialogManager,
+    create_superbanking_payment: CreateSuperbankingPayment,
+) -> tuple[str | None, str]:
+    logger.info("on_confirm_requisites creating Superbanking payment: buyer_id=%s", buyer_id)
+    try:
+        order_number = await create_superbanking_payment.execute(
+            buyer_id=buyer_id,
+            phone_number=dialog_manager.dialog_data.get("phone_number"),
+            bank=dialog_manager.dialog_data.get("bank"),
+            amount=dialog_manager.dialog_data.get("amount"),
+        )
+    except CreatePaymentError:
+        logger.warning("on_confirm_requisites create_payment failed: buyer_id=%s", buyer_id)
+        return None, "Не удалось инициировать выплату. Мы свяжемся с вами."
+    except SignPaymentError:
+        logger.warning("on_confirm_requisites sign_payment failed: buyer_id=%s", buyer_id)
+        return None, "Не удалось отправить выплату. Мы свяжемся с вами."
+    except Exception:
+        logger.exception("Failed to create Superbanking payout for buyer_id=%s", buyer_id)
+        return None, "Не удалось инициировать выплату. Мы свяжемся с вами."
+
+    logger.info(
+        "on_confirm_requisites Superbanking payment created: buyer_id=%s, order_number=%s",
+        buyer_id,
+        order_number,
+    )
+    return order_number, ""
 
 
 async def _send_receipt_after_confirm(
