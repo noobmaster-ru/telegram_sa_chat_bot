@@ -12,6 +12,7 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram import inject
 from redis.asyncio import Redis
 
+from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.infrastructure.chat_history import (
     add_predialog_chat_history,
@@ -72,7 +73,7 @@ async def process_clients_business_message(
         chat_id=message.chat.id,
         message_data=message_data,
         process_callback=lambda biz_id, chat_id, msgs: _process_accumulated_messages(
-            biz_id, chat_id, msgs, bot, state, bg_manager, app_container
+            biz_id, chat_id, message.from_user.username, message.from_user.full_name, msgs, bot, state, bg_manager, app_container
         ),
     )
 
@@ -80,6 +81,8 @@ async def process_clients_business_message(
 async def _process_accumulated_messages(
     business_connection_id: str,
     chat_id: int,
+    username: str | None,
+    fullname: str,
     messages: list[MessageData],
     bot: Bot,
     state: FSMContext,
@@ -160,14 +163,15 @@ async def _process_accumulated_messages(
         await clear_predialog_chat_history(redis, business_connection_id, chat_id)
 
         await state.set_state("client_processing")
+
+        async with di_container() as r_container:
+            create_buyer = await r_container.get(CreateBuyer)
+            await create_buyer.execute(chat_id, username, fullname, classified_article_id, predialog_history)
+
         await dialog_manager.start(
             CashbackArticleStates.check_order,
             mode=StartMode.RESET_STACK,
-            show_mode=ShowMode.SEND,
-            data={
-                "article_id": classified_article_id,
-                "predialog_history": predialog_history,
-            },
+            show_mode=ShowMode.SEND
         )
     else:
         await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)

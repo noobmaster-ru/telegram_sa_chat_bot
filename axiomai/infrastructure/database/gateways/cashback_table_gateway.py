@@ -94,3 +94,11 @@ class CashbackTableGateway(Gateway):
 
     async def get_cashback_article_by_id(self, article_id: int) -> CashbackArticle:
         return await self._session.scalar(select(CashbackArticle).where(CashbackArticle.id == article_id))
+
+    async def get_cashback_articles_by_nm_ids(self, nm_ids: list[int]) -> list[CashbackArticle]:
+        articles = await self._session.scalars(
+            select(CashbackArticle).where(
+                CashbackArticle.nm_id.in_(nm_ids),
+            )
+        )
+        return list(articles)

@@ -12,10 +12,15 @@ from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
 from axiomai.infrastructure.openai import OpenAIGateway
+from axiomai.infrastructure.telegram.dialogs.cashback_article.common import (
+    build_articles_for_gpt,
+    get_pending_nm_ids_for_step,
+)
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 logger = logging.getLogger(__name__)
@@ -27,7 +32,6 @@ async def on_input_feedback_screenshot(
     widget: MessageInput,
     dialog_manager: DialogManager,
     openai_gateway: FromDishka[OpenAIGateway],
-    cashback_table_gateway: FromDishka[CashbackTableGateway],
     di_container: FromDishka[AsyncContainer],
     message_debouncer: FromDishka[MessageDebouncer],
     config: FromDishka[Config],
@@ -43,10 +47,6 @@ async def on_input_feedback_screenshot(
     photo = message.photo[-1]
     file = await bot.get_file(photo.file_id)
     photo_url = f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
-
-    article = await cashback_table_gateway.get_cashback_article_by_id(dialog_manager.start_data["article_id"])
-
-    buyer_id = dialog_manager.dialog_data.get("buyer_id")
 
     message_data = MessageData(
         text=message.caption,
@@ -70,12 +70,8 @@ async def on_input_feedback_screenshot(
             di_container=app_container,
             openai_gateway=openai_gateway,
             config=config,
-            article_title=article.title,
-            article_brand_name=article.brand_name,
-            article_image_url=article.image_url,
             chat_id=chat_id,
             business_connection_id=biz_id,
-            buyer_id=buyer_id,
         ),
     )
 
@@ -87,12 +83,8 @@ async def _process_feedback_screenshot_background(
     di_container: AsyncContainer,
     openai_gateway: OpenAIGateway,
     config: Config,
-    article_title: str,
-    article_brand_name: str,
-    article_image_url: str,
     chat_id: int,
     business_connection_id: str,
-    buyer_id: int | None,
 ) -> None:
     photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
 
@@ -108,9 +100,23 @@ async def _process_feedback_screenshot_background(
 
     await bot.send_message(chat_id, "⏳ Проверяю скриншот отзыва...", business_connection_id=business_connection_id)
 
+    async with di_container() as r_container:
+        buyer_gateway = await r_container.get(BuyerGateway)
+        cabinet_gateway = await r_container.get(CabinetGateway)
+        cashback_table_gateway = await r_container.get(CashbackTableGateway)
+
+        cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
+        buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(chat_id, cabinet.id)
+        articles = await cashback_table_gateway.get_cashback_articles_by_nm_ids([b.nm_id for b in buyers])
+
+    pending_nm_ids = get_pending_nm_ids_for_step(buyers, step="check_received")
+    pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
+    articles_for_gpt = build_articles_for_gpt(pending_articles)
+
     try:
         result = await openai_gateway.classify_feedback_screenshot(
-            photo_url, article_title, article_brand_name, article_image_url
+            photo_url=photo_url,
+            articles=articles_for_gpt,
         )
     except Exception as e:
         logger.exception("classify feedback screenshot error", exc_info=e)
@@ -126,7 +132,7 @@ async def _process_feedback_screenshot_background(
     )
     await asyncio.sleep(config.delay_between_bot_messages)
 
-    if not result["is_feedback"]:
+    if not result["is_feedback"] or not result["nm_id"]:
         cancel_reason = result["cancel_reason"]
         if cancel_reason is None:
             cancel_reason = "Попробуйте отправить фото сюда еще раз"
@@ -137,6 +143,11 @@ async def _process_feedback_screenshot_background(
         )
         return
 
+    buyer_id = next((b.id for b in buyers if b.nm_id == result["nm_id"]), None)
+    if not buyer_id:
+        logger.error("buyer not found for nm_id %s, chat_id %s", result["nm_id"], chat_id)
+        return
+
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)
         transaction_manager = await r_container.get(TransactionManager)
@@ -144,6 +155,18 @@ async def _process_feedback_screenshot_background(
         buyer.is_left_feedback = True
         await transaction_manager.commit()
 
-    await bot.send_message(chat_id, "✅ Скриншот отзыва принят!", business_connection_id=business_connection_id)
+        buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(chat_id, cabinet.id)
 
-    await bg_manager.switch_to(CashbackArticleStates.check_labels_cut, show_mode=ShowMode.SEND)
+    article = next((a for a in articles if a.nm_id == result["nm_id"]), None)
+
+    await bot.send_message(
+        chat_id,
+        f"✅ Скриншот отзыва для <b>{article.title}</b> принят!",
+        business_connection_id=business_connection_id,
+    )
+
+    pending_feedback = get_pending_nm_ids_for_step(buyers, "check_received")
+    if pending_feedback:
+        await bg_manager.switch_to(CashbackArticleStates.check_received, show_mode=ShowMode.SEND)
+    else:
+        await bg_manager.switch_to(CashbackArticleStates.check_labels_cut, show_mode=ShowMode.SEND)

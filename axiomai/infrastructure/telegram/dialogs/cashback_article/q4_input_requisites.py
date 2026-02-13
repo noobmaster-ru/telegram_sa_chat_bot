@@ -35,28 +35,31 @@ async def on_input_requisites(
     dialog_manager: DialogManager,
     superbanking: FromDishka[Superbanking],
     buyer_gateway: FromDishka[BuyerGateway],
+    cabinet_gateway: FromDishka[CabinetGateway],
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
 
-    buyer_id = dialog_manager.dialog_data.get("buyer_id")
+    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
+    buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(message.from_user.id, cabinet.id)
+    completed_buyers = [b for b in buyers if b.is_cut_labels]
 
-    if not buyer_id:
+    if not completed_buyers:
         await message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
         await dialog_manager.done()
         return
-
-    buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
 
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
     requisites = message.text.strip()
 
-    if buyer.amount:
-        dialog_manager.dialog_data["amount"] = buyer.amount
+    # Считаем общую сумму из buyers
+    total_amount = sum(b.amount or 0 for b in completed_buyers)
+    if total_amount:
+        dialog_manager.dialog_data["amount"] = total_amount
 
     if card_match := CARD_PATTERN.search(requisites):
         dialog_manager.dialog_data["card_number"] = CARD_CLEAN_RE.sub("", card_match.group())
-    if (amount_match := AMOUNT_PATTERN.search(requisites)) and (not buyer.amount):
+    if (amount_match := AMOUNT_PATTERN.search(requisites)) and (not total_amount):
         dialog_manager.dialog_data["amount"] = amount_match.group(1)
     if phone_match := PHONE_PATTERN.search(requisites):
         dialog_manager.dialog_data["phone_number"] = phone_match.group()
@@ -71,7 +74,7 @@ async def on_input_requisites(
 
 
 @inject
-async def on_confirm_requisites( # noqa: C901
+async def on_confirm_requisites(  # noqa: C901
     callback: CallbackQuery,
     widget: Any,
     dialog_manager: DialogManager,
@@ -81,102 +84,96 @@ async def on_confirm_requisites( # noqa: C901
     buyer_gateway: FromDishka[BuyerGateway],
     transaction_manager: FromDishka[TransactionManager],
 ) -> None:
-    buyer_id = dialog_manager.dialog_data.get("buyer_id")
-    logger.info("on_confirm_requisites started: buyer_id=%s", buyer_id)
-    if not buyer_id:
-        logger.warning("on_confirm_requisites aborted: missing buyer_id in dialog_data")
-        await callback.message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
-        await dialog_manager.done()
-        return
-
-    await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
-    await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
-
     business_connection_id = callback.message.business_connection_id if callback.message else None
-    logger.info(
-        "on_confirm_requisites resolving cabinet: buyer_id=%s, business_connection_id=%s",
-        buyer_id,
-        business_connection_id,
-    )
+
     cabinet = (
         await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
         if business_connection_id
         else None
     )
+
+    buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(callback.from_user.id, cabinet.id) if cabinet else []
+    completed_buyers = [b for b in buyers if b.is_cut_labels]
+
+    if not completed_buyers:
+        logger.warning("on_confirm_requisites aborted: no completed buyers")
+        await callback.message.answer("К сожалению что-то пошло не так, попробуйте пройти процесс заново.")
+        await dialog_manager.done()
+        return
+
+    buyer_ids = [b.id for b in completed_buyers]
+    logger.info("on_confirm_requisites started: buyer_ids=%s", buyer_ids)
+
+    await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
+    await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
+    
+    phone_number = dialog_manager.dialog_data.get("phone_number")
+    bank = dialog_manager.dialog_data.get("bank")
+    total_amount = dialog_manager.dialog_data.get("amount")
+
     if not cabinet or not cabinet.is_superbanking_connect:
+        # Сохраняем реквизиты для всех buyers
+        for buyer_id in buyer_ids:
+            buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
+            if buyer:
+                if phone_number:
+                    buyer.phone_number = phone_number
+                if bank:
+                    buyer.bank = bank
+                if total_amount and not buyer.amount:
+                    with contextlib.suppress(ValueError, TypeError):
+                        buyer.amount = int(total_amount)
+        await transaction_manager.commit()
+        logger.info(
+            "on_confirm_requisites saved requisites without Superbanking payout: buyer_ids=%s",
+            buyer_ids,
+        )
+        await dialog_manager.done()
+        return
+
+    # Создаём выплаты для каждого buyer
+    logger.info("on_confirm_requisites creating Superbanking payments: buyer_ids=%s", buyer_ids)
+    
+    for buyer_id in buyer_ids:
         buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
-        if buyer:
-            if phone_number := dialog_manager.dialog_data.get("phone_number"):
-                buyer.phone_number = phone_number
-            if bank := dialog_manager.dialog_data.get("bank"):
-                buyer.bank = bank
-            if amount := dialog_manager.dialog_data.get("amount"):
-                with contextlib.suppress(ValueError, TypeError):
-                    if not buyer.amount:
-                        buyer.amount = int(amount)
-            await transaction_manager.commit()
-            logger.info(
-                "on_confirm_requisites saved requisites without Superbanking payout: buyer_id=%s",
-                buyer_id,
-            )
-        else:
-            logger.warning(
-                "on_confirm_requisites could not save requisites: buyer not found, buyer_id=%s",
-                buyer_id,
-            )
-        logger.info(
-            "on_confirm_requisites skipping Superbanking: buyer_id=%s, cabinet_found=%s, is_superbanking_connect=%s",
-            buyer_id,
-            bool(cabinet),
-            getattr(cabinet, "is_superbanking_connect", None),
-        )
-        await dialog_manager.done()
-        return
+        if not buyer:
+            continue
+            
+        buyer_amount = buyer.amount
+        if not buyer_amount:
+            logger.warning("Skipping Superbanking payment for buyer_id=%s: no amount", buyer_id)
+            continue
 
-    logger.info("on_confirm_requisites creating Superbanking payment: buyer_id=%s", buyer_id)
-    try:
-        order_number = await create_superbanking_payment.execute(
-            buyer_id=buyer_id,
-            phone_number=dialog_manager.dialog_data.get("phone_number"),
-            bank=dialog_manager.dialog_data.get("bank"),
-            amount=dialog_manager.dialog_data.get("amount"),
-        )
-        logger.info(
-            "on_confirm_requisites Superbanking payment created: buyer_id=%s, order_number=%s",
-            buyer_id,
-            order_number,
-        )
-    except CreatePaymentError:
-        logger.warning("on_confirm_requisites create_payment failed: buyer_id=%s", buyer_id)
-        await callback.message.answer("Не удалось инициировать выплату. Мы свяжемся с вами.")
-        await dialog_manager.done()
-        return
-    except SignPaymentError:
-        logger.warning("on_confirm_requisites sign_payment failed: buyer_id=%s", buyer_id)
-        await callback.message.answer("Не удалось отправить выплату. Мы свяжемся с вами.")
-        await dialog_manager.done()
-        return
-    except Exception:
-        logger.exception("Failed to create Superbanking payout for buyer_id=%s", buyer_id)
-        await callback.message.answer("Не удалось инициировать выплату. Мы свяжемся с вами.")
-        await dialog_manager.done()
-        return
-
-    if order_number:
-        logger.info(
-            "on_confirm_requisites scheduling receipt check: buyer_id=%s, order_number=%s",
-            buyer_id,
-            order_number,
-        )
-        task = asyncio.create_task(
-            _send_receipt_after_confirm(
-                superbanking=superbanking,
-                message=callback.message,
-                order_number=order_number,
+        try:
+            order_number = await create_superbanking_payment.execute(
                 buyer_id=buyer_id,
+                phone_number=phone_number,
+                bank=bank,
+                amount=buyer_amount,
             )
-        )
-        task.add_done_callback(lambda _: None)
+            logger.info(
+                "on_confirm_requisites Superbanking payment created: buyer_id=%s, order_number=%s",
+                buyer_id,
+                order_number,
+            )
+            
+            if order_number:
+                task = asyncio.create_task(
+                    _send_receipt_after_confirm(
+                        superbanking=superbanking,
+                        message=callback.message,
+                        order_number=order_number,
+                        buyer_id=buyer_id,
+                    )
+                )
+                task.add_done_callback(lambda _: None)
+                
+        except CreatePaymentError:
+            logger.warning("on_confirm_requisites create_payment failed: buyer_id=%s", buyer_id)
+        except SignPaymentError:
+            logger.warning("on_confirm_requisites sign_payment failed: buyer_id=%s", buyer_id)
+        except Exception:
+            logger.exception("Failed to create Superbanking payout for buyer_id=%s", buyer_id)
 
     await dialog_manager.done()
 

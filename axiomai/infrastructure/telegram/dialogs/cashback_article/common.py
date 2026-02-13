@@ -12,31 +12,38 @@ from dishka.integrations.aiogram_dialog import inject
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.infrastructure.chat_history import add_to_chat_history, get_chat_history
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
+from axiomai.infrastructure.database.models import Buyer
+from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 
-async def _get_or_create_buyer(dialog_manager: DialogManager, create_buyer: CreateBuyer) -> int:
-    buyer_id = dialog_manager.dialog_data.get("buyer_id")
-    if buyer_id:
-        return buyer_id
+def get_pending_nm_ids_for_step(buyers: list[Buyer], step: str) -> list[int]:
+    if step == "check_order":
+        return [b.nm_id for b in buyers if not b.is_ordered]
+    if step == "check_received":
+        return [b.nm_id for b in buyers if b.is_ordered and not b.is_left_feedback]
+    if step == "check_labels_cut":
+        return [b.nm_id for b in buyers if b.is_left_feedback and not b.is_cut_labels]
 
-    event = dialog_manager.event
-    user = event.from_user if hasattr(event, "from_user") else None
+    return []
 
-    predialog_history = dialog_manager.start_data.get("predialog_history", [])
 
-    buyer = await create_buyer.execute(
-        telegram_id=dialog_manager.event.chat.id,
-        username=user.username if user else None,
-        fullname=user.full_name if user else "",
-        article_id=dialog_manager.start_data["article_id"],
-        chat_history=predialog_history,
-    )
-    dialog_manager.dialog_data["buyer_id"] = buyer.id
-    return buyer.id
+def build_articles_for_gpt(articles: list[CashbackArticle]) -> list[dict[str, str | int | None]]:
+    return [
+        {
+            "id": a.id,
+            "nm_id": a.nm_id,
+            "title": a.title,
+            "brand_name": a.brand_name,
+            "image_url": a.image_url,
+            "instruction_text": a.instruction_text,
+        }
+        for a in articles
+    ]
 
 
 @inject
@@ -64,19 +71,17 @@ async def mes_input_handler(
             chat_id=message.chat.id,
         )
 
-        current_state = dialog_manager.current_context().state
-        step_name = current_state.state.split(":")[-1] if current_state else "unknown"
-        article_id = dialog_manager.start_data["article_id"]
-        buyer_id = dialog_manager.dialog_data.get("buyer_id")
         bg_manager = dialog_manager.bg()
         app_container = di_container.parent_container
+        current_state = dialog_manager.current_context().state
+        step_name = current_state.state.split(":")[-1] if current_state else "unknown"
 
         await debouncer.add_message(
             business_connection_id=message.business_connection_id,
             chat_id=message.chat.id,
             message_data=message_data,
             process_callback=lambda biz_id, chat_id, msgs: _process_dialog_messages(
-                biz_id, chat_id, msgs, bot, app_container, step_name, article_id, buyer_id, bg_manager
+                biz_id, chat_id, message.from_user.username, message.from_user.full_name, msgs, bot, app_container, step_name, bg_manager
             ),
         )
         dialog_manager.show_mode = ShowMode.NO_UPDATE
@@ -88,72 +93,67 @@ async def mes_input_handler(
 async def _process_dialog_messages(
     business_connection_id: str,
     chat_id: int,
+    username: str | None,
+    fullname: str,
     messages: list[MessageData],
     bot: Bot,
     di_container: AsyncContainer,
     step_name: str,
-    article_id: int,
-    buyer_id: int | None,
     bg_manager: DialogManager,
 ) -> None:
-    """Обработка накопленных сообщений внутри диалога"""
     async with di_container() as r_container:
         config = await r_container.get(Config)
         openai_gateway = await r_container.get(OpenAIGateway)
         cashback_table_gateway = await r_container.get(CashbackTableGateway)
+        cabinet_gateway = await r_container.get(CabinetGateway)
 
-        article = await cashback_table_gateway.get_cashback_article_by_id(article_id)
-        combined_text = merge_messages_text(messages)
+        cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
+        articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(cabinet.id, chat_id)
 
-        available_articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(
-            cabinet_id=article.cabinet_id, telegram_id=chat_id
+    articles_for_gpt = build_articles_for_gpt(articles)
+    valid_ids = {art.id for art in articles}
+
+    chat_history = await get_chat_history(di_container, chat_id, cabinet.id)
+    combined_text = merge_messages_text(messages)
+
+    result = await openai_gateway.answer_user_question(
+        user_message=combined_text,
+        current_step=step_name,
+        articles=articles_for_gpt,
+        chat_history=chat_history,
+    )
+
+    response_text = result["response"]
+    wants_to_stop = result["wants_to_stop"]
+    switch_to_article_id = result["switch_to_article_id"]
+
+    await add_to_chat_history(di_container, chat_id, cabinet.id, combined_text, response_text)
+
+    await bot.send_chat_action(
+        chat_id=chat_id,
+        action=ChatAction.TYPING,
+        business_connection_id=business_connection_id,
+    )
+    await asyncio.sleep(config.delay_between_bot_messages)
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=response_text,
+        business_connection_id=business_connection_id,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+    if switch_to_article_id and switch_to_article_id in valid_ids:
+        async with di_container() as r_container:
+            create_buyer = await r_container.get(CreateBuyer)
+            await create_buyer.execute(chat_id, username, fullname, switch_to_article_id, [])
+
+        await bg_manager.start(
+            CashbackArticleStates.check_order,
+            mode=StartMode.RESET_STACK,
+            show_mode=ShowMode.SEND,
         )
-        # Список (id, title) для GPT
-        articles_list = [(art.id, art.title) for art in available_articles]
-        valid_ids = {art.id for art in available_articles}
+        return
 
-        chat_history = []
-        if buyer_id:
-            chat_history = await get_chat_history(di_container, buyer_id)
-
-        result = await openai_gateway.answer_user_question(
-            user_message=combined_text,
-            current_step=step_name,
-            instruction_text=article.instruction_text or "",
-            article_title=article.title,
-            available_articles=articles_list,
-            chat_history=chat_history,
-        )
-
-        response_text = result["response"]
-        wants_to_stop = result["wants_to_stop"]
-        switch_to_article_id = result["switch_to_article_id"]
-
-        if buyer_id:
-            await add_to_chat_history(di_container, buyer_id, combined_text, response_text)
-
-        await bot.send_chat_action(
-            chat_id=chat_id,
-            action=ChatAction.TYPING,
-            business_connection_id=business_connection_id,
-        )
-        await asyncio.sleep(config.delay_between_bot_messages)
-
-        await bot.send_message(
-            chat_id=chat_id,
-            text=response_text,
-            business_connection_id=business_connection_id,
-            parse_mode=ParseMode.MARKDOWN,
-        )
-
-        if switch_to_article_id and switch_to_article_id in valid_ids:
-            await bg_manager.start(
-                CashbackArticleStates.check_order,
-                mode=StartMode.RESET_STACK,
-                show_mode=ShowMode.SEND,
-                data={"article_id": switch_to_article_id},
-            )
-            return
-
-        if wants_to_stop:
-            await bg_manager.done()
+    if wants_to_stop:
+        await bg_manager.done()
