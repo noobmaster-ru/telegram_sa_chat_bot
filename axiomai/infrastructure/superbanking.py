@@ -183,7 +183,7 @@ class Superbanking:
             )
             raise
 
-    def sign_payment(self, cabinet_transaction_id: str) -> bool:
+    def sign_payment(self, cabinet_transaction_id: str, order_number: str) -> bool:
         try:
             payload = {
                 "cabinetId": self._superbanking_config.cabinet_id,
@@ -193,13 +193,15 @@ class Superbanking:
                 url=URL_SIGN_PAYMENT,
                 payload=payload,
                 log_context="sign payout",
-                add_idempotency_token=False,
+                order_number=order_number,
+                add_idempotency_token=True,
             )
             return self._extract_sign_result(response_data)
         except Exception:
             logger.exception(
-                "Superbanking sign_payment() failed for cabinet_transaction_id=%s",
+                "Superbanking sign_payment() failed for cabinet_transaction_id=%s, order_number=%s",
                 cabinet_transaction_id,
+                order_number,
             )
             raise
 
