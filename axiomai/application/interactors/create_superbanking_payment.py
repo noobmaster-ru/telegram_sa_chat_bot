@@ -2,7 +2,9 @@ import contextlib
 import logging
 
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError
+from axiomai.constants import AXIOMAI_COMMISSION, SUPERBANKING_COMMISSION
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.superbanking_payout import SuperbankingPayoutGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.superbanking import Superbanking
@@ -14,11 +16,13 @@ class CreateSuperbankingPayment:
     def __init__(
         self,
         buyer_gateway: BuyerGateway,
+        cabinet_gateway: CabinetGateway,
         superbanking_payout_gateway: SuperbankingPayoutGateway,
         transaction_manager: TransactionManager,
         superbanking: Superbanking,
     ) -> None:
         self._buyer_gateway = buyer_gateway
+        self._cabinet_gateway = cabinet_gateway
         self._superbanking_payout_gateway = superbanking_payout_gateway
         self._transaction_manager = transaction_manager
         self._superbanking = superbanking
@@ -88,6 +92,12 @@ class CreateSuperbankingPayment:
             logger.exception("Failed to sign_payment() Superbanking payout for buyer_id=%s", buyer_id)
             raise SignPaymentError from exc
 
+        # успешно выплатили юзеру деньги через superbanking_api - списываем деньги с баланса селлера и ставим buyer.is_superbanking_paid = True
+        buyer.is_superbanking_paid = True
+        await self._reduce_cabinet_balance(
+            cabinet_id=buyer.cabinet_id,
+            amount=buyer.amount,
+        )
         return payout.order_number
 
     def _ensure_payment_signed(self, *, cabinet_transaction_id: str, order_number: str, buyer_id: int) -> None:
@@ -98,3 +108,12 @@ class CreateSuperbankingPayment:
         if not is_succeed_payment:
             logger.error("Superbanking sign_payment() returned False for buyer_id=%s", buyer_id)
             raise SignPaymentError("Superbanking sign_payment() returned False")
+
+    async def _reduce_cabinet_balance(self, *, cabinet_id: int, amount: int) -> None:
+        cabinet = await self._cabinet_gateway.get_cabinet_by_id(cabinet_id)
+        if not cabinet:
+            raise ValueError(f"Cabinet with id {cabinet_id} not found")
+
+        total_charge = amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
+        cabinet.balance -= total_charge
+        await self._transaction_manager.commit()
