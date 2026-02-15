@@ -75,6 +75,7 @@ def test_create_payment_unknown_bank_raises(monkeypatch: pytest.MonkeyPatch) -> 
 def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
     captured: dict = {}
+    order_number = "payment-1"
 
     def fake_post_json(
         *,
@@ -85,17 +86,22 @@ def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
         add_idempotency_token: bool = True,
     ) -> dict:
         captured["payload"] = payload
+        captured["order_number"] = order_number
+        captured["add_idempotency_token"] = add_idempotency_token
         return {"result": True}
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
-    assert superbanking.sign_payment("tx-1") is True
+    assert superbanking.sign_payment("tx-1", order_number) is True
     assert captured["payload"]["cabinetId"] == "cabinet-1"
     assert captured["payload"]["cabinetTransactionId"] == "tx-1"
+    assert captured["order_number"] == order_number
+    assert captured["add_idempotency_token"] is True
 
 
 def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     superbanking = Superbanking(_make_config())
+    order_number = "payment-2"
 
     def fake_post_json(
         *,
@@ -110,7 +116,7 @@ def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
     with pytest.raises(ValueError, match="Unexpected Superbanking sign response"):
-        superbanking.sign_payment("tx-2")
+        superbanking.sign_payment("tx-2", order_number)
 
 
 def test_confirm_operation_success(monkeypatch: pytest.MonkeyPatch) -> None:
