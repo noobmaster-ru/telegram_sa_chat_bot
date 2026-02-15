@@ -79,6 +79,7 @@ class CreateSuperbankingPayment:
         try:
             self._ensure_payment_signed(
                 cabinet_transaction_id=cabinet_transaction_id,
+                order_number=payout.order_number,
                 buyer_id=buyer_id,
             )
         except SignPaymentError:
@@ -89,9 +90,10 @@ class CreateSuperbankingPayment:
 
         return payout.order_number
 
-    def _ensure_payment_signed(self, *, cabinet_transaction_id: str, buyer_id: int) -> None:
+    def _ensure_payment_signed(self, *, cabinet_transaction_id: str, order_number: str, buyer_id: int) -> None:
         is_succeed_payment = self._superbanking.sign_payment(
             cabinet_transaction_id=cabinet_transaction_id,
+            order_number=order_number,
         )
         if not is_succeed_payment:
             logger.error("Superbanking sign_payment() returned False for buyer_id=%s", buyer_id)
