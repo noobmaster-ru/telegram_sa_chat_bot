@@ -92,7 +92,7 @@ async def on_confirm_requisites(
 
     await callback.message.edit_text(f"{callback.message.text[:-1]}: <b>Да</b>")
     await callback.message.answer("Ожидайте выплату в ближайшее время, спасибо ☺")
-    await callback.message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
+    
     
     business_connection_id = callback.message.business_connection_id if callback.message else None
     logger.info(
@@ -146,7 +146,7 @@ async def on_confirm_requisites(
             )
         )
         task.add_done_callback(lambda _: None)
-
+    await callback.message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
     await dialog_manager.done()
 
 
