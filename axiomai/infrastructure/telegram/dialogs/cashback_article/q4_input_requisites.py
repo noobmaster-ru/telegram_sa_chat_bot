@@ -118,6 +118,7 @@ async def on_confirm_requisites(
             bool(cabinet),
             getattr(cabinet, "is_superbanking_connect", None),
         )
+        await callback.message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
         await dialog_manager.done()
         return
 
@@ -128,6 +129,7 @@ async def on_confirm_requisites(
     )
     if order_number is None:
         await callback.message.answer(payout_error_message)
+        await callback.message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
         await dialog_manager.done()
         return
 
