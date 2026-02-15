@@ -148,7 +148,7 @@ async def on_confirm_requisites(
             )
         )
         task.add_done_callback(lambda _: None)
-    await callback.message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
+    # тут можно вставить отправку ссылки на канал, но я вставил её в _send_receipt_after_confirm , чтобы отправилось после чека
     await dialog_manager.done()
 
 
@@ -239,6 +239,8 @@ async def _send_receipt_after_confirm(
             buyer_id,
         )
         await message.answer("Чек будет доступен чуть позже. Мы пришлём его дополнительно.")
+    # отправляем ссылку на канал после чека в самом конце сценария
+    await message.answer(f"Подписывайтесь на наш канал {WB_CHANNEL_NAME} , там будет много интересных товаров")
 
 
 async def on_decline_requisites(callback: CallbackQuery, widget: Any, dialog_manager: DialogManager) -> None:
