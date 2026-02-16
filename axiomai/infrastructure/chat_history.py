@@ -19,22 +19,26 @@ async def add_to_chat_history(
         transaction_manager = await r_container.get(TransactionManager)
         buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(telegram_id, cabinet_id)
 
+        chat_history = max(
+            (list(b.chat_history) for b in buyers if b.chat_history),
+            key=len,
+            default=[],
+        )
+        chat_history.append(
+            {
+                "user": user_message,
+                "assistant": assistant_response,
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        chat_history = chat_history[-MAX_CHAT_HISTORY:]
+
         for buyer in buyers:
-            chat_history = list(buyer.chat_history) if buyer.chat_history else []
-            chat_history.append(
-                {
-                    "user": user_message,
-                    "assistant": assistant_response,
-                    "created_at": datetime.now(UTC).isoformat(),
-                }
-            )
-            buyer.chat_history = chat_history[-MAX_CHAT_HISTORY:]
+            buyer.chat_history = chat_history
 
         await transaction_manager.commit()
 
-        buyer = buyers[0] if buyers else None
-
-        return list(buyer.chat_history) if buyer and buyer.chat_history else []
+        return chat_history
 
 
 

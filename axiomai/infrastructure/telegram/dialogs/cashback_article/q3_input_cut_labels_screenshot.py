@@ -139,7 +139,7 @@ async def _process_cut_labels_photo_background(
         )
         return
 
-    buyer_id = next((b.id for b in buyers), None)
+    buyer_id = next((b.id for b in buyers if b.nm_id in pending_nm_ids), None)
 
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)

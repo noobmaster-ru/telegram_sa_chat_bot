@@ -12,6 +12,7 @@ from dishka.integrations.aiogram_dialog import inject
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.infrastructure.chat_history import add_to_chat_history, get_chat_history
+from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.models import Buyer
@@ -146,10 +147,15 @@ async def _process_dialog_messages(
     if switch_to_article_id and switch_to_article_id in valid_ids:
         async with di_container() as r_container:
             create_buyer = await r_container.get(CreateBuyer)
+            buyer_gateway = await r_container.get(BuyerGateway)
             await create_buyer.execute(chat_id, username, fullname, switch_to_article_id, [])
 
+            active_buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(
+                chat_id, cabinet.id
+            )
+
         await bg_manager.start(
-            CashbackArticleStates.check_order,
+            determine_resume_state(active_buyers),
             mode=StartMode.RESET_STACK,
             show_mode=ShowMode.SEND,
         )
@@ -157,3 +163,24 @@ async def _process_dialog_messages(
 
     if wants_to_stop:
         await bg_manager.done()
+
+
+def determine_resume_state(buyers: list[Buyer]) -> CashbackArticleStates | None:
+    """Определяет состояние диалога для возобновления на основе прогресса заявок."""
+    has_pending_order = any(not b.is_ordered for b in buyers)
+    has_pending_feedback = any(b.is_ordered and not b.is_left_feedback for b in buyers)
+    has_pending_labels = any(b.is_left_feedback and not b.is_cut_labels for b in buyers)
+    has_pending_requisites = any(
+        b.is_cut_labels and not b.is_superbanking_paid and not b.is_paid_manually for b in buyers
+    )
+
+    if has_pending_order:
+        return CashbackArticleStates.check_order
+    if has_pending_feedback:
+        return CashbackArticleStates.check_received
+    if has_pending_labels:
+        return CashbackArticleStates.check_labels_cut
+    if has_pending_requisites:
+        return CashbackArticleStates.input_requisites
+
+    return None

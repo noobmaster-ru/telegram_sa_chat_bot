@@ -71,13 +71,15 @@ class CashbackTableGateway(Gateway):
     async def get_in_stock_cashback_articles_by_cabinet_id(
         self, cabinet_id: int, telegram_id: int
     ) -> list[CashbackArticle]:
-        # True if user already bought smt
         already_bought_something_subq = (
             select(Buyer.id)
             .where(
                 Buyer.telegram_id == telegram_id,
                 Buyer.nm_id == CashbackArticle.nm_id,
                 Buyer.cabinet_id == cabinet_id,
+                Buyer.is_ordered.is_(True),
+                Buyer.is_left_feedback.is_(True),
+                Buyer.is_cut_labels.is_(True),
             )
             .exists()
         )
