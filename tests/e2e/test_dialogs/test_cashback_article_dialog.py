@@ -12,8 +12,70 @@ from tests.e2e.conftest import cashback_table_factory, cashback_article_factory
 from tests.e2e.test_dialogs.conftest import FakeBotClient, FakeBot
 
 
-async def test_cashback_article_dialog_when_cabinet_not_found(bot_client: FakeBotClient, fake_bot: FakeBot):
+async def test_exact_ok_word_silently_ignores_message(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
     fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+    initial_message_count = len(fake_bot.sent_messages)
+
+    await bot_client.send_business(" оК ")
+
+    assert len(fake_bot.sent_messages) == initial_message_count
+    openai_gateway.answer_user_question.assert_not_awaited()
+
+
+async def test_non_exact_ok_text_triggers_openai_response(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Рад помочь!",
+        "wants_to_stop": False,
+        "switch_to_article_id": None,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+    initial_message_count = len(fake_bot.sent_messages)
+
+    await bot_client.send_business("ОК, спасибо")
+
+    assert len(fake_bot.sent_messages) > initial_message_count
+    openai_gateway.answer_user_question.assert_awaited_once()
+
+
+async def test_cashback_article_dialog_when_cabinet_not_found(bot_client: FakeBotClient, fake_bot: FakeBot, cabinet_factory):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    await cabinet_factory(business_connection_id=bot_client.business_connection_id)
 
     await bot_client.send_business("хочу кешбек")
 
@@ -87,6 +149,10 @@ async def test_cashback_article_filters_already_bought_articles(
         fullname="Test User",
         telegram_id=bot_client.user.id,
         nm_id=article_bought.nm_id,
+        is_ordered=True,
+        is_left_feedback=True,
+        is_cut_labels=True,
+        is_paid_manually=True,
     )
     session.add(buyer)
     await session.flush()
@@ -142,13 +208,18 @@ async def test_cashback_article_q1_input_order_screenshot(
         "response": "Отлично! Начнём оформление кешбека.",
         "article_id": article.id,
     })
-    openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
     await bot_client.send_business("хочу кешбек")
     await bot_client.send_business_photo()  # order
 
     buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))
     last_message = fake_bot.sent_messages[-1]
-    assert last_message.text == "✅ Скриншот заказа принят!"
+    assert "Скриншот заказа" in last_message.text and "принят" in last_message.text
     assert buyer.is_ordered is True
     assert cabinet.leads_balance == 999
 
@@ -172,8 +243,17 @@ async def test_cashback_article_q2_input_feedback_screenshot(
         "response": "Отлично! Начнём оформление кешбека.",
         "article_id": article.id,
     })
-    openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
-    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={"is_feedback": True})
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article.nm_id,
+        "cancel_reason": None,
+    })
 
     await bot_client.send_business("хочу кешбек")
     await bot_client.send_business_photo()  # order
@@ -181,7 +261,7 @@ async def test_cashback_article_q2_input_feedback_screenshot(
 
     buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))
     last_message = fake_bot.sent_messages[-1]
-    assert last_message.text == "✅ Скриншот отзыва принят!"
+    assert "Скриншот отзыва" in last_message.text and "принят" in last_message.text
     assert buyer.is_left_feedback is True
 
 
@@ -204,9 +284,21 @@ async def test_cashback_article_q3_input_cut_labels_screenshot(
         "response": "Отлично! Начнём оформление кешбека.",
         "article_id": article.id,
     })
-    openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
-    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={"is_feedback": True})
-    openai_gateway.classify_cut_labels_screenshot = AsyncMock(return_value={"is_cut_labels": True})
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article.nm_id,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_cut_labels_photo = AsyncMock(return_value={
+        "is_cut_labels": True,
+        "cancel_reason": None,
+    })
 
     await bot_client.send_business("хочу кешбек")
     await bot_client.send_business_photo()  # order
@@ -240,9 +332,21 @@ async def test_cashback_article_q4_input_requisites(
         "response": "Отлично! Начнём оформление кешбека.",
         "article_id": article.id,
     })
-    openai_gateway.classify_order_screenshot = AsyncMock(return_value={"is_order": True, "price": 1500})
-    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={"is_feedback": True})
-    openai_gateway.classify_cut_labels_screenshot = AsyncMock(return_value={"is_cut_labels": True})
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article.nm_id,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_cut_labels_photo = AsyncMock(return_value={
+        "is_cut_labels": True,
+        "cancel_reason": None,
+    })
     superbanking.get_bank_name_rus = Mock(return_value="Сбербанк")
 
     await bot_client.send_business("хочу кешбек")
@@ -259,3 +363,309 @@ async def test_cashback_article_q4_input_requisites(
     assert buyer.phone_number == "89275554444"
     assert buyer.bank == "Сбербанк"
     assert buyer.amount == 1500
+
+
+async def test_cashback_article_switch_to_second_article_during_dialog(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """User starts dialog with one article, then requests a second article via text message."""
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    # First message classifies article1
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article1.id,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+
+    buyers = (await session.scalars(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))).all()
+    assert len(buyers) == 1
+    assert buyers[0].nm_id == article1.nm_id
+
+    # User sends text requesting second article during dialog (switch_to_article_id)
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Хорошо, добавляю второй артикул!",
+        "wants_to_stop": False,
+        "switch_to_article_id": article2.id,
+    })
+
+    await bot_client.send_business("хочу ещё второй артикул")
+
+    buyers = (await session.scalars(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))).all()
+    assert len(buyers) == 2
+    nm_ids = {b.nm_id for b in buyers}
+    assert nm_ids == {article1.nm_id, article2.nm_id}
+
+
+async def test_two_articles_full_q1_order_screenshots(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """User has two articles and submits order screenshots for both sequentially."""
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    # First message classifies article1
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Начнём оформление.",
+        "article_id": article1.id,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+
+    # User requests second article
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Добавляю второй артикул!",
+        "wants_to_stop": False,
+        "switch_to_article_id": article2.id,
+    })
+
+    await bot_client.send_business("хочу ещё второй")
+
+    # Submit order screenshot for article1
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article1.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()
+
+    buyer1 = await session.scalar(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id, Buyer.nm_id == article1.nm_id)
+    )
+    assert buyer1.is_ordered is True
+    assert buyer1.amount == 1500
+
+    # Submit order screenshot for article2
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article2.nm_id,
+        "price": 2000,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()
+
+    buyer2 = await session.scalar(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id, Buyer.nm_id == article2.nm_id)
+    )
+    assert buyer2.is_ordered is True
+    assert buyer2.amount == 2000
+    assert cabinet.leads_balance == 998
+
+
+async def test_two_articles_full_flow_q1_q2_q3(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """Two articles go through the full Q1→Q2→Q3 flow, verifying all steps completed."""
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    # Start dialog with article1
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Начнём оформление.",
+        "article_id": article1.id,
+    })
+    await bot_client.send_business("хочу кешбек")
+
+    # Switch to add article2
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Добавляю второй артикул!",
+        "wants_to_stop": False,
+        "switch_to_article_id": article2.id,
+    })
+    await bot_client.send_business("хочу ещё второй")
+
+    # Q1: Order screenshots for both articles
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article1.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()  # order article1
+
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article2.nm_id,
+        "price": 2000,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()  # order article2
+
+    # Q2: Feedback screenshots for both articles
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article1.nm_id,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()  # feedback article1
+
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article2.nm_id,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()  # feedback article2
+
+    # Q3: Cut labels photos for both articles
+    openai_gateway.classify_cut_labels_photo = AsyncMock(return_value={
+        "is_cut_labels": True,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()  # cut labels article1
+    await bot_client.send_business_photo()  # cut labels article2
+
+    # Verify both buyers completed all steps
+    buyers = (await session.scalars(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id)
+    )).all()
+    assert len(buyers) == 2
+    for buyer in buyers:
+        assert buyer.is_ordered is True
+        assert buyer.is_left_feedback is True
+        assert buyer.is_cut_labels is True
+
+    # Verify total amount across both articles
+    total_amount = sum(b.amount for b in buyers)
+    assert total_amount == 3500
+
+    # Verify "all photos received" message was sent
+    all_photos_msg = [m for m in fake_bot.sent_messages if "Вы прислали все фотографии" in m.text]
+    assert len(all_photos_msg) == 1
+
+    # Verify leads_balance decremented twice (once per article)
+    assert cabinet.leads_balance == 998
+
+
+async def test_switch_back_to_completed_article_while_pending_another(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article_x = await cashback_article_factory(cabinet_id=cabinet.id)
+    article_y = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    # Step 1: User requests article X
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Оформляем артикул X.",
+        "article_id": article_x.id,
+    })
+    await bot_client.send_business("хочу кешбек")
+
+    buyer_x = await session.scalar(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id, Buyer.nm_id == article_x.nm_id)
+    )
+    assert buyer_x is not None
+    assert buyer_x.is_ordered is False
+
+    # Step 2: User sends order screenshot for X
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article_x.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()
+
+    await session.refresh(buyer_x)
+    assert buyer_x.is_ordered is True
+    assert buyer_x.amount == 1500
+
+    # Step 3: User requests switch to article Y (without sending X's feedback yet)
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Добавляю артикул Y!",
+        "wants_to_stop": False,
+        "switch_to_article_id": article_y.id,
+    })
+    await bot_client.send_business("хочу ещё один артикул")
+
+    buyer_y = await session.scalar(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id, Buyer.nm_id == article_y.nm_id)
+    )
+    assert buyer_y is not None
+    assert buyer_y.is_ordered is False
+
+    # Step 4: User requests switch back to X (without sending Y's order screenshot)
+    # CreateBuyer returns existing buyer for X (already has is_ordered=True)
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Возвращаемся к артикулу X.",
+        "wants_to_stop": False,
+        "switch_to_article_id": article_x.id,
+    })
+    await bot_client.send_business("вернись к первому артикулу")
+
+    # Verify: still only 2 buyers exist (no duplicate for X)
+    buyers = (await session.scalars(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id)
+    )).all()
+    assert len(buyers) == 2
+    nm_ids = {b.nm_id for b in buyers}
+    assert nm_ids == {article_x.nm_id, article_y.nm_id}
+
+    # Verify: buyer X still has is_ordered=True
+    await session.refresh(buyer_x)
+    assert buyer_x.is_ordered is True
+
+    # Verify: buyer Y still has is_ordered=False
+    await session.refresh(buyer_y)
+    assert buyer_y.is_ordered is False
+
+    # Step 5: To proceed, user MUST send order screenshot for Y
+    # System is still at check_order step because Y is pending
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article_y.nm_id,
+        "price": 2000,
+        "cancel_reason": None,
+    })
+    await bot_client.send_business_photo()
+
+    await session.refresh(buyer_y)
+    assert buyer_y.is_ordered is True
+    assert buyer_y.amount == 2000
+
+    # Now both buyers have is_ordered=True, can proceed to feedback step
+    await session.refresh(buyer_x)
+    await session.refresh(buyer_y)
+    assert buyer_x.is_ordered is True
+    assert buyer_y.is_ordered is True

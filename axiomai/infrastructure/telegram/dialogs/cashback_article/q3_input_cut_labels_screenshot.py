@@ -12,9 +12,12 @@ from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.config import Config
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
+from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
+from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
 from axiomai.infrastructure.openai import OpenAIGateway
+from axiomai.infrastructure.telegram.dialogs.cashback_article.common import get_pending_nm_ids_for_step
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 logger = logging.getLogger(__name__)
@@ -42,8 +45,6 @@ async def on_input_cut_labels_photo(
     file = await bot.get_file(photo.file_id)
     photo_url = f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
 
-    buyer_id = dialog_manager.dialog_data.get("buyer_id")
-
     message_data = MessageData(
         text=message.caption,
         timestamp=datetime.now(UTC).timestamp(),
@@ -68,7 +69,6 @@ async def on_input_cut_labels_photo(
             config=config,
             chat_id=chat_id,
             business_connection_id=biz_id,
-            buyer_id=buyer_id,
         ),
     )
 
@@ -82,14 +82,13 @@ async def _process_cut_labels_photo_background(
     config: Config,
     chat_id: int,
     business_connection_id: str,
-    buyer_id: int | None,
 ) -> None:
     photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
 
     if len(photo_urls) > 1:
         await bot.send_message(
             chat_id,
-            "Пожалуйста, отправьте только одну фотографию разрезанных этикеток. "
+            "Пожалуйста, отправьте по одной фотографию разрезанных этикеток. "
             "Я получил несколько фото, и не могу понять, какое из них правильное.",
             business_connection_id=business_connection_id,
         )
@@ -100,6 +99,18 @@ async def _process_cut_labels_photo_background(
     await bot.send_message(
         chat_id, "⏳ Проверяю фотографию разрезанных этикеток...", business_connection_id=business_connection_id
     )
+
+    async with di_container() as r_container:
+        buyer_gateway = await r_container.get(BuyerGateway)
+        cabinet_gateway = await r_container.get(CabinetGateway)
+        cashback_table_gateway = await r_container.get(CashbackTableGateway)
+
+        cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
+        buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(chat_id, cabinet.id)
+        articles = await cashback_table_gateway.get_cashback_articles_by_nm_ids([b.nm_id for b in buyers])
+
+    pending_nm_ids = get_pending_nm_ids_for_step(buyers, step="check_labels_cut")
+    pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
 
     try:
         result = await openai_gateway.classify_cut_labels_photo(photo_url)
@@ -128,6 +139,8 @@ async def _process_cut_labels_photo_background(
         )
         return
 
+    buyer_id = next((b.id for b in buyers if b.nm_id in pending_nm_ids), None)
+
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)
         transaction_manager = await r_container.get(TransactionManager)
@@ -135,13 +148,26 @@ async def _process_cut_labels_photo_background(
         buyer.is_cut_labels = True
         await transaction_manager.commit()
 
-    await bot.send_message(
-        chat_id, "✅ Фотография разрезанных этикеток принята!", business_connection_id=business_connection_id
-    )
+        buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(chat_id, cabinet.id)
+
+    article = next((a for a in pending_articles), None)
+
+    if not article:
+        raise ValueError(f"Pending articles is empty for user {chat_id}")
+
     await bot.send_message(
         chat_id,
-        "☺ Вы прислали все фотографии, которые были нам нужны. Спасибо!",
+        f"✅ Фотография разрезанных этикеток для <b>{article.title}</b> принята!",
         business_connection_id=business_connection_id,
     )
 
-    await bg_manager.switch_to(CashbackArticleStates.input_requisites, show_mode=ShowMode.SEND)
+    pending_cut_labels = get_pending_nm_ids_for_step(buyers, "check_labels_cut")
+    if pending_cut_labels:
+        await bg_manager.switch_to(CashbackArticleStates.check_labels_cut, show_mode=ShowMode.SEND)
+    else:
+        await bot.send_message(
+            chat_id,
+            "☺ Вы прислали все фотографии, которые были нам нужны. Спасибо!",
+            business_connection_id=business_connection_id,
+        )
+        await bg_manager.switch_to(CashbackArticleStates.input_requisites, show_mode=ShowMode.SEND)

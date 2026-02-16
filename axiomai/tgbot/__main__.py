@@ -6,6 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.base import BaseStorage, DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram_dialog import setup_dialogs
+from aiogram_dialog.widgets.text import setup_jinja
 from dishka import make_async_container
 from dishka.integrations.aiogram import setup_dishka
 from redis.asyncio import Redis
@@ -39,6 +40,7 @@ async def main() -> None:
     handlers.setup(dispatcher)
     dialogs.setup(dispatcher)
 
+    setup_jinja(dispatcher)
     setup_dialogs(dispatcher)
     setup_dishka(di_container, dispatcher)
 

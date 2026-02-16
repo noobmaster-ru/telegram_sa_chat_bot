@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from contextlib import suppress
+from typing import TypedDict
 
 from httpx import AsyncClient, AsyncHTTPTransport
 from openai import AsyncOpenAI
@@ -19,6 +20,46 @@ from axiomai.infrastructure.database.models.cashback_table import CashbackArticl
 logger = logging.getLogger(__name__)
 
 
+class ArticleInfo(TypedDict):
+    id: int
+    nm_id: int
+    title: str
+    brand_name: str
+    image_url: str | None
+    instruction_text: str
+
+class ChatHistoryEntry(TypedDict):
+    user: str
+    assistant: str
+
+class ClassifyOrderResult(TypedDict):
+    is_order: bool
+    nm_id: int | None
+    price: int | None
+    cancel_reason: str | None
+
+
+class ClassifyFeedbackResult(TypedDict):
+    is_feedback: bool
+    nm_id: int | None
+    cancel_reason: str | None
+
+
+class ClassifyCutLabelsResult(TypedDict):
+    is_cut_labels: bool
+    cancel_reason: str | None
+
+
+class AnswerResult(TypedDict):
+    response: str
+    wants_to_stop: bool
+    switch_to_article_id: int | None
+
+
+class PredialogResult(TypedDict):
+    response: str
+    article_id: int | None
+
 
 class OpenAIGateway:
     def __init__(self, config: OpenAIConfig) -> None:
@@ -28,34 +69,52 @@ class OpenAIGateway:
         )
 
     async def classify_order_screenshot(
-        self, photo_url: str, article_title: str, brand_name: str, article_image_url: str | None = None
-    ) -> dict[str, bool | str | int | None]:
+        self,
+        photo_url: str,
+        articles: list[ArticleInfo],
+    ) -> ClassifyOrderResult:
+        """
+        Классифицирует скриншот заказа по списку товаров.
+        
+        Args:
+            photo_url: URL скриншота
+            articles: список товаров [{"nm_id": int, "title": str, "brand_name": str, "image_url": str|None}]
+        
+        Returns:
+            {"is_order": bool, "nm_id": int|null, "price": int|null, "cancel_reason": str|null}
+        """
+        articles_text = "\n".join(
+            f'- nm_id={art['nm_id']}, Название: "{art['title']}", Бренд: "{art['brand_name']}"'
+            for art in articles
+        )
+        valid_nm_ids = {art["nm_id"] for art in articles}
         
         system_content = """
         Ты помощник для анализа скриншотов заказов Wildberries.
         
         Проанализируй скриншот заказа на Wildberries и определи:
-        1. Есть ли на скриншоте ЗАКАЗ целевого товара
-        2. Какая цена указана для этого товара в рублях (₽)
+        1. Есть ли на скриншоте ЗАКАЗ одного из целевых товаров (из списка ниже)
+        2. Какой именно товар заказан (по nm_id)
+        3. Какая цена указана для этого товара в рублях (₽)
         
         ВАЖНЫЕ признаки заказа на Wildberries:
         - Наличие слова "Заказы" в верхней части экрана
         - Рядом с карточкой товара есть статусы: "Оформляется", "Вы оформили заказ", "Оплачен" (зелёным), "НЕ ОПЛАЧЕН" (красным)
         - Карточка товара содержит изображение, название товара, бренд и цену
         
-        Сравни изображение товара на скриншоте с эталонным изображением товара (если предоставлено).
-        Товары должны визуально совпадать.
+        Сравни изображение товара на скриншоте с эталонными изображениями товаров (если предоставлены).
         
-        Верни ответ в формате JSON: {"is_order": bool, "price": int|null, "cancel_reason": str|null}
-        Где is_order = true, если заказ нашего товара присутствует на скриншоте,
-        price = цена товара в рублях, или null если цена не видна,
-        cancel_reason = причина отказа, если is_order = false
+        Верни ответ в формате JSON: {"is_order": bool, "nm_id": int|null, "price": int|null, "cancel_reason": str|null}
+        Где:
+        - is_order = true, если заказ одного из наших товаров присутствует на скриншоте
+        - nm_id = артикул товара который найден на скриншоте, или null если товар не найден
+        - price = цена товара в рублях, или null если цена не видна
+        - cancel_reason = причина отказа, если is_order = false
         """
         
         prompt = f"""
-        ЦЕЛЕВОЙ ТОВАР:
-        - Название: "{article_title}"
-        - Бренд: "{brand_name}"
+        ЦЕЛЕВЫЕ ТОВАРЫ (ищем заказ ОДНОГО из них):
+        {articles_text}
         """
 
         user_content = [
@@ -63,8 +122,10 @@ class OpenAIGateway:
             {"type": "input_image", "image_url": photo_url},
         ]
 
-        if article_image_url:
-            user_content.append({"type": "input_image", "image_url": article_image_url})
+        for art in articles:
+            image_url: str | None = art.get("image_url")
+            if image_url:
+                user_content.append({"type": "input_image", "image_url": image_url})
 
         messages = [
             {"role": "system", "content": system_content},
@@ -84,21 +145,45 @@ class OpenAIGateway:
         result = _extract_response_text(response)
 
         if not result:
-            return {"is_order": False, "price": None, "cancel_reason": None}
+            return {"is_order": False, "nm_id": None, "price": None, "cancel_reason": None}
 
         with suppress(json.JSONDecodeError, TypeError):
-            result = json.loads(result)
-            logger.debug("classified order screenshot %s", result)
-            return result
+            parsed = json.loads(result)
+            logger.debug("classified order screenshot %s", parsed)
+            if parsed.get("nm_id") and parsed["nm_id"] not in valid_nm_ids:
+                parsed["nm_id"] = None
+                parsed["is_order"] = False
+            return parsed
 
-        return {"is_order": False, "price": None, "cancel_reason": None}
+        return {"is_order": False, "nm_id": None, "price": None, "cancel_reason": None}
 
     async def classify_feedback_screenshot(
-        self, photo_url: str, article_title: str, brand_name: str, article_image_url: str | None = None
-    ) -> dict[str, bool | str | None]:
+        self,
+        photo_url: str,
+        articles: list[ArticleInfo],
+    ) -> ClassifyFeedbackResult:
+        """
+        Классифицирует скриншот отзыва по списку товаров.
+        
+        Args:
+            photo_url: URL скриншота
+            articles: список товаров [{"nm_id": int, "title": str, "brand_name": str, "image_url": str|None}]
+        
+        Returns:
+            {"is_feedback": bool, "nm_id": int|null, "cancel_reason": str|null}
+        """
+        articles_text = "\n".join(
+            f'- nm_id={art['nm_id']}, Название: "{art['title']}", Бренд: "{art['brand_name']}"'
+            for art in articles
+        )
+        valid_nm_ids = {art["nm_id"] for art in articles}
         
         system_content = """
         Ты помощник для анализа скриншотов отзывов Wildberries.
+        
+        Проанализируй скриншот и определи:
+        1. Есть ли на скриншоте ОТЗЫВ на один из целевых товаров (из списка ниже)
+        2. На какой именно товар оставлен отзыв (по nm_id)
         
         КРИТЕРИИ:
             - Подпись у товара может быть названием целевого товара или его брендом.
@@ -106,25 +191,29 @@ class OpenAIGateway:
             - Текст отзыва НЕ должен содержать описание товара. Только общие фразы МОГУТ БЫТЬ, например: "товар хороший", "всё хорошо", "отличный товар", и тд
             - На скриншоте НЕ должно быть замазок/блюра и других изменений, только обычный скриншот с телефона без исправлений
         
-        Верни ответ в формате JSON: {"is_feedback": bool, "cancel_reason": str|null}
-        Где is_feedback = true, если на скриншоте есть отзыв с 5 звёздами на наш товар, согласно нашим КРИТЕРИЯМ.
-        cancel_reason = причина отказа, если is_feedback = false
+        Верни ответ в формате JSON: {"is_feedback": bool, "nm_id": int|null, "cancel_reason": str|null}
+        Где:
+        - is_feedback = true, если на скриншоте есть отзыв с 5 звёздами на один из наших товаров
+        - nm_id = артикул товара на который оставлен отзыв, или null если не найден
+        - cancel_reason = причина отказа, если is_feedback = false
         """
         
         prompt = f"""
-        Подумай и скажи есть ли на скриншоте ОТЗЫВ на наш товар на Wildberries, сделанный согласно нашим КРИТЕРИЯМ.
+        Подумай и скажи есть ли на скриншоте ОТЗЫВ на один из наших товаров на Wildberries, сделанный согласно нашим КРИТЕРИЯМ.
 
-        ЦЕЛЕВОЙ ТОВАР:
-        - Название: "{article_title}"
-        - Бренд: "{brand_name}"
+        ЦЕЛЕВЫЕ ТОВАРЫ (ищем отзыв на ОДИН из них):
+        {articles_text}
         """
 
         user_content = [
             {"type": "input_text", "text": prompt},
             {"type": "input_image", "image_url": photo_url},
         ]
-        if article_image_url:
-            user_content.append({"type": "input_image", "image_url": article_image_url})
+        
+        for art in articles:
+            image_url: str | None = art.get("image_url")
+            if image_url:
+                user_content.append({"type": "input_image", "image_url": image_url})
         
         messages = [
             {"role": "system", "content": system_content},
@@ -152,16 +241,20 @@ class OpenAIGateway:
                         break
 
         if not result:
-            return {"is_feedback": False, "cancel_reason": None}
+            return {"is_feedback": False, "nm_id": None, "cancel_reason": None}
 
         with suppress(json.JSONDecodeError, TypeError):
-            result = json.loads(result)
-            logger.info("classified feedback screenshot %s", result)
-            return result
+            parsed = json.loads(result)
+            logger.info("classified feedback screenshot %s", parsed)
+            # Валидируем nm_id
+            if parsed.get("nm_id") and parsed["nm_id"] not in valid_nm_ids:
+                parsed["nm_id"] = None
+                parsed["is_feedback"] = False
+            return parsed
 
-        return {"is_feedback": False, "cancel_reason": None}
+        return {"is_feedback": False, "nm_id": None, "cancel_reason": None}
 
-    async def classify_cut_labels_photo(self, photo_url: str) -> dict[str, str | bool | None]:
+    async def classify_cut_labels_photo(self, photo_url: str) -> ClassifyCutLabelsResult:
         system_content = """
         Ты помощник для анализа фотографий разрезанных этикеток Wildberries.
         """
@@ -209,11 +302,9 @@ class OpenAIGateway:
         self,
         user_message: str,
         current_step: str,
-        instruction_text: str,
-        article_title: str,
-        available_articles: list[tuple[int, str]] | None = None,
-        chat_history: list[dict[str, str]] | None = None,
-    ) -> dict[str, str | bool | int | None]:
+        articles: list[ArticleInfo],
+        chat_history: list[ChatHistoryEntry] | None = None,
+    ) -> AnswerResult:
         """
         Отвечает на вопрос пользователя в контексте кешбек-диалога.
 
@@ -238,13 +329,11 @@ class OpenAIGateway:
                 history_lines.append(f"Ты: {entry['assistant']}")
             history_text = "\n".join(history_lines)
 
-        articles_text = ""
-        articles_for_user = ""
-        if available_articles:
-            articles_lines = [f"- ID:{art_id} — {title}" for art_id, title in available_articles]
-            articles_text = "\n".join(articles_lines)
-            articles_for_user = "\n".join([f"- {title}" for _, title in available_articles])
+        articles_lines = [f"- ID:{article["id"]} — {article["title"]}" for article in articles]
+        articles_text = "\n".join(articles_lines)
+        articles_for_user = "\n".join([f"- {article["title"]}" for article in articles])
 
+        instruction_text = articles[0]["instruction_text"]
 
         system_content = """
         Ты — вежливый помощник кешбек-сервиса Wildberries.
@@ -284,7 +373,6 @@ class OpenAIGateway:
         
         prompt = f"""
         КОНТЕКСТ:
-        - Текущий товар: "{article_title}"
         - Текущий шаг: {current_step_desc}
 
         ИНСТРУКЦИЯ, что и как нужно делать клиенту
@@ -321,9 +409,9 @@ class OpenAIGateway:
         self,
         user_message: str,
         articles: list[CashbackArticle],
-        chat_history: list[dict[str, str]] | None = None,
+        chat_history: list[ChatHistoryEntry] | None = None,
         photo_url: str | None = None,
-    ) -> dict[str, str | int | None]:
+    ) -> PredialogResult:
         """
         Ведёт pre-dialog общение с клиентом до классификации артикула.
 
@@ -479,7 +567,7 @@ def _log_response_usage(operation: str, response: Response) -> None:
     )
 
 
-def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | None]:
+def _parse_answer_result(result: str | None) -> AnswerResult:
     """Парсит результат ответа GPT и извлекает специальные команды"""
     if not result:
         return {
@@ -499,10 +587,14 @@ def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | Non
             switch_to_article_id = int(match.group(1))
             result = re.sub(r"\[SWITCH:\d+\]", "", result).strip()
 
-    return {"response": result, "wants_to_stop": wants_to_stop, "switch_to_article_id": switch_to_article_id}
+    return AnswerResult(
+        response=result,
+        wants_to_stop=wants_to_stop,
+        switch_to_article_id=switch_to_article_id,
+    )
 
 
-def _parse_predialog_result(result: str | None) -> dict[str, str | int | None]:
+def _parse_predialog_result(result: str | None) -> PredialogResult:
     """Парсит результат pre-dialog ответа GPT и извлекает article_id"""
     if not result:
         return {"response": "Напишите название товара, по которому хотите кэшбек", "article_id": None}
@@ -514,4 +606,4 @@ def _parse_predialog_result(result: str | None) -> dict[str, str | int | None]:
             article_id = int(match.group(1))
             result = re.sub(r"\[ARTICLE:\d+\]", "", result).strip()
 
-    return {"response": result, "article_id": article_id}
+    return PredialogResult(response=result, article_id=article_id)

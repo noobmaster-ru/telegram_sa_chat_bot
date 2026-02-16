@@ -139,6 +139,7 @@ def cabinet_factory(session, user_factory):
         initial_balance: int = 0,
         leads_balance: int = 1000,
         business_connection_id: str | None = None,
+        is_superbanking_connect: bool = False,
     ) -> Cabinet:
         if not user_id:
             user = await user_factory()
@@ -152,6 +153,7 @@ def cabinet_factory(session, user_factory):
             organization_name="none",
             link_code=secrets.token_urlsafe(16),
             business_connection_id=business_connection_id,
+            is_superbanking_connect=is_superbanking_connect,
         )
         session.add(cabinet)
         await session.flush()

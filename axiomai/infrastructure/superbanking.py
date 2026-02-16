@@ -3,6 +3,7 @@ import logging
 import re
 from urllib import error, parse, request
 
+from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError
 from axiomai.config import SuperbankingConfig
 from axiomai.constants import URL_CONFIRM_PAYMENT, URL_CREATE_PAYMENT, URL_SIGN_PAYMENT
 
@@ -152,7 +153,7 @@ class Superbanking:
         bank_identifier = self._get_bank_identifier_by_bank_name_rus(bank_name_rus=bank_name_rus)
         if not bank_identifier:
             message = f"Unknown bank: {bank_name_rus}"
-            raise ValueError(message)
+            raise CreatePaymentError(message)
 
         payload = {
             "cabinetId": self._superbanking_config.cabinet_id,
@@ -175,20 +176,19 @@ class Superbanking:
             )
             cabinet_transaction_id = self._extract_cabinet_transaction_id(response_data)
             return str(cabinet_transaction_id)
-
-        except Exception:
+        except Exception as exc:
             logger.exception(
                 "Superbanking create_payment() failed for order_number=%s",
                 order_number,
             )
-            raise
+            raise CreatePaymentError from exc
 
     def sign_payment(self, cabinet_transaction_id: str, order_number: str) -> bool:
+        payload = {
+            "cabinetId": self._superbanking_config.cabinet_id,
+            "cabinetTransactionId": cabinet_transaction_id,
+        }
         try:
-            payload = {
-                "cabinetId": self._superbanking_config.cabinet_id,
-                "cabinetTransactionId": cabinet_transaction_id,
-            }
             response_data = self._post_json(
                 url=URL_SIGN_PAYMENT,
                 payload=payload,
@@ -196,14 +196,25 @@ class Superbanking:
                 order_number=order_number,
                 add_idempotency_token=True,
             )
-            return self._extract_sign_result(response_data)
-        except Exception:
+        except Exception as exc:
             logger.exception(
                 "Superbanking sign_payment() failed for cabinet_transaction_id=%s, order_number=%s",
                 cabinet_transaction_id,
                 order_number,
             )
-            raise
+            raise SignPaymentError from exc
+
+        try:
+            result = self._extract_sign_result(response_data)
+        except ValueError as exc:
+            raise SignPaymentError from exc
+
+        if not result:
+            logger.error("Superbanking sign_payment() returned false for order_number=%s", order_number)
+            raise SignPaymentError
+
+        return result
+
 
     def confirm_operation(self, order_number: str) -> str:
         try:
