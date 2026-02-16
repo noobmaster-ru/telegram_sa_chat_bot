@@ -72,7 +72,6 @@ async def main() -> None:
             asyncio.create_task(run_cashback_tables_observer(di_container)),
             asyncio.create_task(run_sync_cashback_tables(di_container)),
             asyncio.create_task(run_balance_notifications_observer(di_container)),
-            asyncio.create_task(run_inactive_reminders_observer(di_container)),
         )
     finally:
         await di_container.close()
