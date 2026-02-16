@@ -25,7 +25,7 @@ async def _create_buyer(
     amount=None,
     cabinet_balance: int = 0,
 ) -> tuple[Buyer, Cabinet]:
-    cabinet = await cabinet_factory(balance=cabinet_balance)
+    cabinet = await cabinet_factory(balance=cabinet_balance, is_superbanking_connect=True)
     buyer = Buyer(
         cabinet_id=cabinet.id,
         username="test_user",

@@ -12,6 +12,67 @@ from tests.e2e.conftest import cashback_table_factory, cashback_article_factory
 from tests.e2e.test_dialogs.conftest import FakeBotClient, FakeBot
 
 
+async def test_exact_ok_word_silently_ignores_message(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+    initial_message_count = len(fake_bot.sent_messages)
+
+    await bot_client.send_business(" оК ")
+
+    assert len(fake_bot.sent_messages) == initial_message_count
+    openai_gateway.answer_user_question.assert_not_awaited()
+
+
+async def test_non_exact_ok_text_triggers_openai_response(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+    openai_gateway.answer_user_question = AsyncMock(return_value={
+        "response": "Рад помочь!",
+        "wants_to_stop": False,
+        "switch_to_article_id": None,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+    initial_message_count = len(fake_bot.sent_messages)
+
+    await bot_client.send_business("ОК, спасибо")
+
+    assert len(fake_bot.sent_messages) > initial_message_count
+    openai_gateway.answer_user_question.assert_awaited_once()
+
+
 async def test_cashback_article_dialog_when_cabinet_not_found(bot_client: FakeBotClient, fake_bot: FakeBot, cabinet_factory):
     fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
     await cabinet_factory(business_connection_id=bot_client.business_connection_id)
