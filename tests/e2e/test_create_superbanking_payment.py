@@ -35,7 +35,7 @@ async def _create_buyer(session, cabinet_factory, *, phone_number=None, bank=Non
 async def test_create_superbanking_payment_creates_payout(
     create_superbanking_payment, di_container, session, cabinet_factory
 ):
-    buyer = await _create_buyer(session, cabinet_factory)
+    buyer = await _create_buyer(session, cabinet_factory, amount=200)
     superbanking = await di_container.get(Superbanking)
 
     # Override Superbanking mock with sync methods
@@ -43,13 +43,13 @@ async def test_create_superbanking_payment_creates_payout(
     superbanking.sign_payment = MagicMock(return_value=True)
 
     order_number = await create_superbanking_payment.execute(
-        buyer_id=buyer.id,
+        telegram_id=buyer.telegram_id,
+        cabinet_id=buyer.cabinet_id,
         phone_number="+7 910 111 22 33",
         bank="Тинькофф",
-        amount=150,
     )
 
-    payout = await session.scalar(select(SuperbankingPayout).where(SuperbankingPayout.buyer_id == buyer.id))
+    payout = await session.scalar(select(SuperbankingPayout).where(SuperbankingPayout.order_number == order_number))
     assert payout is not None
     assert payout.order_number == order_number
 
@@ -57,15 +57,15 @@ async def test_create_superbanking_payment_creates_payout(
 async def test_create_superbanking_payment_missing_bank_raises(
     create_superbanking_payment, di_container, session, cabinet_factory
 ):
-    buyer = await _create_buyer(session, cabinet_factory)
+    buyer = await _create_buyer(session, cabinet_factory, amount=200)
     superbanking = await di_container.get(Superbanking)
-    superbanking.create_payment = MagicMock(side_effect=ValueError("Unknown bank"))
+    superbanking.create_payment = MagicMock(side_effect=CreatePaymentError("Unknown bank"))
     superbanking.sign_payment = MagicMock(return_value=True)
 
     with pytest.raises(CreatePaymentError):
         await create_superbanking_payment.execute(
-            buyer_id=buyer.id,
+            telegram_id=buyer.telegram_id,
+            cabinet_id=buyer.cabinet_id,
             phone_number="+7 910 111 22 33",
             bank="Неизвестный банк",
-            amount=150,
         )

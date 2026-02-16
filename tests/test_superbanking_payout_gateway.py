@@ -4,15 +4,15 @@ from axiomai.infrastructure.database.gateways.superbanking_payout import Superba
 
 def test_build_order_number_is_deterministic_and_within_limit() -> None:
     order_number_1 = SuperbankingPayoutGateway.build_order_number(
-        buyer_id=1,
-        nm_id=34542,
+        telegram_id=1,
+        nm_ids=[34542],
         phone_number="+7 (910) 111-22-33",
         bank="Сбер",
         amount=200,
     )
     order_number_2 = SuperbankingPayoutGateway.build_order_number(
-        buyer_id=1,
-        nm_id=34542,
+        telegram_id=1,
+        nm_ids=[34542],
         phone_number="+7 (910) 111-22-33",
         bank="Сбер",
         amount=200,

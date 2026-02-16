@@ -1,5 +1,6 @@
 import pytest
 
+from axiomai.application.exceptions.superbanking import SignPaymentError, CreatePaymentError
 from axiomai.config import SuperbankingConfig
 from axiomai.infrastructure.superbanking import Superbanking
 
@@ -63,7 +64,7 @@ def test_create_payment_unknown_bank_raises(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
-    with pytest.raises(ValueError, match="Unknown bank"):
+    with pytest.raises(CreatePaymentError, match="Unknown bank"):
         superbanking.create_payment(
             phone_number="+7 910 111 22 33",
             bank_name_rus="Неизвестный банк",
@@ -109,7 +110,7 @@ def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
-    with pytest.raises(ValueError, match="Unexpected Superbanking sign response"):
+    with pytest.raises(SignPaymentError):
         superbanking.sign_payment("tx-2")
 
 

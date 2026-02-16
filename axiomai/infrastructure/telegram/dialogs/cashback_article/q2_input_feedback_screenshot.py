@@ -159,6 +159,9 @@ async def _process_feedback_screenshot_background(
 
     article = next((a for a in articles if a.nm_id == result["nm_id"]), None)
 
+    if not article:
+        raise ValueError(f"Article in result {result["nm_id"]} not found in {pending_nm_ids}")
+
     await bot.send_message(
         chat_id,
         f"✅ Скриншот отзыва для <b>{article.title}</b> принят!",

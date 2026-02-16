@@ -18,7 +18,7 @@ from axiomai.infrastructure.database.gateways.cashback_table_gateway import Cash
 from axiomai.infrastructure.database.models import Buyer
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
-from axiomai.infrastructure.openai import OpenAIGateway
+from axiomai.infrastructure.openai import ArticleInfo, OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 
@@ -33,16 +33,16 @@ def get_pending_nm_ids_for_step(buyers: list[Buyer], step: str) -> list[int]:
     return []
 
 
-def build_articles_for_gpt(articles: list[CashbackArticle]) -> list[dict[str, str | int | None]]:
+def build_articles_for_gpt(articles: list[CashbackArticle]) -> list[ArticleInfo]:
     return [
-        {
-            "id": a.id,
-            "nm_id": a.nm_id,
-            "title": a.title,
-            "brand_name": a.brand_name,
-            "image_url": a.image_url,
-            "instruction_text": a.instruction_text,
-        }
+        ArticleInfo(
+            id=a.id,
+            nm_id=a.nm_id,
+            title=a.title,
+            brand_name=a.brand_name,
+            image_url=a.image_url,
+            instruction_text=a.instruction_text,
+        )
         for a in articles
     ]
 

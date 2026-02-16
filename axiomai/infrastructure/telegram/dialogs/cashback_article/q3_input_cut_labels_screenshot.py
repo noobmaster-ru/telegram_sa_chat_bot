@@ -152,6 +152,9 @@ async def _process_cut_labels_photo_background(
 
     article = next((a for a in pending_articles), None)
 
+    if not article:
+        raise ValueError(f"Pending articles is empty for user {chat_id}")
+
     await bot.send_message(
         chat_id,
         f"✅ Фотография разрезанных этикеток для <b>{article.title}</b> принята!",

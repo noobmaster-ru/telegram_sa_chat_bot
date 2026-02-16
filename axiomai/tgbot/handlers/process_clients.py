@@ -22,7 +22,6 @@ from axiomai.infrastructure.chat_history import (
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
-from axiomai.infrastructure.database.models.buyer import Buyer
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import determine_resume_state
@@ -33,9 +32,6 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 router.business_message.filter(~SelfBusinessMessageFilter())
-
-
-
 
 
 @router.business_message(StateFilter(None))

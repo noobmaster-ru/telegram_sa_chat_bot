@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from contextlib import suppress
+from typing import TypedDict
 
 from httpx import AsyncClient, AsyncHTTPTransport
 from openai import AsyncOpenAI
@@ -19,6 +20,46 @@ from axiomai.infrastructure.database.models.cashback_table import CashbackArticl
 logger = logging.getLogger(__name__)
 
 
+class ArticleInfo(TypedDict):
+    id: int
+    nm_id: int
+    title: str
+    brand_name: str
+    image_url: str | None
+    instruction_text: str
+
+class ChatHistoryEntry(TypedDict):
+    user: str
+    assistant: str
+
+class ClassifyOrderResult(TypedDict):
+    is_order: bool
+    nm_id: int | None
+    price: int | None
+    cancel_reason: str | None
+
+
+class ClassifyFeedbackResult(TypedDict):
+    is_feedback: bool
+    nm_id: int | None
+    cancel_reason: str | None
+
+
+class ClassifyCutLabelsResult(TypedDict):
+    is_cut_labels: bool
+    cancel_reason: str | None
+
+
+class AnswerResult(TypedDict):
+    response: str
+    wants_to_stop: bool
+    switch_to_article_id: int | None
+
+
+class PredialogResult(TypedDict):
+    response: str
+    article_id: int | None
+
 
 class OpenAIGateway:
     def __init__(self, config: OpenAIConfig) -> None:
@@ -30,8 +71,8 @@ class OpenAIGateway:
     async def classify_order_screenshot(
         self,
         photo_url: str,
-        articles: list[dict[str, str | int | None]],
-    ) -> dict[str, bool | str | int | None]:
+        articles: list[ArticleInfo],
+    ) -> ClassifyOrderResult:
         """
         Классифицирует скриншот заказа по списку товаров.
         
@@ -76,14 +117,15 @@ class OpenAIGateway:
         {articles_text}
         """
 
-        user_content: list[dict[str, str]] = [
+        user_content = [
             {"type": "input_text", "text": prompt},
             {"type": "input_image", "image_url": photo_url},
         ]
 
         for art in articles:
-            if art.get("image_url"):
-                user_content.append({"type": "input_image", "image_url": art["image_url"]})
+            image_url: str | None = art.get("image_url")
+            if image_url:
+                user_content.append({"type": "input_image", "image_url": image_url})
 
         messages = [
             {"role": "system", "content": system_content},
@@ -118,8 +160,8 @@ class OpenAIGateway:
     async def classify_feedback_screenshot(
         self,
         photo_url: str,
-        articles: list[dict[str, str | int | None]],
-    ) -> dict[str, bool | str | int | None]:
+        articles: list[ArticleInfo],
+    ) -> ClassifyFeedbackResult:
         """
         Классифицирует скриншот отзыва по списку товаров.
         
@@ -163,14 +205,15 @@ class OpenAIGateway:
         {articles_text}
         """
 
-        user_content: list[dict[str, str]] = [
+        user_content = [
             {"type": "input_text", "text": prompt},
             {"type": "input_image", "image_url": photo_url},
         ]
         
         for art in articles:
-            if art.get("image_url"):
-                user_content.append({"type": "input_image", "image_url": art["image_url"]})
+            image_url: str | None = art.get("image_url")
+            if image_url:
+                user_content.append({"type": "input_image", "image_url": image_url})
         
         messages = [
             {"role": "system", "content": system_content},
@@ -211,7 +254,7 @@ class OpenAIGateway:
 
         return {"is_feedback": False, "nm_id": None, "cancel_reason": None}
 
-    async def classify_cut_labels_photo(self, photo_url: str) -> dict[str, str | bool | None]:
+    async def classify_cut_labels_photo(self, photo_url: str) -> ClassifyCutLabelsResult:
         system_content = """
         Ты помощник для анализа фотографий разрезанных этикеток Wildberries.
         """
@@ -259,9 +302,9 @@ class OpenAIGateway:
         self,
         user_message: str,
         current_step: str,
-        articles: list[dict[str, str | int | None]],
-        chat_history: list[dict[str, str]] | None = None,
-    ) -> dict[str, str | bool | int | None]:
+        articles: list[ArticleInfo],
+        chat_history: list[ChatHistoryEntry] | None = None,
+    ) -> AnswerResult:
         """
         Отвечает на вопрос пользователя в контексте кешбек-диалога.
 
@@ -365,9 +408,9 @@ class OpenAIGateway:
         self,
         user_message: str,
         articles: list[CashbackArticle],
-        chat_history: list[dict[str, str]] | None = None,
+        chat_history: list[ChatHistoryEntry] | None = None,
         photo_url: str | None = None,
-    ) -> dict[str, str | int | None]:
+    ) -> PredialogResult:
         """
         Ведёт pre-dialog общение с клиентом до классификации артикула.
 
@@ -522,7 +565,7 @@ def _log_response_usage(operation: str, response: Response) -> None:
     )
 
 
-def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | None]:
+def _parse_answer_result(result: str | None) -> AnswerResult:
     """Парсит результат ответа GPT и извлекает специальные команды"""
     if not result:
         return {
@@ -542,10 +585,14 @@ def _parse_answer_result(result: str | None) -> dict[str, str | bool | int | Non
             switch_to_article_id = int(match.group(1))
             result = re.sub(r"\[SWITCH:\d+\]", "", result).strip()
 
-    return {"response": result, "wants_to_stop": wants_to_stop, "switch_to_article_id": switch_to_article_id}
+    return AnswerResult(
+        response=result,
+        wants_to_stop=wants_to_stop,
+        switch_to_article_id=switch_to_article_id,
+    )
 
 
-def _parse_predialog_result(result: str | None) -> dict[str, str | int | None]:
+def _parse_predialog_result(result: str | None) -> PredialogResult:
     """Парсит результат pre-dialog ответа GPT и извлекает article_id"""
     if not result:
         return {"response": "Напишите название товара, по которому хотите кэшбек", "article_id": None}
@@ -557,4 +604,4 @@ def _parse_predialog_result(result: str | None) -> dict[str, str | int | None]:
             article_id = int(match.group(1))
             result = re.sub(r"\[ARTICLE:\d+\]", "", result).strip()
 
-    return {"response": result, "article_id": article_id}
+    return PredialogResult(response=result, article_id=article_id)

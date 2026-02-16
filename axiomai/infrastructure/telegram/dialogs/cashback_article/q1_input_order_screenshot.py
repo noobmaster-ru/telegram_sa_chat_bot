@@ -76,7 +76,7 @@ async def on_input_order_screenshot(
     )
 
 
-async def _process_order_screenshot_background(
+async def _process_order_screenshot_background(  # noqa: PLR0915
     messages: list[MessageData],
     bot: Bot,
     bg_manager: DialogManager,
@@ -132,6 +132,13 @@ async def _process_order_screenshot_background(
     )
     await asyncio.sleep(config.delay_between_bot_messages)
 
+    if not result["price"]:
+        await bot.send_message(
+            chat_id,
+            "❌ Отправьте скриншот так, чтобы было видно цену товара.",
+            business_connection_id=business_connection_id
+        )
+
     if not result["is_order"] or not result["nm_id"]:
         cancel_reason = result["cancel_reason"]
         if cancel_reason is None:
@@ -164,6 +171,9 @@ async def _process_order_screenshot_background(
         buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(chat_id, cabinet.id)
 
     article = next((a for a in articles if a.nm_id == result["nm_id"]), None)
+
+    if not article:
+        raise ValueError(f"Article in result {result["nm_id"]} not found in {pending_nm_ids}")
 
     await bot.send_message(
         chat_id,

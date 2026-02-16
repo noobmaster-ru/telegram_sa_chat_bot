@@ -11,15 +11,15 @@ class SuperbankingPayoutGateway(Gateway):
     @staticmethod
     def build_order_number(
         *,
-        buyer_id: int,
-        nm_id: int,
+        telegram_id: int,
+        nm_ids: list[int],
         phone_number: str,
         bank: str,
         amount: int,
     ) -> str:
         normalized_bank = bank.strip().lower()
         normalized_phone = "".join(ch for ch in phone_number if ch.isdigit())
-        raw_key = f"{buyer_id}:{nm_id}:{amount}:{normalized_phone}:{normalized_bank}"
+        raw_key = f"{telegram_id}:{",".join(map(str, nm_ids))}:{amount}:{normalized_phone}:{normalized_bank}"
 
         # orderNumber max length is 30 chars (Superbanking API limit)
         max_digest_len = 30 - len(SUPERBANKING_ORDER_PREFIX)
@@ -29,8 +29,8 @@ class SuperbankingPayoutGateway(Gateway):
     async def create_payout(
         self,
         *,
-        buyer_id: int,
-        nm_id: int,
+        telegram_id: int,
+        nm_ids: list[int],
         phone_number: str,
         bank: str,
         amount: int,
@@ -43,8 +43,8 @@ class SuperbankingPayoutGateway(Gateway):
             return existing
 
         payout = SuperbankingPayout(
-            buyer_id=buyer_id,
-            nm_id=nm_id,
+            telegram_id=telegram_id,
+            nm_ids=nm_ids,
             order_number=order_number,
             phone_number=phone_number,
             bank=bank,
