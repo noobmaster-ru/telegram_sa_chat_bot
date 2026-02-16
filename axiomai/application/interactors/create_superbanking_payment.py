@@ -93,6 +93,7 @@ class CreateSuperbankingPayment:
         # успешно выплатили юзеру деньги через superbanking_api - списываем деньги с баланса селлера и ставим buyer.is_superbanking_paid = True
         for buyer in buyers:
             buyer.is_superbanking_paid = True
+            buyer.is_paid_manually = True
 
         total_charge = total_amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
         cabinet.balance -= total_charge
