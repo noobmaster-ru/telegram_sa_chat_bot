@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import ARRAY, TIMESTAMP, Integer, String, func
+from sqlalchemy import ARRAY, TIMESTAMP, Integer, String, func, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from axiomai.infrastructure.database.models.base import Base
@@ -10,8 +10,8 @@ class SuperbankingPayout(Base):
     __tablename__ = "superbanking"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    telegram_id: Mapped[int] = mapped_column(comment="Telegram ID пользователя")
-    nm_ids: Mapped[list[int]] = mapped_column(ARRAY(Integer), comment="Список артикулов товаров")
+    telegram_id: Mapped[int] = mapped_column(BigInteger, comment="Telegram ID пользователя")
+    nm_ids: Mapped[list[int]] = mapped_column(ARRAY(BigInteger), comment="Список артикулов товаров")
     order_number: Mapped[str] = mapped_column(
         String(30),
         unique=True,
