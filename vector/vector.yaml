@@ -5,6 +5,7 @@ sources:
     include_containers:
       - axiomai.tgbot.prod
       - axiomai.observer.prod
+      - axiomai.postgres.migration.prod
 
 transforms:
   parse_json:
