@@ -12,16 +12,19 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram import inject
 from redis.asyncio import Redis
 
+from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.infrastructure.chat_history import (
     add_predialog_chat_history,
     clear_predialog_chat_history,
     get_predialog_chat_history,
 )
+from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
 from axiomai.infrastructure.openai import OpenAIGateway
+from axiomai.infrastructure.telegram.dialogs.cashback_article.common import determine_resume_state
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 from axiomai.tgbot.filters.ignore_self_message import SelfBusinessMessageFilter
 
@@ -41,13 +44,38 @@ async def process_clients_business_message(
     di_container: FromDishka[AsyncContainer],
     debouncer: FromDishka[MessageDebouncer],
     cabinet_gateway: FromDishka[CabinetGateway],
+    buyer_gateway: FromDishka[BuyerGateway],
 ) -> None:
     cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
-    if cabinet and cabinet.leads_balance <= 0:
+
+    if not cabinet:
+        logger.warning("no cabinet found for business connection %s, skipping message from chat %s", message.business_connection_id, message.chat.id)
+        return
+
+    if cabinet.leads_balance <= 0:
         logger.info("skip message from chat %s due to zero leads balance for cabinet %s", message.chat.id, cabinet.id)
         return
 
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
+
+    # Проверяем, есть ли у пользователя незавершённые заявки — если да, возобновляем диалог
+    active_buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(
+        message.from_user.id, cabinet.id
+    )
+    resume_state = determine_resume_state(active_buyers) if active_buyers else None
+    if resume_state:
+        logger.info(
+            "resuming dialog for chat %s at state %s with %s active buyers",
+            message.chat.id, resume_state, len(active_buyers),
+        )
+
+        await state.set_state("client_processing")
+        await dialog_manager.start(
+            resume_state,
+            mode=StartMode.RESET_STACK,
+            show_mode=ShowMode.SEND,
+        )
+        return
 
     message_text = message.text or message.caption or ""
 
@@ -72,7 +100,7 @@ async def process_clients_business_message(
         chat_id=message.chat.id,
         message_data=message_data,
         process_callback=lambda biz_id, chat_id, msgs: _process_accumulated_messages(
-            biz_id, chat_id, msgs, bot, state, bg_manager, app_container
+            biz_id, chat_id, message.from_user.username, message.from_user.full_name, msgs, bot, state, bg_manager, app_container
         ),
     )
 
@@ -80,6 +108,8 @@ async def process_clients_business_message(
 async def _process_accumulated_messages(
     business_connection_id: str,
     chat_id: int,
+    username: str | None,
+    fullname: str,
     messages: list[MessageData],
     bot: Bot,
     state: FSMContext,
@@ -160,14 +190,15 @@ async def _process_accumulated_messages(
         await clear_predialog_chat_history(redis, business_connection_id, chat_id)
 
         await state.set_state("client_processing")
+
+        async with di_container() as r_container:
+            create_buyer = await r_container.get(CreateBuyer)
+            await create_buyer.execute(chat_id, username, fullname, classified_article_id, predialog_history)
+
         await dialog_manager.start(
             CashbackArticleStates.check_order,
             mode=StartMode.RESET_STACK,
-            show_mode=ShowMode.SEND,
-            data={
-                "article_id": classified_article_id,
-                "predialog_history": predialog_history,
-            },
+            show_mode=ShowMode.SEND
         )
     else:
         await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)

@@ -12,16 +12,18 @@ PREDIALOG_TTL_SECONDS = 3600  # 1 hour
 
 
 async def add_to_chat_history(
-    di_container: AsyncContainer, buyer_id: int, user_message: str, assistant_response: str
+    di_container: AsyncContainer, telegram_id: int, cabinet_id: int, user_message: str, assistant_response: str
 ) -> list[dict]:
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)
         transaction_manager = await r_container.get(TransactionManager)
-        buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
-        if not buyer:
-            return []
+        buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(telegram_id, cabinet_id)
 
-        chat_history = list(buyer.chat_history) if buyer.chat_history else []
+        chat_history = max(
+            (list(b.chat_history) for b in buyers if b.chat_history),
+            key=len,
+            default=[],
+        )
         chat_history.append(
             {
                 "user": user_message,
@@ -29,15 +31,23 @@ async def add_to_chat_history(
                 "created_at": datetime.now(UTC).isoformat(),
             }
         )
-        buyer.chat_history = chat_history[-MAX_CHAT_HISTORY:]
+        chat_history = chat_history[-MAX_CHAT_HISTORY:]
+
+        for buyer in buyers:
+            buyer.chat_history = chat_history
+
         await transaction_manager.commit()
-        return buyer.chat_history
+
+        return chat_history
 
 
-async def get_chat_history(di_container: AsyncContainer, buyer_id: int) -> list[dict]:
+
+async def get_chat_history(di_container: AsyncContainer, telegram_id: int, cabinet_id: int) -> list[dict]:
     async with di_container() as r_container:
         buyer_gateway = await r_container.get(BuyerGateway)
-        buyer = await buyer_gateway.get_buyer_by_id(buyer_id)
+        buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(telegram_id, cabinet_id)
+        buyer = buyers[0] if buyers else None
+
         return list(buyer.chat_history) if buyer and buyer.chat_history else []
 
 
