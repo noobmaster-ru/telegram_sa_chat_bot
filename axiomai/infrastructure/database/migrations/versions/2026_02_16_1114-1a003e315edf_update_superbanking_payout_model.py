@@ -19,8 +19,8 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("superbanking", sa.Column("telegram_id", sa.Integer(), nullable=True, comment="Telegram ID пользователя"))
-    op.add_column("superbanking", sa.Column("nm_ids", sa.ARRAY(sa.Integer()), nullable=True, comment="Список артикулов товаров"))
+    op.add_column("superbanking", sa.Column("telegram_id", sa.BigInteger(), nullable=True, comment="Telegram ID пользователя"))
+    op.add_column("superbanking", sa.Column("nm_ids", sa.ARRAY(sa.BigInteger()), nullable=True, comment="Список артикулов товаров"))
     
     op.execute("""
         UPDATE superbanking s
