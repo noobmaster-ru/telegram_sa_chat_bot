@@ -59,7 +59,7 @@ async def process_clients_business_message(
     await bot.read_business_message(message.business_connection_id, message.chat.id, message.message_id)
 
     # Проверяем, есть ли у пользователя незавершённые заявки — если да, возобновляем диалог
-    active_buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(
+    active_buyers = await buyer_gateway.get_incompleted_buyers_by_telegram_id_and_cabinet_id(
         message.from_user.id, cabinet.id
     )
     resume_state = determine_resume_state(active_buyers) if active_buyers else None
