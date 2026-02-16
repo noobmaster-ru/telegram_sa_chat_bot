@@ -91,7 +91,7 @@ async def on_confirm_requisites(
     if not cabinet:
         raise ValueError(f"Cabinet with business connection id {callback.message.business_connection_id} not found")
 
-    order_number, payout_error_message = _create_superbanking_payout(
+    order_number, payout_error_message = await _create_superbanking_payout(
         telegram_id=callback.from_user.id,
         cabinet_id=cabinet.id,
         dialog_manager=dialog_manager,
