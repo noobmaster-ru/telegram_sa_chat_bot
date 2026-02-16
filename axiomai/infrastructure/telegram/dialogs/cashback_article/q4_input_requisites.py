@@ -131,8 +131,6 @@ async def _create_superbanking_payout(
 ) -> tuple[str | None, str]:
     logger.info("on_confirm_requisites creating Superbanking payment: telegram_id=%s", telegram_id)
 
-    order_number = None
-    payout_error_message = None
     try:
         order_number = await create_superbanking_payment.execute(
             telegram_id=telegram_id,
@@ -143,22 +141,20 @@ async def _create_superbanking_payout(
 
     except CreatePaymentError:
         logger.warning("on_confirm_requisites create_payment failed: telegram_id=%s", telegram_id)
-        payout_error_message = "Не удалось инициировать выплату. Мы свяжемся с вами."
+        return None, "Не удалось инициировать выплату. Мы свяжемся с вами."
     except SignPaymentError:
         logger.warning("on_confirm_requisites sign_payment failed: telegram_id=%s", telegram_id)
-        payout_error_message = "Не удалось отправить выплату. Мы свяжемся с вами."
+        return None, "Не удалось отправить выплату. Мы свяжемся с вами."
     except Exception:
-        payout_error_message = "Не удалось инициировать выплату. Мы свяжемся с вами."
         logger.exception("Failed to create Superbanking payout for telegram_id=%s", telegram_id)
+        return None, "Не удалось инициировать выплату. Мы свяжемся с вами."
     except SkipSuperbankingError as exc:
         logger.info(
             "on_confirm_requisites skipping Superbanking: cabinet_id=%s, is_superbanking_connect=%s",
             exc.cabinet_id,
             exc.is_superbanking_connect,
         )
-
-    if payout_error_message:
-        return None, payout_error_message
+        return None, ""
 
     logger.info(
         "on_confirm_requisites Superbanking payment created: buyer_id=%s, order_number=%s",
