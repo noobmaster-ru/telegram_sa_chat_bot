@@ -65,7 +65,7 @@ class OpenAIGateway:
     def __init__(self, config: OpenAIConfig) -> None:
         self._client = AsyncOpenAI(
             api_key=config.openai_api_key,
-            http_client=AsyncClient(proxy=config.proxy, transport=AsyncHTTPTransport(local_address="0.0.0.0")),
+            # http_client=AsyncClient(proxy=config.proxy, transport=AsyncHTTPTransport(local_address="0.0.0.0")),
         )
 
     async def classify_order_screenshot(
