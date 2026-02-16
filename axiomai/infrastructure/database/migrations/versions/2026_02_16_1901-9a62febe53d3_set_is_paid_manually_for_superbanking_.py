@@ -21,12 +21,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.execute(
-        sa.text("UPDATE buyers SET is_paid_manually = true WHERE is_superbanking = true")
+        sa.text("UPDATE buyers SET is_paid_manually = true WHERE is_superbanking_paid = true")
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     op.execute(
-        sa.text("UPDATE buyers SET is_paid_manually = false WHERE is_superbanking = true AND is_superbanking_paid = false")
+        sa.text("UPDATE buyers SET is_paid_manually = false WHERE is_superbanking_paid = true AND is_superbanking_paid = false")
     )
