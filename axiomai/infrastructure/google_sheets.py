@@ -145,7 +145,8 @@ async def _read_is_paid_manually_from_sheet(
             is_paid_manually = row[14] == "TRUE"
             key = (telegram_id, nm_id)
             if key in buyer_index:
-                buyer_index[key].is_paid_manually = is_paid_manually
+                if not buyer_index[key].is_superbanking_paid:
+                    buyer_index[key].is_paid_manually = is_paid_manually
 
 
 async def _write_buyers_to_sheet(aiogoogle: Aiogoogle, sheets_v4: Any, table_id: str, rows: list[list]) -> None:
