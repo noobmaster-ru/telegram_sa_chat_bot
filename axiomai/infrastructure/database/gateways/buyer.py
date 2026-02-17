@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 
 from axiomai.infrastructure.database.gateways.base import Gateway
 from axiomai.infrastructure.database.models.buyer import Buyer
