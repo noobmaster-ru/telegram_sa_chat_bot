@@ -12,9 +12,8 @@ from dishka.integrations.aiogram_dialog import inject
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError, SkipSuperbankingError
 from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.constants import (
+    AMOUNT_PATTERN,
     BANK_PATTERN,
-    CARD_CLEAN_RE,
-    CARD_PATTERN,
     PHONE_PATTERN,
     TIME_SLEEP_BEFORE_CONFIRM_PAYMENT,
     WB_CHANNEL_NAME,
@@ -57,10 +56,10 @@ async def on_input_requisites(
 
     requisites = message.text.strip()
 
-    if card_match := CARD_PATTERN.search(requisites):
-        dialog_manager.dialog_data["card_number"] = CARD_CLEAN_RE.sub("", card_match.group())
     if phone_match := PHONE_PATTERN.search(requisites):
         dialog_manager.dialog_data["phone_number"] = phone_match.group()
+    if amount_match := AMOUNT_PATTERN.search(requisites):
+        dialog_manager.dialog_data["amount"] = int(amount_match.group(1))
     if bank_match := BANK_PATTERN.search(requisites):
         bank_alias = bank_match.group()
         bank_name_rus = superbanking.get_bank_name_rus(bank_alias)
@@ -141,6 +140,7 @@ async def _create_superbanking_payout(
             cabinet_id=cabinet_id,
             phone_number=dialog_manager.dialog_data.get("phone_number"),
             bank=dialog_manager.dialog_data.get("bank"),
+            amount=dialog_manager.dialog_data.get("amount")
         )
 
     except CreatePaymentError:
