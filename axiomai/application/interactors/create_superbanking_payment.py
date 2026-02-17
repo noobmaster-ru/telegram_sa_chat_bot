@@ -49,6 +49,8 @@ class CreateSuperbankingPayment:
             nm_ids.append(buyer.nm_id)
             total_amount += buyer.amount
 
+        await self._transaction_manager.commit()
+
         if not cabinet.is_superbanking_connect:
             logger.info(
                 "CreateSuperbankingPayment saved requisites without Superbanking payout: cabinet_id=%s",
