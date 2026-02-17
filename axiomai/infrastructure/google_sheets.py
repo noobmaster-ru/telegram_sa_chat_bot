@@ -144,7 +144,7 @@ async def _read_is_paid_manually_from_sheet(
             nm_id = int(row[5])  # G - nm_id (индекс 5 относительно B)
             is_paid_manually = row[14] == "TRUE"
             key = (telegram_id, nm_id)
-            if key in buyer_index:
+            if key in buyer_index and (not buyer_index[key].is_superbanking_paid):
                 buyer_index[key].is_paid_manually = is_paid_manually
 
 

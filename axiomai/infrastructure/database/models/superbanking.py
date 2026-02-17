@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import ARRAY, TIMESTAMP, Integer, String, func, BigInteger
+from sqlalchemy import ARRAY, TIMESTAMP, BigInteger, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from axiomai.infrastructure.database.models.base import Base

@@ -142,11 +142,7 @@ async def _process_accumulated_messages(
         )
 
         if not articles:
-            await bot.send_message(
-                chat_id=chat_id,
-                text="Увы, артикулы для раздачи кэшбека закончились.",
-                business_connection_id=business_connection_id,
-            )
+            logger.info("skip processing no articles for user %s", chat_id)
             return
 
     chat_history = await get_predialog_chat_history(redis, business_connection_id, chat_id)

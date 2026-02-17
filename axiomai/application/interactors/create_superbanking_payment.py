@@ -33,6 +33,7 @@ class CreateSuperbankingPayment:
         cabinet_id: int,
         phone_number: str,
         bank: str,
+        amount: int | None
     ) -> str:
         cabinet = await self._cabinet_gateway.get_cabinet_by_id(cabinet_id)
         if not cabinet:
@@ -42,12 +43,20 @@ class CreateSuperbankingPayment:
 
         nm_ids = []
         total_amount = 0
+
+        part_amount = (amount or 0) // len(buyers)
+
         for buyer in buyers:
             buyer.phone_number = phone_number
             buyer.bank = bank
 
+            if not buyer.amount:
+                buyer.amount = part_amount
+
             nm_ids.append(buyer.nm_id)
             total_amount += buyer.amount
+
+        await self._transaction_manager.commit()
 
         if not cabinet.is_superbanking_connect:
             logger.info(

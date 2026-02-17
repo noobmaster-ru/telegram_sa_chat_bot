@@ -56,6 +56,7 @@ async def test_create_superbanking_payment_creates_payout(
         cabinet_id=buyer.cabinet_id,
         phone_number="+7 910 111 22 33",
         bank="Тинькофф",
+        amount=200,
     )
 
     payout = await session.scalar(select(SuperbankingPayout).where(SuperbankingPayout.order_number == order_number))
@@ -79,7 +80,127 @@ async def test_create_superbanking_payment_missing_bank_raises(
             cabinet_id=buyer.cabinet_id,
             phone_number="+7 910 111 22 33",
             bank="Неизвестный банк",
+            amount=200,
         )
 
     assert buyer.is_superbanking_paid is False
     assert cabinet.balance == 1000
+
+
+async def test_create_superbanking_payment_distributes_amount_to_buyers_without_amount(
+    create_superbanking_payment, di_container, session, cabinet_factory
+):
+    cabinet = await cabinet_factory(balance=1000, is_superbanking_connect=True)
+    buyer1 = Buyer(
+        cabinet_id=cabinet.id,
+        username="user1",
+        fullname="User 1",
+        telegram_id=123456,
+        nm_id=111,
+        amount=None,
+    )
+    buyer2 = Buyer(
+        cabinet_id=cabinet.id,
+        username="user2",
+        fullname="User 2",
+        telegram_id=123456,
+        nm_id=222,
+        amount=None,
+    )
+    session.add_all([buyer1, buyer2])
+    await session.flush()
+
+    superbanking = await di_container.get(Superbanking)
+    superbanking.create_payment = MagicMock(return_value="tx-1")
+    superbanking.sign_payment = MagicMock(return_value=True)
+
+    await create_superbanking_payment.execute(
+        telegram_id=123456,
+        cabinet_id=cabinet.id,
+        phone_number="+7 910 111 22 33",
+        bank="Тинькофф",
+        amount=400,
+    )
+
+    assert buyer1.amount == 200
+    assert buyer2.amount == 200
+    assert buyer1.is_superbanking_paid is True
+    assert buyer2.is_superbanking_paid is True
+
+
+async def test_create_superbanking_payment_does_not_override_existing_amounts(
+    create_superbanking_payment, di_container, session, cabinet_factory
+):
+    cabinet = await cabinet_factory(balance=1000, is_superbanking_connect=True)
+    buyer1 = Buyer(
+        cabinet_id=cabinet.id,
+        username="user1",
+        fullname="User 1",
+        telegram_id=123456,
+        nm_id=111,
+        amount=100,
+    )
+    buyer2 = Buyer(
+        cabinet_id=cabinet.id,
+        username="user2",
+        fullname="User 2",
+        telegram_id=123456,
+        nm_id=222,
+        amount=300,
+    )
+    session.add_all([buyer1, buyer2])
+    await session.flush()
+
+    superbanking = await di_container.get(Superbanking)
+    superbanking.create_payment = MagicMock(return_value="tx-1")
+    superbanking.sign_payment = MagicMock(return_value=True)
+
+    await create_superbanking_payment.execute(
+        telegram_id=123456,
+        cabinet_id=cabinet.id,
+        phone_number="+7 910 111 22 33",
+        bank="Тинькофф",
+        amount=999,
+    )
+
+    assert buyer1.amount == 100
+    assert buyer2.amount == 300
+
+
+async def test_create_superbanking_payment_mixed_buyers_with_and_without_amount(
+    create_superbanking_payment, di_container, session, cabinet_factory
+):
+    cabinet = await cabinet_factory(balance=1000, is_superbanking_connect=True)
+    buyer_with_amount = Buyer(
+        cabinet_id=cabinet.id,
+        username="user1",
+        fullname="User 1",
+        telegram_id=123456,
+        nm_id=111,
+        amount=150,
+    )
+    buyer_without_amount = Buyer(
+        cabinet_id=cabinet.id,
+        username="user2",
+        fullname="User 2",
+        telegram_id=123456,
+        nm_id=222,
+        amount=None,
+    )
+    session.add_all([buyer_with_amount, buyer_without_amount])
+    await session.flush()
+
+    superbanking = await di_container.get(Superbanking)
+    superbanking.create_payment = MagicMock(return_value="tx-1")
+    superbanking.sign_payment = MagicMock(return_value=True)
+
+    await create_superbanking_payment.execute(
+        telegram_id=123456,
+        cabinet_id=cabinet.id,
+        phone_number="+7 910 111 22 33",
+        bank="Тинькофф",
+        amount=400,
+    )
+
+    assert buyer_with_amount.amount == 150
+    assert buyer_without_amount.amount == 200
