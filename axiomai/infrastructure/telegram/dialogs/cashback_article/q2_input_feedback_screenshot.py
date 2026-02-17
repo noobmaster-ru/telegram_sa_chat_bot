@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime
 
@@ -11,6 +12,7 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.config import Config
+from axiomai.infrastructure.chat_history import add_to_chat_history
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -113,6 +115,7 @@ async def _process_feedback_screenshot_background(
     pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
     articles_for_gpt = build_articles_for_gpt(pending_articles)
 
+    result = None
     try:
         result = await openai_gateway.classify_feedback_screenshot(
             photo_url=photo_url,
@@ -123,7 +126,10 @@ async def _process_feedback_screenshot_background(
         await bot.send_message(
             chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
         )
+        result = "classify feedback screenshot error"
         return
+    finally:
+        await add_to_chat_history(di_container, chat_id, cabinet.id, "[Скрин отзыва]", json.dumps(result))
 
     await bot.send_chat_action(
         chat_id=chat_id,

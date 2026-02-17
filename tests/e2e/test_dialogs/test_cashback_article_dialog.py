@@ -221,6 +221,9 @@ async def test_cashback_article_q1_input_order_screenshot(
     assert "Скриншот заказа" in last_message.text and "принят" in last_message.text
     assert buyer.is_ordered is True
     assert cabinet.leads_balance == 999
+    assert len(buyer.chat_history) == 2
+    assert buyer.chat_history[1]["user"] == "[Скрин заказа]"
+    assert '"is_order": true' in buyer.chat_history[1]["assistant"]
 
 
 async def test_cashback_article_q2_input_feedback_screenshot(
@@ -262,6 +265,9 @@ async def test_cashback_article_q2_input_feedback_screenshot(
     last_message = fake_bot.sent_messages[-1]
     assert "Скриншот отзыва" in last_message.text and "принят" in last_message.text
     assert buyer.is_left_feedback is True
+    assert len(buyer.chat_history) == 3
+    assert buyer.chat_history[2]["user"] == "[Скрин отзыва]"
+    assert '"is_feedback": true' in buyer.chat_history[2]["assistant"]
 
 
 async def test_cashback_article_q3_input_cut_labels_screenshot(
@@ -308,6 +314,9 @@ async def test_cashback_article_q3_input_cut_labels_screenshot(
     last_message = fake_bot.sent_messages[-1]
     assert last_message.text == "☺ Вы прислали все фотографии, которые были нам нужны. Спасибо!"
     assert buyer.is_cut_labels is True
+    assert len(buyer.chat_history) == 4
+    assert buyer.chat_history[3]["user"] == "[Скрин этикеток]"
+    assert '"is_cut_labels": true' in buyer.chat_history[3]["assistant"]
 
 
 async def test_cashback_article_q4_input_requisites(
@@ -362,6 +371,11 @@ async def test_cashback_article_q4_input_requisites(
     assert buyer.phone_number == "89275554444"
     assert buyer.bank == "Сбербанк"
     assert buyer.amount == 1500
+    assert len(buyer.chat_history) == 6
+    assert buyer.chat_history[4]["user"] == "89275554444 сбер"
+    assert buyer.chat_history[4]["assistant"] == "null"
+    assert buyer.chat_history[5]["user"] == "127 руб"
+    assert buyer.chat_history[5]["assistant"] == "null"
 
 
 async def test_cashback_article_switch_to_second_article_during_dialog(
@@ -668,3 +682,116 @@ async def test_switch_back_to_completed_article_while_pending_another(
     await session.refresh(buyer_y)
     assert buyer_x.is_ordered is True
     assert buyer_y.is_ordered is True
+
+
+async def test_chat_history_saved_on_order_screenshot_error(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+    openai_gateway.classify_order_screenshot = AsyncMock(side_effect=Exception("API error"))
+    await bot_client.send_business("хочу кешбек")
+    await bot_client.send_business_photo()
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))
+    assert buyer.is_ordered is False
+    assert len(buyer.chat_history) == 2
+    assert buyer.chat_history[1]["user"] == "[Скрин заказа]"
+    assert buyer.chat_history[1]["assistant"] == '"classify order screenshot error"'
+
+
+async def test_chat_history_saved_on_feedback_screenshot_error(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_feedback_screenshot = AsyncMock(side_effect=Exception("API error"))
+
+    await bot_client.send_business("хочу кешбек")
+    await bot_client.send_business_photo()
+    await bot_client.send_business_photo()
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))
+    assert buyer.is_ordered is True
+    assert buyer.is_left_feedback is False
+    assert len(buyer.chat_history) == 3
+    assert buyer.chat_history[2]["user"] == "[Скрин отзыва]"
+    assert buyer.chat_history[2]["assistant"] == '"classify feedback screenshot error"'
+
+
+async def test_chat_history_saved_on_cut_labels_screenshot_error(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_id": article.id,
+    })
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article.nm_id,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_cut_labels_photo = AsyncMock(side_effect=Exception("API error"))
+
+    await bot_client.send_business("хочу кешбек")
+    await bot_client.send_business_photo()
+    await bot_client.send_business_photo()
+    await bot_client.send_business_photo()
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))
+    assert buyer.is_cut_labels is False
+    assert len(buyer.chat_history) == 4
+    assert buyer.chat_history[3]["user"] == "[Скрин этикеток]"
+    assert buyer.chat_history[3]["assistant"] == '"classify cut labels photo error"'

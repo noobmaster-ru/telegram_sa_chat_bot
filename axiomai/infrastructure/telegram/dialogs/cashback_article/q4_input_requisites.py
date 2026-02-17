@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from typing import Any
 from urllib import error
@@ -6,7 +7,7 @@ from urllib import error
 from aiogram import Bot
 from aiogram.types import CallbackQuery, Message, URLInputFile
 from aiogram_dialog import DialogManager, ShowMode
-from dishka import FromDishka
+from dishka import FromDishka, AsyncContainer
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError, SkipSuperbankingError
@@ -19,6 +20,7 @@ from axiomai.constants import (
     TIME_SLEEP_BEFORE_CONFIRM_PAYMENT,
     WB_CHANNEL_NAME,
 )
+from axiomai.infrastructure.chat_history import add_to_chat_history
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.superbanking import Superbanking
@@ -34,12 +36,15 @@ async def on_input_requisites(
     superbanking: FromDishka[Superbanking],
     buyer_gateway: FromDishka[BuyerGateway],
     cabinet_gateway: FromDishka[CabinetGateway],
+    di_container: FromDishka[AsyncContainer]
 ) -> None:
     bot: Bot = dialog_manager.middleware_data["bot"]
 
     cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
     if not cabinet:
         raise ValueError(f"Cabinet with business connection id {message.business_connection_id} not found")
+
+    await add_to_chat_history(di_container, message.from_user.id, cabinet.id, message.text, "null")
 
     buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(message.from_user.id, cabinet.id)
     completed_buyers = [b for b in buyers if b.is_cut_labels]
@@ -145,9 +150,6 @@ async def _create_superbanking_payout(
     except SignPaymentError:
         logger.warning("on_confirm_requisites sign_payment failed: telegram_id=%s", telegram_id)
         return None, "Не удалось отправить выплату. Мы свяжемся с вами."
-    except Exception:
-        logger.exception("Failed to create Superbanking payout for telegram_id=%s", telegram_id)
-        return None, "Не удалось инициировать выплату. Мы свяжемся с вами."
     except SkipSuperbankingError as exc:
         logger.info(
             "on_confirm_requisites skipping Superbanking: cabinet_id=%s, is_superbanking_connect=%s",
@@ -155,6 +157,9 @@ async def _create_superbanking_payout(
             exc.is_superbanking_connect,
         )
         return None, ""
+    except Exception:
+        logger.exception("Failed to create Superbanking payout for telegram_id=%s", telegram_id)
+        return None, "Не удалось инициировать выплату. Мы свяжемся с вами."
 
     logger.info(
         "on_confirm_requisites Superbanking payment created: buyer_id=%s, order_number=%s",

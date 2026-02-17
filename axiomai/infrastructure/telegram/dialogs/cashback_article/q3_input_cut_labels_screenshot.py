@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime
 
@@ -11,6 +12,7 @@ from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.config import Config
+from axiomai.infrastructure.chat_history import add_to_chat_history
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -112,6 +114,7 @@ async def _process_cut_labels_photo_background(
     pending_nm_ids = get_pending_nm_ids_for_step(buyers, step="check_labels_cut")
     pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
 
+    result = None
     try:
         result = await openai_gateway.classify_cut_labels_photo(photo_url)
     except Exception as e:
@@ -119,7 +122,10 @@ async def _process_cut_labels_photo_background(
         await bot.send_message(
             chat_id, "Попробуйте отправить фото сюда еще раз", business_connection_id=business_connection_id
         )
+        result = "classify cut labels photo error"
         return
+    finally:
+        await add_to_chat_history(di_container, chat_id, cabinet.id, "[Скрин этикеток]", json.dumps(result))
 
     await bot.send_chat_action(
         chat_id=chat_id,
