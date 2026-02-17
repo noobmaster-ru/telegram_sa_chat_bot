@@ -95,8 +95,7 @@ async def test_cashback_article_dialog_when_article_not_found(
 
     await bot_client.send_business("хочу кешбек")
 
-    last_message = fake_bot.sent_messages[-1]
-    assert last_message.text == "Увы, артикулы для раздачи кэшбека закончились."
+    assert len(fake_bot.sent_messages) == 0
 
 
 async def test_cashback_article_when_not_classified_message(
