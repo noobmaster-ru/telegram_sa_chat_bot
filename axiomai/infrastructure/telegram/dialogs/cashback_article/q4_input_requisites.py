@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 from typing import Any
 from urllib import error
@@ -7,7 +6,7 @@ from urllib import error
 from aiogram import Bot
 from aiogram.types import CallbackQuery, Message, URLInputFile
 from aiogram_dialog import DialogManager, ShowMode
-from dishka import FromDishka, AsyncContainer
+from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError, SkipSuperbankingError

@@ -18,7 +18,7 @@ from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
-from axiomai.infrastructure.openai import OpenAIGateway
+from axiomai.infrastructure.openai import ClassifyCutLabelsResult, OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import get_pending_nm_ids_for_step
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
@@ -114,7 +114,7 @@ async def _process_cut_labels_photo_background(
     pending_nm_ids = get_pending_nm_ids_for_step(buyers, step="check_labels_cut")
     pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
 
-    result = None
+    result: str | None | ClassifyCutLabelsResult = None
     try:
         result = await openai_gateway.classify_cut_labels_photo(photo_url)
     except Exception as e:

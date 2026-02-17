@@ -18,7 +18,7 @@ from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
-from axiomai.infrastructure.openai import OpenAIGateway
+from axiomai.infrastructure.openai import ClassifyFeedbackResult, OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import (
     build_articles_for_gpt,
     get_pending_nm_ids_for_step,
@@ -78,7 +78,7 @@ async def on_input_feedback_screenshot(
     )
 
 
-async def _process_feedback_screenshot_background(
+async def _process_feedback_screenshot_background( # noqa: PLR0915
     messages: list[MessageData],
     bot: Bot,
     bg_manager: DialogManager,
@@ -115,7 +115,7 @@ async def _process_feedback_screenshot_background(
     pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
     articles_for_gpt = build_articles_for_gpt(pending_articles)
 
-    result = None
+    result: str | None | ClassifyFeedbackResult = None
     try:
         result = await openai_gateway.classify_feedback_screenshot(
             photo_url=photo_url,
