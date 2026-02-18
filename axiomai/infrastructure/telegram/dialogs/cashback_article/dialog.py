@@ -126,8 +126,6 @@ FEEDBACK_INPUT_TEXT = """
 {% for pending in pending_feedback %}
 • <code>{{ pending.nm_id }}</code> — {{ pending.title }}
 {% endfor %}
-
-Отзыв без упоминания товара! текст общий: "товар хороший","всё супер" , либо отзыв без текста!
 """
 
 CUT_LABELS_INPUT_TEXT = """
