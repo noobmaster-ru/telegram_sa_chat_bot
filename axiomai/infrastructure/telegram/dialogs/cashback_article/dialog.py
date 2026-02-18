@@ -84,7 +84,6 @@ async def requisites_getter(
     
     return {
         "amount": dialog_manager.dialog_data.get("amount") or total_amount or None,
-        "card_number": dialog_manager.dialog_data.get("card_number"),
         "phone_number": dialog_manager.dialog_data.get("phone_number"),
         "bank": dialog_manager.dialog_data.get("bank"),
         "total_amount": total_amount or None,
@@ -161,15 +160,14 @@ cashback_article_dialog = Dialog(
     Window(
         Const(
             "Отправьте теперь нам, пожалуйста, свой номер телефона в формате:\n\n<code>+7910XXXXXXX</code>",
-            # когда нет номера телефона, номера карты, суммы и банка
-            when=lambda d, _, __: not any(((d["phone_number"] or d["card_number"]), d["amount"], d["bank"])),
+            # когда нет номера телефона, суммы и банка
+            when=lambda d, _, __: not any((d["phone_number"], d["amount"], d["bank"])),
         ),
         Const(
             "📩 Получены реквизиты:",
-            # когда есть хотя бы один из: номер телефона, номер карты, сумма или банк
-            when=lambda d, _, __: any(((d["phone_number"] or d["card_number"]), d["amount"], d["bank"])),
+            # когда есть хотя бы один из: номер телефона, сумма или банк
+            when=lambda d, _, __: any((d["phone_number"], d["amount"], d["bank"])),
         ),
-        Format("Номер карты: <code>{card_number}</code>", when=lambda d, _, __: d["card_number"]),
         Format("Номер телефона: <code>{phone_number}</code>", when=lambda d, _, __: d["phone_number"]),
         Format("Банк: <code>{bank}</code>", when=lambda d, _, __: d["bank"]),
         Format(
@@ -187,36 +185,36 @@ cashback_article_dialog = Dialog(
         Const(" "),
         Const(
             "💬 Пожалуйста, отправьте название банка (например: <b>Сбербанк</b>, <b>Т-банк</b>)",
-            # когда нет банка и есть сумма, или номер телефона, или номер карты
-            when=lambda d, _, __: (not d["bank"]) and (d["amount"] or d["phone_number"] or d["card_number"]),
+            # когда нет банка и есть сумма, или номер телефона
+            when=lambda d, _, __: (not d["bank"]) and (d["amount"] or d["phone_number"]),
         ),
         Const(
             "💬 Пожалуйста, отправьте реквизиты для оплаты: номер телефона.",
-            # когда нет номера телефона или карты и есть банк или сумма
-            when=lambda d, _, __: (not (d["phone_number"] or d["card_number"])) and (d["bank"] or d["amount"]),
+            # когда нет номера телефона и есть банк или сумма
+            when=lambda d, _, __: (not d["phone_number"]) and (d["bank"] or d["amount"]),
         ),
         Const(
             "💬 Пожалуйста, отправьте сумму перевода, например: 500 рублей",
-            # когда нет суммы и есть банк или номер телефона, или номер карты
-            when=lambda d, _, __: (not d["amount"]) and (d["bank"] or d["phone_number"] or d["card_number"]),
+            # когда нет суммы и есть банк или номер телефона
+            when=lambda d, _, __: (not d["amount"]) and (d["bank"] or d["phone_number"]),
         ),
         Const(
             "Реквизиты заполнены верно?",
-            # когда есть все реквизиты: номер телефона, номер карты, сумма или банк
-            when=lambda d, _, __: all(((d["phone_number"] or d["card_number"]), d["amount"], d["bank"])),
+            # когда есть все реквизиты: номер телефона, сумма, банк
+            when=lambda d, _, __: all((d["phone_number"] , d["amount"], d["bank"])),
         ),
         Row(
             Button(
                 Const("✅ Да, верно"),
                 id="conf_requisites",
                 on_click=on_confirm_requisites,
-                when=lambda d, _, __: all(((d["phone_number"] or d["card_number"]), d["amount"], d["bank"])),
+                when=lambda d, _, __: all((d["phone_number"], d["amount"], d["bank"])),
             ),
             Button(
                 Const("❌ Не верно"),
                 id="dec_requisites",
                 on_click=on_decline_requisites,
-                when=lambda d, _, __: all(((d["phone_number"] or d["card_number"]), d["amount"], d["bank"])),
+                when=lambda d, _, __: all((d["phone_number"], d["amount"], d["bank"])),
             ),
         ),
         MessageInput(on_input_requisites),
