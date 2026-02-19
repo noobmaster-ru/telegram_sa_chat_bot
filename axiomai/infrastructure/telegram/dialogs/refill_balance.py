@@ -1,7 +1,7 @@
 from typing import Any
 
 from aiogram.types import CallbackQuery, Message
-from aiogram_dialog import Dialog, DialogManager, Window
+from aiogram_dialog import Dialog, DialogManager, ShowMode, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.text import Const, Format
@@ -12,7 +12,6 @@ from axiomai.application.interactors.refill_balance.mark_payment_waiting_confirm
     MarkRefillBalancePaymentWaitingConfirm,
 )
 from axiomai.application.interactors.refill_balance.refill_balance import RefillBalance
-from axiomai.constants import KIRILL_CARD_NUMBER, KIRILL_PHONE_NUMBER
 from axiomai.infrastructure.telegram.dialogs.states import RefillBalanceStates
 
 
@@ -58,7 +57,7 @@ async def on_paid_confirmed(
         "Спасибо! Мы получили запрос на оплату.\nМенеджер проверит перевод и подтвердит оплату."
     )
 
-    await dialog_manager.done()
+    await dialog_manager.done(show_mode=ShowMode.SEND)
 
 
 refill_balance_dialog = Dialog(
@@ -70,10 +69,12 @@ refill_balance_dialog = Dialog(
     Window(
         Format(
             "Итого к оплате: <b>{amount} ₽</b>.\n\n"
-            "Реквизиты для оплаты:\n"
-            f"• Карта: <code>{KIRILL_CARD_NUMBER}</code> или\n"
-            f"• Телефон: <code>{KIRILL_PHONE_NUMBER}</code>\n"
-            "• Получатель: <b>Кирилл К. , Т-банк или Сбер</b>\n\n"
+            "РЕКВИЗИТЫ:\n"
+            "• БИК: <code>044525974</code> или\n"
+            "• Кор. счёт: <code>30101810145250000974</code>\n"
+            "• Расчётный счёт: <code>40802810800004912384</code>\n\n"
+            "В качестве получателя укажите:\n"
+            "<code>Индивидуальный предприниматель Козлов Артем Андреевич</code> и ИНН = <code>760401197136</code>"
         ),
         Row(
             Button(Const("✅ Да, оплатил(а)"), id="paid_yes", on_click=on_paid_confirmed),

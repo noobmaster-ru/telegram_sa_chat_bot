@@ -15,7 +15,7 @@ from axiomai.config import Config
 from axiomai.constants import GOOGLE_SHEETS_TEMPLATE_URL
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
-from axiomai.infrastructure.telegram.dialogs.states import CreateCashbackTableStates
+from axiomai.infrastructure.telegram.dialogs.states import CreateCashbackTableStates, RefillBalanceStates
 
 
 @inject
@@ -94,16 +94,13 @@ async def on_superbanking_yes(
 ) -> None:
     cabinet = await cabinet_gateway.get_cabinet_by_telegram_id(callback.from_user.id)
     if cabinet:
-        cabinet.is_superbanking_connected = True
+        cabinet.is_superbanking_connect = True
         await transaction_manager.commit()
 
     text = callback.message.text.replace("Подключать автовыплаты?", "Подключать автовыплаты: <b>Да</b>")
     await callback.message.edit_text(text)
-    await callback.answer(
-        "Отлично! Автовыплаты подключены. Вы сможете пополнить баланс после создания кабинета.",
-        show_alert=True,
-    )
-    await dialog_manager.next(show_mode=ShowMode.SEND)
+    await dialog_manager.next(show_mode=ShowMode.NO_UPDATE)
+    await dialog_manager.start(RefillBalanceStates.waiting_for_amount, show_mode=ShowMode.SEND)
 
 
 async def on_superbanking_no(

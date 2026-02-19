@@ -44,7 +44,7 @@ class MarkRefillBalancePaymentWaitingConfirm:
         await self._tm.commit()
 
         admin_chat_id = self._config.admin_telegram_ids[0]
-        cabinet = await self._cabinet_gateway.get_cabinet_by_cashback_table_id(payment.cashback_table_id)
+        cabinet = await self._cabinet_gateway.get_cabinet_by_id(payment.service_data["service_id"])
         if not cabinet:
             raise CabinetNotFoundError(
                 f"Cabinet by cashback_table_id = {payment.cashback_table_id} not found for mark waiting"

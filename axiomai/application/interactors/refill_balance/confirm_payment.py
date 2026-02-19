@@ -3,7 +3,6 @@ import logging
 from aiogram import Bot
 
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
-from axiomai.application.exceptions.cashback_table import CashbackTableNotFoundError
 from axiomai.application.exceptions.payment import PaymentAlreadyProcessedError, PaymentNotFoundError
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -38,15 +37,10 @@ class ConfirmRefillBalancePayment:
         if not payment:
             raise PaymentNotFoundError(f"Payment with id {payment_id} not found")
 
-        cashback_table = await self._cashback_table_gateway.get_cashback_table_by_id(payment.cashback_table_id)
-        if not cashback_table:
-            raise CashbackTableNotFoundError(
-                f"Cashback_table.id = {payment.cashback_table_id} not found for the confirm payment"
-            )
-        cabinet = await self._cabinet_gateway.get_cabinet_by_id(cashback_table.cabinet_id)
+        cabinet = await self._cabinet_gateway.get_cabinet_by_id(payment.service_data["service_id"])
         if not cabinet:
             raise CabinetNotFoundError(
-                f"Cashback_table.id =  {cashback_table.cabinet_id} not found for the confirm payment"
+                f"Cashback_table.id = {payment.service_data['service_id']} not found for the confirm payment"
             )
 
         if payment.status != PaymentStatus.WAITING_CONFIRM:

@@ -1,7 +1,6 @@
 import logging
 
 from axiomai.application.exceptions.cabinet import CabinetNotFoundError
-from axiomai.application.exceptions.cashback_table import CashbackTableNotFoundError
 from axiomai.application.exceptions.user import UserNotFoundError
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
@@ -39,8 +38,6 @@ class RefillBalance:
             raise CabinetNotFoundError(f"Cabinet for user telegram_id = {telegram_id} not found")
 
         cashback_table = await self._cashback_table_gateway.get_active_cashback_table_by_telegram_id(telegram_id)
-        if not cashback_table:
-            raise CashbackTableNotFoundError(f"No active cashback table found for the user telegram_id = {telegram_id}")
 
         payment = Payment(
             user_id=user.id,
@@ -53,9 +50,7 @@ class RefillBalance:
             service_type=ServiceType.CASHBACK,
             service_data={
                 "service": "cashback",
-                "service_id": cashback_table.id if cashback_table else None,
-                "months": None,
-                "discounts": [{"discount": None, "description": None, "fix_price": None}],
+                "service_id": cabinet.id,
                 "type": "refill_balance",
             },
         )
