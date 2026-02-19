@@ -12,14 +12,13 @@ from dishka.integrations.aiogram_dialog import inject
 from axiomai.application.interactors.create_buyer import CreateBuyer
 from axiomai.config import Config
 from axiomai.constants import OK_WORDS
-from axiomai.infrastructure.chat_history import add_to_chat_history, get_chat_history
+from axiomai.infrastructure.chat_history import add_to_chat_history
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.models import Buyer
-from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, merge_messages_text
-from axiomai.infrastructure.openai import ArticleInfo, OpenAIGateway
+from axiomai.infrastructure.openai import OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
 
 
@@ -32,21 +31,6 @@ def get_pending_nm_ids_for_step(buyers: list[Buyer], step: str) -> list[int]:
         return [b.nm_id for b in buyers if b.is_left_feedback and not b.is_cut_labels]
 
     return []
-
-
-def build_articles_for_gpt(articles: list[CashbackArticle]) -> list[ArticleInfo]:
-    return [
-        ArticleInfo(
-            id=a.id,
-            nm_id=a.nm_id,
-            title=a.title,
-            brand_name=a.brand_name,
-            image_url=a.image_url,
-            instruction_text=a.instruction_text,
-        )
-        for a in articles
-    ]
-
 
 @inject
 async def mes_input_handler(
@@ -75,15 +59,13 @@ async def mes_input_handler(
 
         bg_manager = dialog_manager.bg()
         app_container = di_container.parent_container
-        current_state = dialog_manager.current_context().state
-        step_name = current_state.state.split(":")[-1] if current_state else "unknown"
 
         await debouncer.add_message(
             business_connection_id=message.business_connection_id,
             chat_id=message.chat.id,
             message_data=message_data,
             process_callback=lambda biz_id, chat_id, msgs: _process_dialog_messages(
-                biz_id, chat_id, message.from_user.username, message.from_user.full_name, msgs, bot, app_container, step_name, bg_manager
+                biz_id, chat_id, message.from_user.username, message.from_user.full_name, msgs, bot, app_container, bg_manager
             ),
         )
         dialog_manager.show_mode = ShowMode.NO_UPDATE
@@ -100,7 +82,6 @@ async def _process_dialog_messages(
     messages: list[MessageData],
     bot: Bot,
     di_container: AsyncContainer,
-    step_name: str,
     bg_manager: DialogManager,
 ) -> None:
     async with di_container() as r_container:
@@ -108,9 +89,13 @@ async def _process_dialog_messages(
         openai_gateway = await r_container.get(OpenAIGateway)
         cashback_table_gateway = await r_container.get(CashbackTableGateway)
         cabinet_gateway = await r_container.get(CabinetGateway)
+        buyer_gateway = await r_container.get(BuyerGateway)
 
         cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
         articles = await cashback_table_gateway.get_in_stock_cashback_articles_by_cabinet_id(cabinet.id, chat_id)
+        current_buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(
+            chat_id, cabinet.id
+        )
 
     combined_text = merge_messages_text(messages)
 
@@ -122,17 +107,14 @@ async def _process_dialog_messages(
     if has_ok_word:
         return
 
-    articles_for_gpt = build_articles_for_gpt(articles)
     valid_ids = {art.id for art in articles}
 
-    chat_history = await get_chat_history(di_container, chat_id, cabinet.id)
     combined_text = merge_messages_text(messages)
 
     result = await openai_gateway.answer_user_question(
         user_message=combined_text,
-        current_step=step_name,
-        articles=articles_for_gpt,
-        chat_history=chat_history,
+        articles=articles,
+        current_buyers=current_buyers,
     )
 
     response_text = result["response"]

@@ -20,7 +20,6 @@ from axiomai.infrastructure.database.transaction_manager import TransactionManag
 from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
 from axiomai.infrastructure.openai import ClassifyOrderResult, OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import (
-    build_articles_for_gpt,
     get_pending_nm_ids_for_step,
 )
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
@@ -113,13 +112,12 @@ async def _process_order_screenshot_background(  # noqa: PLR0915
 
     pending_nm_ids = get_pending_nm_ids_for_step(buyers, step="check_order")
     pending_articles = [a for a in articles if a.nm_id in pending_nm_ids]
-    articles_for_gpt = build_articles_for_gpt(pending_articles)
 
     result: str | None | ClassifyOrderResult = None
     try:
         result = await openai_gateway.classify_order_screenshot(
             photo_url=photo_url,
-            articles=articles_for_gpt,
+            articles=pending_articles,
         )
     except Exception as e:
         logger.exception("classify order screenshot error", exc_info=e)
