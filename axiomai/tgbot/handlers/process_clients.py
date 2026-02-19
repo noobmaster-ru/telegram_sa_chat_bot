@@ -163,7 +163,7 @@ async def _process_accumulated_messages(
     )
 
     response_text = result["response"]
-    classified_article_id = result["article_id"]
+    classified_article_ids = result["article_ids"]
 
     await bot.send_chat_action(
         chat_id=chat_id,
@@ -172,7 +172,7 @@ async def _process_accumulated_messages(
     )
     await asyncio.sleep(config.delay_between_bot_messages)
 
-    if classified_article_id:
+    if classified_article_ids:
         await add_predialog_chat_history(redis, business_connection_id, chat_id, combined_text, response_text)
 
         await bot.send_message(
@@ -189,7 +189,8 @@ async def _process_accumulated_messages(
 
         async with di_container() as r_container:
             create_buyer = await r_container.get(CreateBuyer)
-            await create_buyer.execute(chat_id, username, fullname, classified_article_id, predialog_history)
+            for article_id in classified_article_ids:
+                await create_buyer.execute(chat_id, username, fullname, article_id, predialog_history)
 
         await dialog_manager.start(
             CashbackArticleStates.check_order,

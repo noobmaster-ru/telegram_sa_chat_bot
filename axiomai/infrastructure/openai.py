@@ -15,18 +15,10 @@ from axiomai.constants import (
     GPT_REASONING,
     MODEL_NAME,
 )
+from axiomai.infrastructure.database.models import Buyer
 from axiomai.infrastructure.database.models.cashback_table import CashbackArticle
 
 logger = logging.getLogger(__name__)
-
-
-class ArticleInfo(TypedDict):
-    id: int
-    nm_id: int
-    title: str
-    brand_name: str
-    image_url: str | None
-    instruction_text: str
 
 class ChatHistoryEntry(TypedDict):
     user: str
@@ -58,7 +50,7 @@ class AnswerResult(TypedDict):
 
 class PredialogResult(TypedDict):
     response: str
-    article_id: int | None
+    article_ids: list[int]
 
 
 class OpenAIGateway:
@@ -71,23 +63,14 @@ class OpenAIGateway:
     async def classify_order_screenshot(
         self,
         photo_url: str,
-        articles: list[ArticleInfo],
+        articles: list[CashbackArticle],
     ) -> ClassifyOrderResult:
-        """
-        Классифицирует скриншот заказа по списку товаров.
-        
-        Args:
-            photo_url: URL скриншота
-            articles: список товаров [{"nm_id": int, "title": str, "brand_name": str, "image_url": str|None}]
-        
-        Returns:
-            {"is_order": bool, "nm_id": int|null, "price": int|null, "cancel_reason": str|null}
-        """
+        """Классифицирует скриншот заказа по списку товаров."""
         articles_text = "\n".join(
-            f'- nm_id={art['nm_id']}, Название: "{art['title']}", Бренд: "{art['brand_name']}"'
+            f'- nm_id={art.nm_id}, Название: "{art.title}", Бренд: "{art.brand_name}"'
             for art in articles
         )
-        valid_nm_ids = {art["nm_id"] for art in articles}
+        valid_nm_ids = {art.nm_id for art in articles}
         
         system_content = """
         Ты помощник для анализа скриншотов заказов Wildberries.
@@ -123,9 +106,8 @@ class OpenAIGateway:
         ]
 
         for art in articles:
-            image_url: str | None = art.get("image_url")
-            if image_url:
-                user_content.append({"type": "input_image", "image_url": image_url})
+            if art.image_url:
+                user_content.append({"type": "input_image", "image_url": art.image_url})
 
         messages = [
             {"role": "system", "content": system_content},
@@ -160,23 +142,14 @@ class OpenAIGateway:
     async def classify_feedback_screenshot(
         self,
         photo_url: str,
-        articles: list[ArticleInfo],
+        articles: list[CashbackArticle],
     ) -> ClassifyFeedbackResult:
-        """
-        Классифицирует скриншот отзыва по списку товаров.
-        
-        Args:
-            photo_url: URL скриншота
-            articles: список товаров [{"nm_id": int, "title": str, "brand_name": str, "image_url": str|None}]
-        
-        Returns:
-            {"is_feedback": bool, "nm_id": int|null, "cancel_reason": str|null}
-        """
+        """Классифицирует скриншот отзыва по списку товаров."""
         articles_text = "\n".join(
-            f'- nm_id={art['nm_id']}, Название: "{art['title']}", Бренд: "{art['brand_name']}"'
+            f'- nm_id={art.nm_id}, Название: "{art.title}", Бренд: "{art.brand_name}"'
             for art in articles
         )
-        valid_nm_ids = {art["nm_id"] for art in articles}
+        valid_nm_ids = {art.nm_id for art in articles}
         
         system_content = """
         Ты помощник для анализа скриншотов отзывов Wildberries.
@@ -211,9 +184,8 @@ class OpenAIGateway:
         ]
         
         for art in articles:
-            image_url: str | None = art.get("image_url")
-            if image_url:
-                user_content.append({"type": "input_image", "image_url": image_url})
+            if art.image_url:
+                user_content.append({"type": "input_image", "image_url": art.image_url})
         
         messages = [
             {"role": "system", "content": system_content},
@@ -301,39 +273,19 @@ class OpenAIGateway:
     async def answer_user_question(
         self,
         user_message: str,
-        current_step: str,
-        articles: list[ArticleInfo],
-        chat_history: list[ChatHistoryEntry] | None = None,
+        articles: list[CashbackArticle],
+        current_buyers: list[Buyer],
     ) -> AnswerResult:
-        """
-        Отвечает на вопрос пользователя в контексте кешбек-диалога.
+        """Отвечает на вопрос пользователя в контексте кешбек-диалога."""
+        articles_text = "\n".join([f"- ID:{article.id} Артикул WB: {article.nm_id}, Название: {article.title}" for article in articles])
+        current_buyers_text = "\n".join(
+            [
+                f"- Артикул WB:{buyer.nm_id}, Скриншот заказа:{buyer.is_ordered} Скриншот отзыва:{buyer.is_left_feedback} Фото разрезанных этикеток:{buyer.is_left_feedback}"
+                for buyer in current_buyers
+            ]
+        )
 
-        Returns:
-            dict с ключами:
-            - response: str - текст ответа
-            - wants_to_stop: bool - хочет ли пользователь прекратить процесс
-            - switch_to_article_id: int | None - ID артикула для переключения
-        """
-        step_descriptions = {
-            "check_order": "отправка скриншота заказа на Wildberries",
-            "check_received": "отправка скриншота отзыва с 5 звёздами",
-            "check_labels_cut": "отправка фотографии разрезанных этикеток (штрихкодов/QR-кодов)",
-        }
-        current_step_desc = step_descriptions.get(current_step, "выполнение текущего шага")
-
-        history_text = ""
-        if chat_history:
-            history_lines = []
-            for entry in chat_history[-10:]:
-                history_lines.append(f"Клиент: {entry['user']}")
-                history_lines.append(f"Ты: {entry['assistant']}")
-            history_text = "\n".join(history_lines)
-
-        articles_lines = [f"- ID:{article["id"]} — {article["title"]}" for article in articles]
-        articles_text = "\n".join(articles_lines)
-        articles_for_user = "\n".join([f"- {article["title"]}" for article in articles])
-
-        instruction_text = articles[0]["instruction_text"]
+        instruction_text = articles[0].instruction_text
 
         system_content = """
         Ты — вежливый помощник кешбек-сервиса Wildberries.
@@ -346,10 +298,13 @@ class OpenAIGateway:
         
         ВАЖНО:
         - Ответь кратко, по делу (не более 3-4 предложений) без смайликов и эмодзи
-        - Не повторяй ответы из истории диалога
         - НЕ добавляй завершающие фразы типа "Если возникнут вопросы — помогу"
         - Используй разметку Markdown
         - НИКОГДА не показывай пользователю ID артикулов — только названия товаров
+        - Если клиент спрашивает какие товары доступны — перечисли ТОЛЬКО названия из блока `articles_list` ниже.
+        - Если клиент спрашивает фото или артикул товара или как ему найти товар, НЕ ГОВОРИ, что товар можно найти поиском по названию, переспроси,
+           о каком товаре он спрашивает и перечисли ТОЛЬКО названия из блока `articles_list`
+        - Если клиент спрашивает на каком он этапе или что ему нужно сделать, перечисли заявки из блока `buyers_list`
         
         СПЕЦИАЛЬНЫЕ КОМАНДЫ (добавляй в начало ответа если нужно):
 
@@ -361,30 +316,26 @@ class OpenAIGateway:
            (например: "Пошел ты", "иди нахуй", "блять"),
            напиши [STOP] в начале ответа.
         
-        3. Если клиент хочет получить кешбек за ДРУГОЙ товар из списка доступных,
-           напиши [SWITCH:ID] где ID — числовой идентификатор из списка выше.
-           Например: [SWITCH:123]
-           После этого напиши приветствие для нового артикула (БЕЗ упоминания ID).
-
-        4. Если клиент спрашивает какие товары доступны — перечисли ТОЛЬКО названия из блока "ДОСТУПНЫЕ ТОВАРЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ" ниже.
+        3. Если пользователь просит начать оформление или упоминает товар,
+           (например: "Давайте следующие пакеты", "Хочу ещё ролик", "Оформим диски", "Продолжаем, ножницы", "У меня же еще ножницы")
+           которого НЕТ в `buyers_list`, но он ЕСТЬ в `articles_list`, ты должен начать ответ со специальной команды.
+           напиши [SWITCH:ID] где ID — числовой идентификатор из `articles_list`.
+           Пример: [SWITCH:123] Отлично, давайте оформим заявку на этот товар (БЕЗ упоминания ID после команды).
         
         Не путай вопросы или сомнения с командами — только явные намерения.
         """
         
         prompt = f"""
-        КОНТЕКСТ:
-        - Текущий шаг: {current_step_desc}
-
         ИНСТРУКЦИЯ, что и как нужно делать клиенту
         (МОЖЕШЬ  КРАТКО ПЕРЕСКАЗАТЬ КЛИЕНТУ, ЕСЛИ ОН НЕ ПОНИМАЕТ ЧТО ДЕЛАТЬ):
         {instruction_text}
 
-        {"Доступные артикулы (ТОЛЬКО ДЛЯ СИСТЕМЫ, ID не показывать пользователю):" + chr(10) + articles_text if articles_text else ""}
+        ДОСТУПНЫЕ ТОВАРЫ (`articles_list`):
+        {articles_text}
 
-        {"ДОСТУПНЫЕ ТОВАРЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ:" + chr(10) + articles_for_user if articles_for_user else ""}
-
-        {"История диалога с клиентом:" + chr(10) + history_text if history_text else ""}
-
+        ТЕКУЩИЕ ЗАЯВКИ (`buyers_list`):
+        {current_buyers_text}
+        
         Новое сообщение клиента: "{user_message}"
         """
 
@@ -412,14 +363,7 @@ class OpenAIGateway:
         chat_history: list[ChatHistoryEntry] | None = None,
         photo_url: str | None = None,
     ) -> PredialogResult:
-        """
-        Ведёт pre-dialog общение с клиентом до классификации артикула.
-
-        Returns:
-            dict с ключами:
-            - response: str - текст ответа
-            - article_id: int | None - ID артикула если GPT определил товар
-        """
+        """Ведёт pre-dialog общение с клиентом до классификации артикула."""
         articles_info = "\n".join(f"- ID:{article.id} | Название: {article.title}" for article in articles)
         articles_titles = "\n".join(f"- {article.title}" for article in articles)
         valid_ids = {article.id for article in articles}
@@ -446,6 +390,7 @@ class OpenAIGateway:
         - НИКОГДА не угадывай товар — если непонятно, переспроси
         - НИКОГДА не показывай ID артикулов
         - НИКОГДА не придумывай информацию о товаре
+        - НИКОГДА не говори пользователю как найти товар на маркетплейсе
         
         ПРАВИЛА ОБЩЕНИЯ:
         1. Отвечай кратко , по-деловому и четко (2-4 предложения) без смайликов и эмодзи
@@ -458,7 +403,8 @@ class OpenAIGateway:
         - Если клиент задаёт неопределённый вопрос ("это какое?", "фото можно?", "а что это?") — ПЕРЕСПРОСИ о каком именно товаре он спрашивает
         - Если клиент ЯВНО называет конкретный товар (например "ролик", "губки", "носки", "салфетка") — подтвердить выбор товара и ДОБАВЬ в начало ответа: [ARTICLE:ID]
         - Добавляй [ARTICLE:ID] ТОЛЬКО когда клиент ОДНОЗНАЧНО выбрал товар
-        
+        - Если клиент выбрал несколько товаров то перечисли их так [ARTICLE:ID1,ID2,ID3]
+                
         ПРИМЕР 1 (неопределённый вопрос):
         Клиент: "это какое? фото можно?"
         Ответ: Уточните, пожалуйста, о каком товаре вы спрашиваете? У нас есть: Ролик , Губка, Салфетка
@@ -511,8 +457,8 @@ class OpenAIGateway:
         result = _extract_response_text(response)
         parsed = _parse_predialog_result(result)
 
-        if parsed["article_id"] and parsed["article_id"] not in valid_ids:
-            parsed["article_id"] = None
+        if parsed["article_ids"]:
+            parsed["article_ids"] = [aid for aid in parsed["article_ids"] if aid in valid_ids]
 
         return parsed
 
@@ -595,15 +541,16 @@ def _parse_answer_result(result: str | None) -> AnswerResult:
 
 
 def _parse_predialog_result(result: str | None) -> PredialogResult:
-    """Парсит результат pre-dialog ответа GPT и извлекает article_id"""
+    """Парсит результат pre-dialog ответа GPT и извлекает article_ids"""
     if not result:
-        return {"response": "Напишите название товара, по которому хотите кэшбек", "article_id": None}
+        return PredialogResult(response="Напишите название товара, по которому хотите кэшбек", article_ids=[])
 
-    article_id = None
+    article_ids: list[int] = []
     if "[ARTICLE:" in result:
-        match = re.search(r"\[ARTICLE:(\d+)\]", result)
+        match = re.search(r"\[ARTICLE:([\d,]+)\]", result)
         if match:
-            article_id = int(match.group(1))
-            result = re.sub(r"\[ARTICLE:\d+\]", "", result).strip()
+            ids_str = match.group(1)
+            article_ids = [int(id_str) for id_str in ids_str.split(",") if id_str]
+            result = re.sub(r"\[ARTICLE:[\d,]+\]", "", result).strip()
 
-    return PredialogResult(response=result, article_id=article_id)
+    return PredialogResult(response=result, article_ids=article_ids)
