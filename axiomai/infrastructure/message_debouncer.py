@@ -4,12 +4,18 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import Enum
 
 from redis.asyncio import Redis
 
 from axiomai.config import MessageDebouncerConfig
 
 logger = logging.getLogger(__name__)
+
+
+class TaskStrategy(Enum):
+    ACCUMULATE = "accumulate"
+    PHOTO_ONLY = "photo_only"
 
 
 @dataclass
@@ -31,6 +37,7 @@ class AccumulatedMessages:
     messages: list[MessageData]
     timer_id: str
     scheduled_at: float
+    strategy: TaskStrategy = TaskStrategy.ACCUMULATE
 
 
 class MessageDebouncer:
@@ -54,26 +61,26 @@ class MessageDebouncer:
         chat_id: int,
         message_data: MessageData,
         process_callback: Callable[[str, int, list[MessageData]], Awaitable[None]],
-    ) -> None:
-        """Добавляет сообщение в очередь накопления и запускает/перезапускает таймер"""
+        strategy: TaskStrategy = TaskStrategy.ACCUMULATE,
+    ) -> bool:
         redis_key = _get_redis_key(business_connection_id, chat_id)
         timer_key = f"{business_connection_id}:{chat_id}"
 
-        # Если сообщение очень длинное - обрабатываем немедленно
+        existing_data = await self.redis.get(redis_key)
+        if existing_data:
+            accumulated = _deserialize_messages(existing_data)
+            if accumulated.strategy == TaskStrategy.PHOTO_ONLY and not message_data.has_photo:
+                logger.info("ignoring message without photo (PHOTO_ONLY task already running). chat: %s", chat_id)
+                return False
+        else:
+            accumulated = AccumulatedMessages(
+                messages=[], timer_id=timer_key, scheduled_at=datetime.now(UTC).timestamp(), strategy=strategy
+            )
+
         if message_data.text and len(message_data.text) >= self.immediate_processing_length:
             logger.info("processing long message immediately (length: %s)", len(message_data.text))
             await process_callback(business_connection_id, chat_id, [message_data])
-            return
-
-        # Получаем текущие накопленные сообщения
-        existing_data = await self.redis.get(redis_key)
-
-        if existing_data:
-            accumulated = _deserialize_messages(existing_data)
-        else:
-            accumulated = AccumulatedMessages(
-                messages=[], timer_id=timer_key, scheduled_at=datetime.now(UTC).timestamp()
-            )
+            return True
 
         accumulated.messages.append(message_data)
         accumulated.scheduled_at = datetime.now(UTC).timestamp() + self.delay_seconds
@@ -83,20 +90,19 @@ class MessageDebouncer:
 
         logger.info("added message to accumulation buffer. chat: %s, total: %s", chat_id, len(accumulated.messages))
 
-        # Отменяем старый таймер если есть
         if timer_key in self._active_timers:
             old_timer = self._active_timers[timer_key]
             if not old_timer.done():
                 old_timer.cancel()
                 logger.debug("cancelled previous timer for chat %s", chat_id)
 
-        # Запускаем новый таймер
         timer_task = asyncio.create_task(
             self._delayed_process(business_connection_id, chat_id, process_callback, self.delay_seconds)
         )
         self._active_timers[timer_key] = timer_task
 
         logger.debug("started new timer for chat %s (%ss)", chat_id, self.delay_seconds)
+        return True
 
     async def _delayed_process(
         self,
@@ -159,6 +165,7 @@ def _serialize_messages(accumulated: AccumulatedMessages) -> str:
             ],
             "timer_id": accumulated.timer_id,
             "scheduled_at": accumulated.scheduled_at,
+            "strategy": accumulated.strategy.value,
         }
     )
 
@@ -169,6 +176,7 @@ def _deserialize_messages(data: bytes | str) -> AccumulatedMessages:
         data = data.decode("utf-8")
 
     parsed = json.loads(data)
+    strategy = TaskStrategy(parsed.get("strategy", "accumulate"))
     return AccumulatedMessages(
         messages=[
             MessageData(
@@ -182,6 +190,7 @@ def _deserialize_messages(data: bytes | str) -> AccumulatedMessages:
         ],
         timer_id=parsed["timer_id"],
         scheduled_at=parsed["scheduled_at"],
+        strategy=strategy,
     )
 
 

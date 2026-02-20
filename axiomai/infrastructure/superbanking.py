@@ -1,7 +1,10 @@
 import json
 import logging
 import re
-from urllib import error, parse, request
+from urllib.parse import urlparse
+
+import aiohttp
+from aiohttp import ClientSession
 
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError
 from axiomai.config import SuperbankingConfig
@@ -108,10 +111,12 @@ BANK_ALIASES: dict[str, str] = {
     "точка - банк": "TOCHKA BANK",
 }
 
+HTTP_400 = 400
 
 class Superbanking:
-    def __init__(self, superbanking_config: SuperbankingConfig) -> None:
+    def __init__(self, superbanking_config: SuperbankingConfig, client_session: ClientSession) -> None:
         self._superbanking_config = superbanking_config
+        self._client_session = client_session
 
         with open("./assets/superbanking.json") as f:
             self._superbanking_banks = json.loads(f.read())
@@ -148,7 +153,7 @@ class Superbanking:
                 return bank.get("identifier")
         return None
 
-    def create_payment(self, phone_number: str, bank_name_rus: str, amount: int, order_number: str) -> str:
+    async def create_payment(self, phone_number: str, bank_name_rus: str, amount: int, order_number: str) -> str:
         phone_number_superbanking_format = self._convert_phone_number_to_superbanking_format(phone_number=phone_number)
         bank_identifier = self._get_bank_identifier_by_bank_name_rus(bank_name_rus=bank_name_rus)
         if not bank_identifier:
@@ -168,7 +173,7 @@ class Superbanking:
         }
 
         try:
-            response_data = self._post_json(
+            response_data = await self._post_json(
                 url=URL_CREATE_PAYMENT,
                 payload=payload,
                 log_context="create payout",
@@ -183,13 +188,13 @@ class Superbanking:
             )
             raise CreatePaymentError from exc
 
-    def sign_payment(self, cabinet_transaction_id: str, order_number: str) -> bool:
+    async def sign_payment(self, cabinet_transaction_id: str, order_number: str) -> bool:
         payload = {
             "cabinetId": self._superbanking_config.cabinet_id,
             "cabinetTransactionId": cabinet_transaction_id,
         }
         try:
-            response_data = self._post_json(
+            response_data = await self._post_json(
                 url=URL_SIGN_PAYMENT,
                 payload=payload,
                 log_context="sign payout",
@@ -216,13 +221,13 @@ class Superbanking:
         return result
 
 
-    def confirm_operation(self, order_number: str) -> str:
+    async def confirm_operation(self, order_number: str) -> str:
         try:
             payload = {
                 "cabinetId": self._superbanking_config.cabinet_id,
                 "orderNumber": order_number,
             }
-            response_data = self._post_json(
+            response_data = await self._post_json(
                 url=URL_CONFIRM_PAYMENT,
                 payload=payload,
                 log_context="confirm operation",
@@ -233,7 +238,7 @@ class Superbanking:
             logger.exception("Superbanking confirm_operation() failed for order_number=%s", order_number)
             raise
 
-    def _post_json(
+    async def _post_json(
         self,
         url: str,
         payload: dict,
@@ -242,32 +247,28 @@ class Superbanking:
         order_number: str | None = None,
         add_idempotency_token: bool = True,
     ) -> dict:
-        parsed_url = parse.urlparse(url)
+        parsed_url = urlparse(url)
         if parsed_url.scheme != "https":
             raise ValueError(f"Unsupported URL scheme: {parsed_url.scheme}")
-        req = request.Request(  # noqa: S310
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            method="POST",
-        )
-        req.add_header("Content-Type", "application/json")
-        req.add_header("x-token-user-api", self._superbanking_config.api_key)
+
+        headers = {
+            "Content-Type": "application/json",
+            "x-token-user-api": self._superbanking_config.api_key,
+        }
         if add_idempotency_token and order_number:
-            req.add_header("x-idempotency-token", order_number)
+            headers["x-idempotency-token"] = order_number
 
         try:
-            with request.urlopen(req, timeout=30) as response:  # noqa: S310
-                body = response.read().decode("utf-8")
-        except error.HTTPError as exc:
-            error_body = exc.read().decode("utf-8") if exc.fp else ""
-            logger.exception(
-                "Superbanking %s failed with status %s. Body: %s",
-                log_context,
-                exc.code,
-                error_body,
-            )
-            raise
-        except error.URLError:
+            async with self._client_session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                body = await response.text()
+                if response.status >= HTTP_400:
+                    logger.exception(
+                        "Superbanking %s failed with status %s. Body: %s",
+                        log_context,
+                        response.status,
+                        body,
+                    )
+        except aiohttp.ClientError:
             logger.exception("Superbanking %s request failed", log_context)
             raise
 

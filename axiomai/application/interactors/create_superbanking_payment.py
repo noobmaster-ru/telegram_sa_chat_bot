@@ -83,7 +83,7 @@ class CreateSuperbankingPayment:
         )
 
         try:
-            cabinet_transaction_id = self._superbanking.create_payment(
+            cabinet_transaction_id = await self._superbanking.create_payment(
                 phone_number=phone_number,
                 bank_name_rus=bank,
                 amount=total_amount,
@@ -94,7 +94,7 @@ class CreateSuperbankingPayment:
             raise
 
         try:
-            self._superbanking.sign_payment(cabinet_transaction_id=cabinet_transaction_id, order_number=payout.order_number)
+            await self._superbanking.sign_payment(cabinet_transaction_id=cabinet_transaction_id, order_number=payout.order_number)
         except SignPaymentError:
             logger.exception("Failed to sign_payment() Superbanking payout for payout_id=%s", payout.id)
             raise

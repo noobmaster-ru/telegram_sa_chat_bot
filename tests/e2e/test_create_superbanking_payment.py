@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 from sqlalchemy import select
@@ -48,8 +48,8 @@ async def test_create_superbanking_payment_creates_payout(
     superbanking = await di_container.get(Superbanking)
 
     # Override Superbanking mock with sync methods
-    superbanking.create_payment = MagicMock(return_value="tx-1")
-    superbanking.sign_payment = MagicMock(return_value=True)
+    superbanking.create_payment = AsyncMock(return_value="tx-1")
+    superbanking.sign_payment = AsyncMock(return_value=True)
 
     order_number = await create_superbanking_payment.execute(
         telegram_id=buyer.telegram_id,
@@ -71,8 +71,8 @@ async def test_create_superbanking_payment_missing_bank_raises(
 ):
     buyer, cabinet = await _create_buyer(session, cabinet_factory, amount=200, cabinet_balance=1000)
     superbanking = await di_container.get(Superbanking)
-    superbanking.create_payment = MagicMock(side_effect=CreatePaymentError("Unknown bank"))
-    superbanking.sign_payment = MagicMock(return_value=True)
+    superbanking.create_payment = AsyncMock(side_effect=CreatePaymentError("Unknown bank"))
+    superbanking.sign_payment = AsyncMock(return_value=True)
 
     with pytest.raises(CreatePaymentError):
         await create_superbanking_payment.execute(
@@ -111,8 +111,8 @@ async def test_create_superbanking_payment_distributes_amount_to_buyers_without_
     await session.flush()
 
     superbanking = await di_container.get(Superbanking)
-    superbanking.create_payment = MagicMock(return_value="tx-1")
-    superbanking.sign_payment = MagicMock(return_value=True)
+    superbanking.create_payment = AsyncMock(return_value="tx-1")
+    superbanking.sign_payment = AsyncMock(return_value=True)
 
     await create_superbanking_payment.execute(
         telegram_id=123456,
@@ -152,8 +152,8 @@ async def test_create_superbanking_payment_does_not_override_existing_amounts(
     await session.flush()
 
     superbanking = await di_container.get(Superbanking)
-    superbanking.create_payment = MagicMock(return_value="tx-1")
-    superbanking.sign_payment = MagicMock(return_value=True)
+    superbanking.create_payment = AsyncMock(return_value="tx-1")
+    superbanking.sign_payment = AsyncMock(return_value=True)
 
     await create_superbanking_payment.execute(
         telegram_id=123456,
@@ -191,8 +191,8 @@ async def test_create_superbanking_payment_mixed_buyers_with_and_without_amount(
     await session.flush()
 
     superbanking = await di_container.get(Superbanking)
-    superbanking.create_payment = MagicMock(return_value="tx-1")
-    superbanking.sign_payment = MagicMock(return_value=True)
+    superbanking.create_payment = AsyncMock(return_value="tx-1")
+    superbanking.sign_payment = AsyncMock(return_value=True)
 
     await create_superbanking_payment.execute(
         telegram_id=123456,

@@ -177,7 +177,7 @@ async def _send_receipt_after_confirm(
     await asyncio.sleep(TIME_SLEEP_BEFORE_CONFIRM_PAYMENT)
 
     try:
-        check_url = superbanking.confirm_operation(order_number=order_number)
+        check_url = await superbanking.confirm_operation(order_number=order_number)
     except (ValueError, error.HTTPError, error.URLError):
         logger.exception(
             "Failed to confirm_operation() Superbanking payout for telegram_id=%s", message.from_user.id

@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 import pytest
 
 from axiomai.application.exceptions.superbanking import SignPaymentError, CreatePaymentError
@@ -16,11 +18,11 @@ def _make_config() -> SuperbankingConfig:
     )
 
 
-def test_create_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    superbanking = Superbanking(_make_config())
+async def test_create_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    superbanking = Superbanking(_make_config(), AsyncMock())
     captured: dict = {}
 
-    def fake_post_json(
+    async def fake_post_json(
         *,
         url: str,
         payload: dict,
@@ -38,7 +40,7 @@ def test_create_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
     order_number = "payment-1"
-    cabinet_transaction_id = superbanking.create_payment(
+    cabinet_transaction_id = await superbanking.create_payment(
         phone_number="+7 (910) 111-22-33",
         bank_name_rus="Газпромбанк",
         amount=100,
@@ -56,16 +58,16 @@ def test_create_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["payload"]["bank"] == superbanking._get_bank_identifier_by_bank_name_rus("Газпромбанк")
 
 
-def test_create_payment_unknown_bank_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    superbanking = Superbanking(_make_config())
+async def test_create_payment_unknown_bank_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    superbanking = Superbanking(_make_config(), AsyncMock())
 
-    def fake_post_json(*args, **kwargs) -> dict:  # noqa: ANN001,ANN002,ANN003
+    async def fake_post_json(*args, **kwargs) -> dict:  # noqa: ANN001,ANN002,ANN003
         raise AssertionError("Should not call _post_json when bank is unknown")
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
     with pytest.raises(CreatePaymentError, match="Unknown bank"):
-        superbanking.create_payment(
+        await superbanking.create_payment(
             phone_number="+7 910 111 22 33",
             bank_name_rus="Неизвестный банк",
             amount=100,
@@ -73,12 +75,12 @@ def test_create_payment_unknown_bank_raises(monkeypatch: pytest.MonkeyPatch) -> 
         )
 
 
-def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    superbanking = Superbanking(_make_config())
+async def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    superbanking = Superbanking(_make_config(), AsyncMock())
     captured: dict = {}
     order_number = "payment-1"
 
-    def fake_post_json(
+    async def fake_post_json(
         *,
         url: str,
         payload: dict,
@@ -93,18 +95,18 @@ def test_sign_payment_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
-    assert superbanking.sign_payment("tx-1", order_number) is True
+    assert await superbanking.sign_payment("tx-1", order_number) is True
     assert captured["payload"]["cabinetId"] == "cabinet-1"
     assert captured["payload"]["cabinetTransactionId"] == "tx-1"
     assert captured["order_number"] == order_number
     assert captured["add_idempotency_token"] is True
 
 
-def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    superbanking = Superbanking(_make_config())
+async def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    superbanking = Superbanking(_make_config(), AsyncMock())
     order_number = "payment-2"
 
-    def fake_post_json(
+    async def fake_post_json(
         *,
         url: str,
         payload: dict,
@@ -117,14 +119,14 @@ def test_sign_payment_invalid_result_raises(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
     with pytest.raises(SignPaymentError):
-        superbanking.sign_payment("tx-2", order_number)
+        await superbanking.sign_payment("tx-2", order_number)
 
 
-def test_confirm_operation_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    superbanking = Superbanking(_make_config())
+async def test_confirm_operation_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    superbanking = Superbanking(_make_config(), AsyncMock())
     captured: dict = {}
 
-    def fake_post_json(
+    async def fake_post_json(
         *,
         url: str,
         payload: dict,
@@ -138,17 +140,17 @@ def test_confirm_operation_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
-    receipt_url = superbanking.confirm_operation("payment-3")
+    receipt_url = await superbanking.confirm_operation("payment-3")
     assert receipt_url == "https://example.com/receipt.pdf"
     assert captured["payload"]["cabinetId"] == "cabinet-1"
     assert captured["payload"]["orderNumber"] == "payment-3"
     assert captured["add_idempotency_token"] is False
 
 
-def test_confirm_operation_missing_url_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    superbanking = Superbanking(_make_config())
+async def test_confirm_operation_missing_url_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    superbanking = Superbanking(_make_config(), AsyncMock())
 
-    def fake_post_json(
+    async def fake_post_json(
         *,
         url: str,
         payload: dict,
@@ -161,4 +163,4 @@ def test_confirm_operation_missing_url_raises(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(superbanking, "_post_json", fake_post_json)
 
     with pytest.raises(ValueError, match="Unexpected Superbanking confirm response"):
-        superbanking.confirm_operation("payment-4")
+        await superbanking.confirm_operation("payment-4")

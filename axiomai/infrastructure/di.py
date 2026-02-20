@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterable
 
+from aiohttp import ClientSession
 from dishka import Provider, Scope, provide, provide_all
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
@@ -94,9 +95,13 @@ class GatewaysProvider(Provider):
 
 
 class TgbotInteractorsProvider(Provider):
-    superbanking = provide(Superbanking, scope=Scope.APP)
     openai_gateway = provide(OpenAIGateway, scope=Scope.APP)
     message_debouncer = provide(MessageDebouncer, scope=Scope.APP)
+
+    @provide(scope=Scope.APP)
+    async def superbanking(self, superbanking_config: SuperbankingConfig) -> AsyncIterable[Superbanking]:
+        async with ClientSession() as client_session:
+            yield Superbanking(superbanking_config, client_session)
 
     interactors = provide_all(
         CreateSeller,

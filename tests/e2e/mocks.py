@@ -16,7 +16,7 @@ from axiomai.application.interactors.observe_inactive_reminders import ObserveIn
 from axiomai.application.interactors.sync_cashback_tables import SyncCashbackTables
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.di import GatewaysProvider
-from axiomai.infrastructure.message_debouncer import MessageData
+from axiomai.infrastructure.message_debouncer import MessageData, TaskStrategy
 
 
 class FakeTransactionManager(TransactionManager):
@@ -37,8 +37,10 @@ class FakeMessageDebouncer:
         chat_id: int,
         message_data: MessageData,
         process_callback: Callable[[str, int, list[MessageData]], Awaitable[None]],
-    ) -> None:
+        strategy: TaskStrategy = TaskStrategy.ACCUMULATE,
+    ) -> bool:
         await process_callback(business_connection_id, chat_id, [message_data])
+        return True
 
 
 class MocksProvider(GatewaysProvider):

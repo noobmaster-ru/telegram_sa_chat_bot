@@ -17,7 +17,7 @@ from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
-from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer
+from axiomai.infrastructure.message_debouncer import MessageData, MessageDebouncer, TaskStrategy
 from axiomai.infrastructure.openai import ClassifyFeedbackResult, OpenAIGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import (
     get_pending_nm_ids_for_step,
@@ -74,6 +74,7 @@ async def on_input_feedback_screenshot(
             chat_id=chat_id,
             business_connection_id=biz_id,
         ),
+        strategy=TaskStrategy.PHOTO_ONLY
     )
 
 
