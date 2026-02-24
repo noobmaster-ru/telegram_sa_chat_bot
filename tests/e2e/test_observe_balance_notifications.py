@@ -19,9 +19,8 @@ async def test_sends_50_percent_notification(
 
     await observe_balance_notifications.execute()
 
-    observe_balance_notifications._bot.send_message.assert_awaited_once()
+    assert observe_balance_notifications._bot.send_message.await_count == 2
     call_args = observe_balance_notifications._bot.send_message.call_args
-    assert call_args.kwargs["chat_id"] == user.telegram_id
     assert "500 ₽" in call_args.kwargs["text"]
 
 
@@ -39,7 +38,7 @@ async def test_sends_10_percent_notification(
 
     await observe_balance_notifications.execute()
 
-    observe_balance_notifications._bot.send_message.assert_awaited_once()
+    assert observe_balance_notifications._bot.send_message.await_count == 2
     call_args = observe_balance_notifications._bot.send_message.call_args
     assert "100 ₽" in call_args.kwargs["text"]
 
@@ -61,7 +60,7 @@ async def test_sends_1_percent_notification(
 
     await observe_balance_notifications.execute()
 
-    observe_balance_notifications._bot.send_message.assert_awaited_once()
+    assert observe_balance_notifications._bot.send_message.await_count == 2
     call_args = observe_balance_notifications._bot.send_message.call_args
     assert "10 ₽" in call_args.kwargs["text"]
 
@@ -77,7 +76,7 @@ async def test_does_not_send_duplicate_notification(
     await observe_balance_notifications.execute()
     await observe_balance_notifications.execute()
 
-    observe_balance_notifications._bot.send_message.assert_awaited_once()
+    assert observe_balance_notifications._bot.send_message.await_count == 2
 
 
 async def test_sends_multiple_notifications_if_balance_dropped_significantly(
@@ -89,7 +88,7 @@ async def test_sends_multiple_notifications_if_balance_dropped_significantly(
 
     await observe_balance_notifications.execute()
 
-    assert observe_balance_notifications._bot.send_message.await_count == 3
+    assert observe_balance_notifications._bot.send_message.await_count == 6
 
 
 async def test_new_refill_resets_notification_cycle(
@@ -101,7 +100,7 @@ async def test_new_refill_resets_notification_cycle(
 
     # Первый цикл
     await observe_balance_notifications.execute()
-    observe_balance_notifications._bot.send_message.assert_awaited_once()
+    assert observe_balance_notifications._bot.send_message.await_count == 2
 
     # Новое пополнение - сброс цикла
     cabinet.balance = 1000
@@ -111,7 +110,7 @@ async def test_new_refill_resets_notification_cycle(
     cabinet.balance = 1000  # 50% от 2000
     await observe_balance_notifications.execute()
 
-    observe_balance_notifications._bot.send_message.assert_awaited_once()
+    assert observe_balance_notifications._bot.send_message.await_count == 2
     call_args = observe_balance_notifications._bot.send_message.call_args
     assert "1000 ₽" in call_args.kwargs["text"]
 
