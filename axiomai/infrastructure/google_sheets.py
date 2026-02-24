@@ -153,15 +153,17 @@ async def _write_buyers_to_sheet(aiogoogle: Aiogoogle, sheets_v4: Any, table_id:
     spreadsheet = await aiogoogle.as_service_account(
         sheets_v4.spreadsheets.get(
             spreadsheetId=table_id,
-            fields="sheets(properties(sheetId,title),conditionalFormats)",
+            fields="sheets(properties(sheetId,title,gridProperties),conditionalFormats)",
         )
     )
     sheet_id = None
     conditional_formats_count = 0
+    row_count = 0
     for sheet in spreadsheet.get("sheets", []):
         if sheet.get("properties", {}).get("title") == "Покупатели":
             sheet_id = sheet["properties"]["sheetId"]
             conditional_formats_count = len(sheet.get("conditionalFormats", []))
+            row_count = sheet.get("properties", {}).get("gridProperties", {}).get("rowCount", 0)
             break
 
     if sheet_id is None:
@@ -196,6 +198,18 @@ async def _write_buyers_to_sheet(aiogoogle: Aiogoogle, sheets_v4: Any, table_id:
             # Последняя колонка - checkbox (boolean)
             cells.append({"userEnteredValue": {"boolValue": row[-1]}})
             row_data.append({"values": cells})
+
+        needed_rows = len(rows) + 1  # +1 for header row
+        if needed_rows > row_count:
+            requests.append(
+                {
+                    "appendDimension": {
+                        "sheetId": sheet_id,
+                        "dimension": "ROWS",
+                        "length": max(needed_rows - row_count, 1000),
+                    }
+                }
+            )
 
         requests.append(
             {
