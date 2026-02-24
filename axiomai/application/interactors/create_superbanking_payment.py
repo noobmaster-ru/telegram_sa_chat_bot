@@ -1,5 +1,6 @@
 import logging
 
+from axiomai.application.exceptions.payment import NotEnoughBalanceError
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError, SkipSuperbankingError
 from axiomai.constants import AXIOMAI_COMMISSION, SUPERBANKING_COMMISSION
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
@@ -66,6 +67,11 @@ class CreateSuperbankingPayment:
             await self._transaction_manager.commit()
             raise SkipSuperbankingError(cabinet_id=cabinet.id, is_superbanking_connect=cabinet.is_superbanking_connect)
 
+        total_charge = total_amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
+
+        if cabinet.balance < total_charge:
+            raise NotEnoughBalanceError
+
         order_number = self._superbanking_payout_gateway.build_order_number(
             telegram_id=telegram_id,
             nm_ids=nm_ids,
@@ -104,12 +110,8 @@ class CreateSuperbankingPayment:
             buyer.is_superbanking_paid = True
             buyer.is_paid_manually = True
 
-        total_charge = total_amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
         cabinet.balance -= total_charge
 
         await self._transaction_manager.commit()
 
         return payout.order_number
-
-
-

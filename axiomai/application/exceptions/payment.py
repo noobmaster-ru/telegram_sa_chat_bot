@@ -9,5 +9,5 @@ class PaymentAlreadyProcessedError(AppError):
     """Exception raised when attempting to process a payment that has already been processed."""
 
 
-class PermissionDeniedError(AppError):
-    """Exception raised when user does not have permission to perform an action."""
+class NotEnoughBalanceError(AppError):
+    """Exception raised when there is not enough balance to process a payment."""

@@ -9,6 +9,7 @@ from aiogram_dialog import DialogManager, ShowMode
 from dishka import AsyncContainer, FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
+from axiomai.application.exceptions.payment import NotEnoughBalanceError
 from axiomai.application.exceptions.superbanking import CreatePaymentError, SignPaymentError, SkipSuperbankingError
 from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.constants import (
@@ -156,6 +157,9 @@ async def _create_superbanking_payout(
             exc.is_superbanking_connect,
         )
         return None, ""
+    except NotEnoughBalanceError:
+        logger.info("on_confirm_requisites not enough balance: cabinet_id=%s", cabinet_id)
+        return None, "Мы свяжемся с вами позже ☺"
     except Exception:
         logger.exception("Failed to create Superbanking payout for telegram_id=%s", telegram_id)
         return None, "Не удалось инициировать выплату. Мы свяжемся с вами."

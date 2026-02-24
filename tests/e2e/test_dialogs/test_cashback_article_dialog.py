@@ -4,6 +4,7 @@ from aiogram_dialog.test_tools import MockMessageManager
 from aiogram_dialog.test_tools.keyboard import InlineButtonTextLocator
 from sqlalchemy import select
 
+from axiomai.constants import AXIOMAI_COMMISSION, SUPERBANKING_COMMISSION
 from axiomai.infrastructure.database.models import Buyer
 from axiomai.infrastructure.database.models.cashback_table import CashbackTableStatus
 from axiomai.infrastructure.openai import OpenAIGateway
@@ -827,3 +828,62 @@ async def test_multiple_articles_selected_from_predialog(
     assert len(buyers) == 2
     nm_ids = {b.nm_id for b in buyers}
     assert nm_ids == {article1.nm_id, article2.nm_id}
+
+
+async def test_cashback_article_q4_not_enough_balance_sends_message(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+    message_manager: MockMessageManager,
+):
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+
+    total_amount = 1500
+    total_charge = total_amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
+    cabinet = await cabinet_factory(
+        business_connection_id=bot_client.business_connection_id,
+        balance=total_charge - 1,
+        is_superbanking_connect=True,
+    )
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+    superbanking = await di_container.get(Superbanking)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_ids": [article.id],
+    })
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article.nm_id,
+        "price": total_amount,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_feedback_screenshot = AsyncMock(return_value={
+        "is_feedback": True,
+        "nm_id": article.nm_id,
+        "cancel_reason": None,
+    })
+    openai_gateway.classify_cut_labels_photo = AsyncMock(return_value={
+        "is_cut_labels": True,
+        "cancel_reason": None,
+    })
+    superbanking.get_bank_name_rus = Mock(return_value="Сбербанк")
+
+    await bot_client.send_business("хочу кешбек")
+    await bot_client.send_business_photo()  # order
+    await bot_client.send_business_photo()  # feedback
+    await bot_client.send_business_photo()  # cut labels
+    await bot_client.send_business("89275554444 сбер")
+    await bot_client.send_business("1500 руб")
+
+    last_message = message_manager.sent_messages[-1]
+    await bot_client.click(last_message, InlineButtonTextLocator("✅ Да, верно"))
+
+    sent_texts = [m.text for m in fake_bot.sent_messages]
+    assert "Мы свяжемся с вами позже ☺" in sent_texts
