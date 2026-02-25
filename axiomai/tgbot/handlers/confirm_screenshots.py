@@ -1,6 +1,7 @@
 import logging
 
 from aiogram import Bot, Router
+from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from aiogram_dialog import ShowMode
 from aiogram_dialog.api.protocols import BgManagerFactory
@@ -41,30 +42,17 @@ def _parse_int(value: str) -> int | None:
         return None
 
 
-def _is_confirm_command(message: Message) -> bool:
-    parts = (message.text or "").strip().split()
-    return bool(parts) and parts[0].lower() == "/confirm"
-
-
-def _is_cancel_command(message: Message) -> bool:
-    parts = (message.text or "").strip().split()
-    return bool(parts) and parts[0].lower() == "/cancel"
-
-
-@router.business_message(_is_confirm_command)
+@router.business_message(Command("confirm"))
 @inject
 async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     message: Message,
+    command: CommandObject,
     bot: Bot,
     dialog_bg_factory: BgManagerFactory,
     cabinet_gateway: FromDishka[CabinetGateway],
     buyer_gateway: FromDishka[BuyerGateway],
     transaction_manager: FromDishka[TransactionManager],
 ) -> None:
-    parts = (message.text or "").strip().split()
-    if not parts or parts[0].lower() != "/confirm":
-        return
-
     try:
         await bot.delete_business_messages(
             business_connection_id=message.business_connection_id,
@@ -73,6 +61,7 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     except Exception:  # noqa: BLE001
         logger.warning("could not delete seller confirm command (msg_id=%s)", message.message_id)
 
+    args = (command.args or "").split()
     lead_id = message.chat.id
 
     cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
@@ -92,14 +81,14 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     if len(pending_buyers) == 1:
         target = pending_buyers[0]
         # /confirm {amount}
-        if _pending_step(target) == "is_ordered" and len(parts) >= 2:  # noqa: PLR2004
-            amount = _parse_int(parts[1])
+        if _pending_step(target) == "is_ordered" and args:
+            amount = _parse_int(args[0])
     else:
         # /confirm {nm_id} или /confirm {nm_id} {amount}
-        if len(parts) < 2:  # noqa: PLR2004
+        if not args:
             logger.info("confirm: %d pending buyers for lead %s, nm_id required", len(pending_buyers), lead_id)
             return
-        nm_id = _parse_int(parts[1])
+        nm_id = _parse_int(args[0])
         if nm_id is None:
             return
         target = next((b for b in pending_buyers if b.nm_id == nm_id), None)
@@ -107,8 +96,8 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
             logger.info("confirm: nm_id %s not found or already complete for lead %s", nm_id, lead_id)
             return
         # /confirm {nm_id} {amount}
-        if _pending_step(target) == "is_ordered" and len(parts) >= 3:  # noqa: PLR2004
-            amount = _parse_int(parts[2])
+        if _pending_step(target) == "is_ordered" and len(args) >= 2:  # noqa: PLR2004
+            amount = _parse_int(args[1])
 
     field = _pending_step(target)
 
@@ -140,20 +129,17 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     )
 
 
-@router.business_message(_is_cancel_command)
+@router.business_message(Command("cancel"))
 @inject
 async def on_seller_cancel_buyer(
     message: Message,
+    command: CommandObject,
     bot: Bot,
     dialog_bg_factory: BgManagerFactory,
     cabinet_gateway: FromDishka[CabinetGateway],
     buyer_gateway: FromDishka[BuyerGateway],
     cancel_buyer: FromDishka[CancelBuyer],
 ) -> None:
-    parts = (message.text or "").strip().split()
-    if not parts or parts[0].lower() != "/cancel":
-        return
-
     try:
         await bot.delete_business_messages(
             business_connection_id=message.business_connection_id,
@@ -162,6 +148,7 @@ async def on_seller_cancel_buyer(
     except Exception:  # noqa: BLE001
         logger.warning("could not delete seller cancel command (msg_id=%s)", message.message_id)
 
+    args = (command.args or "").split()
     lead_id = message.chat.id
 
     cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
@@ -172,8 +159,8 @@ async def on_seller_cancel_buyer(
     buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(lead_id, cabinet.id)
     cancellable = [b for b in buyers if not b.is_ordered]
 
-    if len(parts) >= 2:  # noqa: PLR2004
-        nm_id = _parse_int(parts[1])
+    if args:
+        nm_id = _parse_int(args[0])
         if nm_id is None:
             return
         target = next((b for b in cancellable if b.nm_id == nm_id), None)
