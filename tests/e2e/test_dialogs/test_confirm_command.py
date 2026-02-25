@@ -118,10 +118,13 @@ async def test_confirm_single_buyer_feedback(
     await seller_client.send_business("/confirm")
     buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == LEAD_USER_ID))
     assert buyer.is_ordered is True
+    assert buyer.is_left_feedback is False  # только один шаг за раз
+    assert buyer.is_cut_labels is False
 
     # Теперь подтверждаем отзыв
     await seller_client.send_business("/confirm")
     assert buyer.is_left_feedback is True
+    assert buyer.is_cut_labels is False  # только один шаг за раз
 
 
 async def test_confirm_single_buyer_labels(

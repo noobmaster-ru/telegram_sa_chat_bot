@@ -65,7 +65,6 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     if not parts or parts[0].lower() != "/confirm":
         return
 
-    # Удаляем команду из чата — лид её не увидит
     try:
         await bot.delete_business_messages(
             business_connection_id=message.business_connection_id,
@@ -117,9 +116,9 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
         target.is_ordered = True
         if amount is not None:
             target.amount = amount
-    if not target.is_left_feedback:
+    elif not target.is_left_feedback:
         target.is_left_feedback = True
-    if not target.is_cut_labels:
+    elif not target.is_cut_labels:
         target.is_cut_labels = True
 
     await transaction_manager.commit()
