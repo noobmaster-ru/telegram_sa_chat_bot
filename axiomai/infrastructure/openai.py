@@ -70,6 +70,7 @@ class OpenAIGateway:
             f'- nm_id={art.nm_id}, Название: "{art.title}", Бренд: "{art.brand_name}"'
             for art in articles
         )
+        first_instruction = articles[0].instruction_text if articles else None
         valid_nm_ids = {art.nm_id for art in articles}
         
         system_content = """
@@ -98,6 +99,9 @@ class OpenAIGateway:
         prompt = f"""
         ЦЕЛЕВЫЕ ТОВАРЫ (ищем заказ ОДНОГО из них):
         {articles_text}
+
+        ИНСТРУКЦИЯ (дополнительные критерии для проверки):
+        {first_instruction}
         """
 
         user_content = [
@@ -149,6 +153,7 @@ class OpenAIGateway:
             f'- nm_id={art.nm_id}, Название: "{art.title}", Бренд: "{art.brand_name}"'
             for art in articles
         )
+        first_instruction = articles[0].instruction_text if articles else None
         valid_nm_ids = {art.nm_id for art in articles}
         
         system_content = """
@@ -177,6 +182,9 @@ class OpenAIGateway:
 
         ЦЕЛЕВЫЕ ТОВАРЫ (ищем отзыв на ОДИН из них):
         {articles_text}
+        
+        ИНСТРУКЦИЯ (дополнительные критерии для проверки):
+        {first_instruction}
         """
 
         user_content = [
@@ -227,16 +235,26 @@ class OpenAIGateway:
 
         return {"is_feedback": False, "nm_id": None, "cancel_reason": None}
 
-    async def classify_cut_labels_photo(self, photo_url: str) -> ClassifyCutLabelsResult:
+    async def classify_cut_labels_photo(
+        self,
+        photo_url: str,
+        articles: list[CashbackArticle] | None = None,
+    ) -> ClassifyCutLabelsResult:
+        first_instruction = articles[0].instruction_text if articles else None
+
         system_content = """
         Ты помощник для анализа фотографий разрезанных этикеток Wildberries.
+        
+        Верни ответ в формате JSON: {{"is_cut_labels": bool, "cancel_reason": str|null}}
+        Где:
+        - is_cut_labels = true, если на фотографии есть РАЗРЕЗАННЫЕ/ПОРВАННЫЕ/ЗАМАЗАННЫЕ этикетки (штрихкода или QR-кода) Wildberries,
+        - cancel_reason = причина отказа, если is_cut_labels = false
         """
-        prompt = """
+        prompt = f"""
         Подумай и скажи есть ли на фотографии клиента РАЗРЕЗАННЫЕ/ПОРВАННЫЕ/ЗАМАЗАННЫЕ этикетки (штрихкода или QR-кода) Wildberries.
-
-        Верни ответ в формате JSON: {"is_cut_labels": bool, "cancel_reason": str|null}
-        Где is_cut_labels = true, если на фотографии есть РАЗРЕЗАННЫЕ/ПОРВАННЫЕ/ЗАМАЗАННЫЕ этикетки (штрихкода или QR-кода) Wildberries,
-        cancel_reason = причина отказа, если is_cut_labels = false
+        
+        ИНСТРУКЦИЯ (дополнительные критерии для проверки):
+        {first_instruction}
         """
 
         user_content = [

@@ -117,7 +117,7 @@ async def _process_cut_labels_photo_background(
 
     result: str | None | ClassifyCutLabelsResult = None
     try:
-        result = await openai_gateway.classify_cut_labels_photo(photo_url)
+        result = await openai_gateway.classify_cut_labels_photo(photo_url, pending_articles)
     except Exception as e:
         logger.exception("classify cut labels photo error", exc_info=e)
         await bot.send_message(
