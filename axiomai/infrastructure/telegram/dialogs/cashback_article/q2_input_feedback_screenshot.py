@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.enums import ChatAction
-from aiogram.types import Message
+from aiogram.types import Message, URLInputFile
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
 from dishka import AsyncContainer, FromDishka
@@ -73,12 +73,14 @@ async def on_input_feedback_screenshot(
             config=config,
             chat_id=chat_id,
             business_connection_id=biz_id,
+            username=message.from_user.username,
+            fullname=message.from_user.full_name,
         ),
         strategy=TaskStrategy.PHOTO_ONLY
     )
 
 
-async def _process_feedback_screenshot_background(
+async def _process_feedback_screenshot_background(  # noqa: PLR0915
     messages: list[MessageData],
     bot: Bot,
     bg_manager: DialogManager,
@@ -87,6 +89,8 @@ async def _process_feedback_screenshot_background(
     config: Config,
     chat_id: int,
     business_connection_id: str,
+    username: str | None = None,
+    fullname: str = "",
 ) -> None:
     photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
 
@@ -140,11 +144,18 @@ async def _process_feedback_screenshot_background(
     if not result["is_feedback"] or not result["nm_id"]:
         cancel_reason = result["cancel_reason"]
         if cancel_reason is None:
-            cancel_reason = "Попробуйте отправить фото сюда еще раз"
-        await bot.send_message(
-            chat_id,
-            f"❌ Отзыв не найден на скриншоте\n\n<code>{cancel_reason}</code>",
-            business_connection_id=business_connection_id,
+            cancel_reason = "Скриншот отзыва не прошёл проверку"
+
+        chat_link = f"https://t.me/{username}" if username else None
+        user_ref = f'<a href="{chat_link}">@{username}</a>' if username else fullname
+        await bot.send_photo(
+            chat_id=cabinet.business_account_id,
+            photo=URLInputFile(photo_url),
+            caption=(
+                f"⚠️ У пользователя {user_ref} ошибка со скрином отзыва\n\n"
+                f"<code>{cancel_reason}</code>\n\n"
+                + (f'<a href="{chat_link}">Перейти к переписке</a>' if chat_link else "")
+            ),
         )
         return
 
