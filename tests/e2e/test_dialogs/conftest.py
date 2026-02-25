@@ -8,6 +8,7 @@ from aiogram.fsm.storage.base import BaseStorage
 from aiogram.methods import (
     TelegramMethod,
     AnswerCallbackQuery,
+    DeleteBusinessMessages,
     SendMessage,
     ReadBusinessMessage,
     SendChatAction,
@@ -37,6 +38,7 @@ from axiomai.tgbot import handlers
 class FakeBot(Bot):
     def __init__(self) -> None:
         self.sent_messages: list[SendMessage] = []
+        self.deleted_business_messages: list[DeleteBusinessMessages] = []
         self.__token = "FAKE_BOT_TOKEN"
 
     @property
@@ -49,7 +51,9 @@ class FakeBot(Bot):
 
     async def __call__(self, method: TelegramMethod[Any], request_timeout: int | None = None) -> Any:
         del request_timeout  # unused
-        if isinstance(method, (EditMessageText, AnswerCallbackQuery, ReadBusinessMessage, SendChatAction)):
+        if isinstance(method, (EditMessageText, AnswerCallbackQuery, ReadBusinessMessage, SendChatAction, DeleteBusinessMessages)):
+            if isinstance(method, DeleteBusinessMessages):
+                self.deleted_business_messages.append(method)
             return True
         if isinstance(method, SendMessage):
             self.sent_messages.append(method)

@@ -26,6 +26,7 @@ class BuyerGateway(Gateway):
     async def get_inactive_buyers(self, inactive_since: datetime) -> list[Buyer]:
         result = await self._session.scalars(
             select(Buyer).where(
+                Buyer.is_canceled.is_(False),
                 Buyer.is_superbanking_paid.is_(False),
                 Buyer.is_paid_manually.is_(False),
                 Buyer.updated_at < inactive_since,
@@ -41,6 +42,7 @@ class BuyerGateway(Gateway):
             select(Buyer).where(
                 Buyer.telegram_id == telegram_id,
                 Buyer.cabinet_id == cabinet_id,
+                Buyer.is_canceled.is_(False),
                 Buyer.is_superbanking_paid.is_(False),
                 Buyer.is_paid_manually.is_(False),
             ).order_by(Buyer.created_at.desc())
@@ -54,6 +56,7 @@ class BuyerGateway(Gateway):
             select(Buyer).where(
                 Buyer.telegram_id == telegram_id,
                 Buyer.cabinet_id == cabinet_id,
+                Buyer.is_canceled.is_(False),
                 Buyer.is_superbanking_paid.is_(False),
                 Buyer.is_paid_manually.is_(False),
                 ~and_(Buyer.is_ordered, Buyer.is_left_feedback, Buyer.is_cut_labels),

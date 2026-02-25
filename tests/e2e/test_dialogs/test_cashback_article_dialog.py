@@ -1,3 +1,4 @@
+import re
 from unittest.mock import AsyncMock, Mock
 
 from aiogram_dialog.test_tools import MockMessageManager
@@ -828,6 +829,121 @@ async def test_multiple_articles_selected_from_predialog(
     assert len(buyers) == 2
     nm_ids = {b.nm_id for b in buyers}
     assert nm_ids == {article1.nm_id, article2.nm_id}
+
+
+async def test_cancel_single_buyer_cancels_and_closes_dialog(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+    message_manager: MockMessageManager,
+):
+    """Пользователь отменяет единственную заявку — buyer.is_canceled=True, диалог закрывается."""
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Отлично! Начнём оформление кешбека.",
+        "article_ids": [article.id],
+    })
+
+    await bot_client.send_business("хочу кешбек")
+
+    last_message = message_manager.sent_messages[-1]
+    await bot_client.click(last_message, InlineButtonTextLocator(re.escape(f"❌ Отменить (арт. {article.nm_id})")))
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == bot_client.user.id))
+    assert buyer.is_canceled is True
+
+    cancel_confirmation = [m for m in fake_bot.sent_messages if "заявка отменена" in m.text]
+    assert len(cancel_confirmation) == 1
+
+
+async def test_cancel_one_of_two_buyers_dialog_stays_open(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+    message_manager: MockMessageManager,
+):
+    """Пользователь отменяет одну из двух заявок — отменённая is_canceled=True, диалог остаётся."""
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Оформляем оба товара.",
+        "article_ids": [article1.id, article2.id],
+    })
+
+    await bot_client.send_business("хочу кешбек")
+
+    last_message = message_manager.sent_messages[-1]
+    await bot_client.click(last_message, InlineButtonTextLocator(re.escape(f"❌ Отменить (арт. {article1.nm_id})")))
+
+    buyer1 = await session.scalar(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id, Buyer.nm_id == article1.nm_id)
+    )
+    buyer2 = await session.scalar(
+        select(Buyer).where(Buyer.telegram_id == bot_client.user.id, Buyer.nm_id == article2.nm_id)
+    )
+
+    assert buyer1.is_canceled is True
+    assert buyer2.is_canceled is False
+
+    cancel_confirmation = [m for m in fake_bot.sent_messages if "заявка отменена" in m.text]
+    assert len(cancel_confirmation) == 1
+
+
+async def test_cancel_button_not_shown_for_ordered_buyer(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+    message_manager: MockMessageManager,
+):
+    """Кнопка отмены не показывается для заявки, по которой уже принят скриншот заказа."""
+    fake_bot.get_business_connection = AsyncMock(user=Mock(id=bot_client.user.id))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Оформляем оба товара.",
+        "article_ids": [article1.id, article2.id],
+    })
+    openai_gateway.classify_order_screenshot = AsyncMock(return_value={
+        "is_order": True,
+        "nm_id": article1.nm_id,
+        "price": 1500,
+        "cancel_reason": None,
+    })
+
+    await bot_client.send_business("хочу кешбек")
+    await bot_client.send_business_photo()  # принимаем скриншот заказа article1
+
+    # После принятия скриншота article1 — его кнопка отмены не должна отображаться
+    last_message = message_manager.sent_messages[-1]
+    buttons_text = str(last_message.reply_markup)
+    assert f"Отменить (арт. {article1.nm_id})" not in buttons_text
+    assert f"Отменить (арт. {article2.nm_id})" in buttons_text
 
 
 async def test_cashback_article_q4_not_enough_balance_sends_message(
