@@ -15,6 +15,7 @@ from axiomai.config import Config, load_config
 from axiomai.infrastructure.di import ConfigProvider, DatabaseProvider, GatewaysProvider, TgbotInteractorsProvider
 from axiomai.infrastructure.logging import setup_logging
 from axiomai.infrastructure.telegram import dialogs
+from axiomai.infrastructure.telegram.middleware.forward_seller_messages import ForwardSellerMessagesMiddleware
 from axiomai.tgbot import bot_commands, handlers
 
 
@@ -36,6 +37,8 @@ async def main() -> None:
         GatewaysProvider(),
         context={Config: config, Redis: redis, Bot: bot, BaseStorage: storage},
     )
+
+    dispatcher.message.middleware(ForwardSellerMessagesMiddleware(config.admin_telegram_ids))
 
     handlers.setup(dispatcher)
     dialogs.setup(dispatcher)

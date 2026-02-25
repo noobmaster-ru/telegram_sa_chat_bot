@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, AsyncMock
 import pytest
 from sqlalchemy import select
 
+from axiomai.application.exceptions.payment import NotEnoughBalanceError
 from axiomai.application.exceptions.superbanking import CreatePaymentError
 from axiomai.application.interactors.create_superbanking_payment import CreateSuperbankingPayment
 from axiomai.constants import AXIOMAI_COMMISSION, SUPERBANKING_COMMISSION
@@ -204,3 +205,51 @@ async def test_create_superbanking_payment_mixed_buyers_with_and_without_amount(
 
     assert buyer_with_amount.amount == 150
     assert buyer_without_amount.amount == 200
+
+
+async def test_create_superbanking_payment_raises_not_enough_balance(
+    create_superbanking_payment, di_container, session, cabinet_factory
+):
+    total_amount = 200
+    total_charge = total_amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
+    buyer, cabinet = await _create_buyer(
+        session, cabinet_factory, amount=total_amount, cabinet_balance=total_charge - 1
+    )
+    superbanking = await di_container.get(Superbanking)
+    superbanking.create_payment = AsyncMock()
+    superbanking.sign_payment = AsyncMock()
+
+    with pytest.raises(NotEnoughBalanceError):
+        await create_superbanking_payment.execute(
+            telegram_id=buyer.telegram_id,
+            cabinet_id=buyer.cabinet_id,
+            phone_number="+7 910 111 22 33",
+            bank="Тинькофф",
+            amount=total_amount,
+        )
+
+    superbanking.create_payment.assert_not_called()
+    assert cabinet.balance == total_charge - 1
+
+
+async def test_create_superbanking_payment_succeeds_with_exact_balance(
+    create_superbanking_payment, di_container, session, cabinet_factory
+):
+    total_amount = 200
+    total_charge = total_amount + SUPERBANKING_COMMISSION + AXIOMAI_COMMISSION
+    buyer, cabinet = await _create_buyer(
+        session, cabinet_factory, amount=total_amount, cabinet_balance=total_charge
+    )
+    superbanking = await di_container.get(Superbanking)
+    superbanking.create_payment = AsyncMock(return_value="tx-exact")
+    superbanking.sign_payment = AsyncMock(return_value=True)
+
+    await create_superbanking_payment.execute(
+        telegram_id=buyer.telegram_id,
+        cabinet_id=buyer.cabinet_id,
+        phone_number="+7 910 111 22 33",
+        bank="Тинькофф",
+        amount=total_amount,
+    )
+
+    assert cabinet.balance == 0

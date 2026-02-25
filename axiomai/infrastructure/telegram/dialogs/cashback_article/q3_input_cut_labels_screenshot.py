@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.enums import ChatAction
-from aiogram.types import Message
+from aiogram.types import Message, URLInputFile
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
 from dishka import AsyncContainer, FromDishka
@@ -71,12 +71,14 @@ async def on_input_cut_labels_photo(
             config=config,
             chat_id=chat_id,
             business_connection_id=biz_id,
+            username=message.from_user.username,
+            fullname=message.from_user.full_name,
         ),
         strategy=TaskStrategy.PHOTO_ONLY
     )
 
 
-async def _process_cut_labels_photo_background(
+async def _process_cut_labels_photo_background(  # noqa: PLR0915
     messages: list[MessageData],
     bot: Bot,
     bg_manager: DialogManager,
@@ -85,6 +87,8 @@ async def _process_cut_labels_photo_background(
     config: Config,
     chat_id: int,
     business_connection_id: str,
+    username: str | None = None,
+    fullname: str = "",
 ) -> None:
     photo_urls = [msg.photo_url for msg in messages if msg.photo_url]
 
@@ -138,11 +142,18 @@ async def _process_cut_labels_photo_background(
     if not result["is_cut_labels"]:
         cancel_reason = result["cancel_reason"]
         if cancel_reason is None:
-            cancel_reason = "Попробуйте разрезать этикетки еще раз и отправите фото сюда"
-        await bot.send_message(
-            chat_id,
-            f"❌ Фото разрезанных штрихкодов не принято\n\n<code>{cancel_reason}</code>",
-            business_connection_id=business_connection_id,
+            cancel_reason = "Фото этикеток не прошло проверку"
+
+        chat_link = f"https://t.me/{username}" if username else None
+        user_ref = f'<a href="{chat_link}">@{username}</a>' if username else fullname
+        await bot.send_photo(
+            chat_id=cabinet.business_account_id,
+            photo=URLInputFile(photo_url),
+            caption=(
+                f"⚠️ У пользователя {user_ref} ошибка со скрином этикеток\n\n"
+                f"<code>{cancel_reason}</code>\n\n"
+                + (f'<a href="{chat_link}">Перейти к переписке</a>' if chat_link else "")
+            ),
         )
         return
 
