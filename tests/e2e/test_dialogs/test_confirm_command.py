@@ -8,7 +8,6 @@ from axiomai.infrastructure.openai import OpenAIGateway
 from tests.e2e.conftest import cashback_table_factory, cashback_article_factory
 from tests.e2e.test_dialogs.conftest import FakeBotClient, FakeBot
 
-
 SELLER_USER_ID = 9999  # продавец
 LEAD_USER_ID = 1       # лид (дефолтный user_id FakeBotClient)
 
@@ -311,3 +310,183 @@ async def test_confirm_from_lead_is_ignored(
 
     buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == LEAD_USER_ID))
     assert buyer.is_ordered is False
+
+
+async def test_cancel_cancels_buyer(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """/cancel {nm_id} — продавец отменяет заявку лида → buyer.is_canceled=True."""
+    fake_bot.get_business_connection = AsyncMock(return_value=Mock(user=Mock(id=SELLER_USER_ID)))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    await _start_dialog(bot_client, article, openai_gateway)
+
+    seller_client = FakeBotClient(
+        bot_client.dp,
+        user_id=SELLER_USER_ID,
+        chat_id=LEAD_USER_ID,
+        business_connection_id=bot_client.business_connection_id,
+        bot=fake_bot,
+    )
+    await seller_client.send_business(f"/cancel {article.nm_id}")
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == LEAD_USER_ID))
+    assert buyer.is_canceled is True
+    assert len(fake_bot.deleted_business_messages) == 1
+
+
+async def test_cancel_requires_nm_id(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """/cancel без nm_id при одном buyer отменяет его."""
+    fake_bot.get_business_connection = AsyncMock(return_value=Mock(user=Mock(id=SELLER_USER_ID)))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    await _start_dialog(bot_client, article, openai_gateway)
+
+    seller_client = FakeBotClient(
+        bot_client.dp,
+        user_id=SELLER_USER_ID,
+        chat_id=LEAD_USER_ID,
+        business_connection_id=bot_client.business_connection_id,
+        bot=fake_bot,
+    )
+    await seller_client.send_business("/cancel")
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == LEAD_USER_ID))
+    assert buyer.is_canceled is True
+
+
+async def test_cancel_without_nm_id_requires_it_when_multiple_buyers(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """/cancel без nm_id при нескольких buyer ничего не делает."""
+    fake_bot.get_business_connection = AsyncMock(return_value=Mock(user=Mock(id=SELLER_USER_ID)))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Начнём оформление.",
+        "article_ids": [article1.id, article2.id],
+    })
+    await bot_client.send_business("хочу кешбек")
+
+    seller_client = FakeBotClient(
+        bot_client.dp,
+        user_id=SELLER_USER_ID,
+        chat_id=LEAD_USER_ID,
+        business_connection_id=bot_client.business_connection_id,
+        bot=fake_bot,
+    )
+    await seller_client.send_business("/cancel")
+
+    buyers = (await session.scalars(select(Buyer).where(Buyer.telegram_id == LEAD_USER_ID))).all()
+    assert all(not b.is_canceled for b in buyers)
+
+
+async def test_cancel_already_ordered_buyer_does_nothing(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """/cancel {nm_id} для заявки с is_ordered=True ничего не меняет."""
+    fake_bot.get_business_connection = AsyncMock(return_value=Mock(user=Mock(id=SELLER_USER_ID)))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    await _start_dialog(bot_client, article, openai_gateway)
+
+    seller_client = FakeBotClient(
+        bot_client.dp,
+        user_id=SELLER_USER_ID,
+        chat_id=LEAD_USER_ID,
+        business_connection_id=bot_client.business_connection_id,
+        bot=fake_bot,
+    )
+    # Сначала подтверждаем заказ
+    await seller_client.send_business("/confirm")
+
+    buyer = await session.scalar(select(Buyer).where(Buyer.telegram_id == LEAD_USER_ID))
+    assert buyer.is_ordered is True
+
+    # Теперь пытаемся отменить — уже нельзя
+    await seller_client.send_business(f"/cancel {article.nm_id}")
+
+    await session.refresh(buyer)
+    assert buyer.is_canceled is False
+    assert buyer.is_ordered is True
+
+
+async def test_cancel_one_of_two_buyers(
+    cabinet_factory,
+    cashback_table_factory,
+    cashback_article_factory,
+    di_container,
+    session,
+    bot_client: FakeBotClient,
+    fake_bot: FakeBot,
+):
+    """/cancel {nm_id} отменяет только указанную заявку из двух."""
+    fake_bot.get_business_connection = AsyncMock(return_value=Mock(user=Mock(id=SELLER_USER_ID)))
+    cabinet = await cabinet_factory(business_connection_id=bot_client.business_connection_id)
+    await cashback_table_factory(cabinet_id=cabinet.id, status=CashbackTableStatus.PAID)
+    article1 = await cashback_article_factory(cabinet_id=cabinet.id)
+    article2 = await cashback_article_factory(cabinet_id=cabinet.id)
+    openai_gateway = await di_container.get(OpenAIGateway)
+
+    openai_gateway.chat_with_client = AsyncMock(return_value={
+        "response": "Начнём оформление.",
+        "article_ids": [article1.id, article2.id],
+    })
+    await bot_client.send_business("хочу кешбек")
+
+    seller_client = FakeBotClient(
+        bot_client.dp,
+        user_id=SELLER_USER_ID,
+        chat_id=LEAD_USER_ID,
+        business_connection_id=bot_client.business_connection_id,
+        bot=fake_bot,
+    )
+    await seller_client.send_business(f"/cancel {article1.nm_id}")
+
+    buyer1 = await session.scalar(select(Buyer).where(
+        Buyer.telegram_id == LEAD_USER_ID, Buyer.nm_id == article1.nm_id
+    ))
+    buyer2 = await session.scalar(select(Buyer).where(
+        Buyer.telegram_id == LEAD_USER_ID, Buyer.nm_id == article2.nm_id
+    ))
+    assert buyer1.is_canceled is True
+    assert buyer2.is_canceled is False

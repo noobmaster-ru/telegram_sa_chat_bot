@@ -46,7 +46,12 @@ async def article_getter(
     cashback_table_gateway: FromDishka[CashbackTableGateway],
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(dialog_manager.event.business_connection_id)
+    if isinstance(dialog_manager.event, CallbackQuery):
+        business_connection_id = dialog_manager.event.message.business_connection_id
+    else:
+        business_connection_id = dialog_manager.event.business_connection_id
+
+    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
     buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(dialog_manager.event.from_user.id, cabinet.id)
 
     pending_order_nm_ids = get_pending_nm_ids_for_step(buyers, "check_order")
