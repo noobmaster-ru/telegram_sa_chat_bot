@@ -7,6 +7,8 @@ from aiogram_dialog.api.protocols import BgManagerFactory
 from dishka import FromDishka
 from dishka.integrations.aiogram import inject
 
+from axiomai.application.exceptions.buyer import BuyerAlreadyOrderedError
+from axiomai.application.interactors.cancel_buyer import CancelBuyer
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.models.buyer import Buyer
@@ -39,7 +41,17 @@ def _parse_int(value: str) -> int | None:
         return None
 
 
-@router.business_message()
+def _is_confirm_command(message: Message) -> bool:
+    parts = (message.text or "").strip().split()
+    return bool(parts) and parts[0].lower() == "/confirm"
+
+
+def _is_cancel_command(message: Message) -> bool:
+    parts = (message.text or "").strip().split()
+    return bool(parts) and parts[0].lower() == "/cancel"
+
+
+@router.business_message(_is_confirm_command)
 @inject
 async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     message: Message,
@@ -127,3 +139,73 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
         "seller confirmed step '%s' (amount=%s) for nm_id %s, lead %s -> %s",
         field, amount, target.nm_id, lead_id, next_state,
     )
+
+
+@router.business_message(_is_cancel_command)
+@inject
+async def on_seller_cancel_buyer(
+    message: Message,
+    bot: Bot,
+    dialog_bg_factory: BgManagerFactory,
+    cabinet_gateway: FromDishka[CabinetGateway],
+    buyer_gateway: FromDishka[BuyerGateway],
+    cancel_buyer: FromDishka[CancelBuyer],
+) -> None:
+    parts = (message.text or "").strip().split()
+    if not parts or parts[0].lower() != "/cancel":
+        return
+
+    try:
+        await bot.delete_business_messages(
+            business_connection_id=message.business_connection_id,
+            message_ids=[message.message_id],
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("could not delete seller cancel command (msg_id=%s)", message.message_id)
+
+    lead_id = message.chat.id
+
+    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
+    if not cabinet:
+        logger.warning("cancel: cabinet not found for biz_connection %s", message.business_connection_id)
+        return
+
+    buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(lead_id, cabinet.id)
+    cancellable = [b for b in buyers if not b.is_ordered]
+
+    if len(parts) >= 2:  # noqa: PLR2004
+        nm_id = _parse_int(parts[1])
+        if nm_id is None:
+            return
+        target = next((b for b in cancellable if b.nm_id == nm_id), None)
+    elif len(cancellable) == 1:
+        target = cancellable[0]
+    else:
+        logger.info("cancel: %d cancellable buyers for lead %s, nm_id required", len(cancellable), lead_id)
+        return
+
+    if not target:
+        logger.info("cancel: nm_id not found or already ordered for lead %s", lead_id)
+        return
+
+    try:
+        await cancel_buyer.execute(target.id)
+    except BuyerAlreadyOrderedError:
+        logger.info("cancel: buyer %s already ordered, cannot cancel", target.id)
+        return
+
+    remaining = await buyer_gateway.get_incompleted_buyers_by_telegram_id_and_cabinet_id(lead_id, cabinet.id)
+
+    bg_manager = dialog_bg_factory.bg(
+        bot=bot,
+        user_id=lead_id,
+        chat_id=lead_id,
+        business_connection_id=message.business_connection_id,
+    )
+    resume_state = determine_resume_state(remaining) if remaining else None
+    if resume_state:
+        await bg_manager.switch_to(resume_state, show_mode=ShowMode.SEND)
+    else:
+        await bg_manager.done()
+
+    logger.info("seller cancelled nm_id %s for lead %s", target.nm_id, lead_id)

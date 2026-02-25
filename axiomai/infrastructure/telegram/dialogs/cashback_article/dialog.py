@@ -8,16 +8,18 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import CallbackQuery
 from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button, Row
+from aiogram_dialog.widgets.kbd import Button, Column, Row, Select
 from aiogram_dialog.widgets.text import Const, Format, Jinja
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from redis.asyncio import Redis
 
+from axiomai.application.interactors.cancel_buyer import CancelBuyer
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
 from axiomai.infrastructure.database.gateways.cashback_table_gateway import CashbackTableGateway
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import (
+    determine_resume_state,
     get_pending_nm_ids_for_step,
     mes_input_handler,
 )
@@ -44,7 +46,12 @@ async def article_getter(
     cashback_table_gateway: FromDishka[CashbackTableGateway],
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(dialog_manager.event.business_connection_id)
+    if isinstance(dialog_manager.event, CallbackQuery):
+        business_connection_id = dialog_manager.event.message.business_connection_id
+    else:
+        business_connection_id = dialog_manager.event.business_connection_id
+
+    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(business_connection_id)
     buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(dialog_manager.event.from_user.id, cabinet.id)
 
     pending_order_nm_ids = get_pending_nm_ids_for_step(buyers, "check_order")
@@ -55,10 +62,18 @@ async def article_getter(
     pending_feedback = await cashback_table_gateway.get_cashback_articles_by_nm_ids(pending_feedback_nm_ids)
     pending_labels = await cashback_table_gateway.get_cashback_articles_by_nm_ids(pending_labels_nm_ids)
 
+    buyer_map = {b.nm_id: b for b in buyers if not b.is_ordered}
+    cancellable_buyers = [
+        buyer_map[a.nm_id]
+        for a in pending_order
+        if a.nm_id in buyer_map
+    ]
+
     return {
         "peding_order": pending_order,
         "pending_feedback": pending_feedback,
-        "pending_labels": pending_labels
+        "pending_labels": pending_labels,
+        "cancellable_buyers": cancellable_buyers,
     }
 
 
@@ -119,6 +134,9 @@ ORDER_INPUT_TEXT = """
 {% for pending in peding_order %}
 • <code>{{ pending.nm_id }}</code> — {{ pending.title }}
 {% endfor %}
+
+Вы можете отменить заявку на товар, нажав кнопку "Отменить" выбрав соответствующий артикул.
+Но учтите, что после отправки скриншота заказа заявку уже нельзя будет отменить.
 """
 
 FEEDBACK_INPUT_TEXT = """
@@ -135,9 +153,42 @@ CUT_LABELS_INPUT_TEXT = """
 {% endfor %}
 """
 
+@inject
+async def on_select_buyer_to_cancel(
+    callback: CallbackQuery,
+    widget: Any,
+    dialog_manager: DialogManager,
+    item_id: str,
+    cancel_buyer: FromDishka[CancelBuyer],
+    cabinet_gateway: FromDishka[CabinetGateway],
+    buyer_gateway: FromDishka[BuyerGateway],
+) -> None:
+    await cancel_buyer.execute(int(item_id))
+    await callback.message.answer("✅ Ваша заявка отменена.")
+
+    cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(callback.message.business_connection_id)
+    remaining = await buyer_gateway.get_incompleted_buyers_by_telegram_id_and_cabinet_id(
+        callback.from_user.id, cabinet.id
+    )
+    resume_state = determine_resume_state(remaining) if remaining else None
+    if resume_state:
+        await dialog_manager.switch_to(resume_state)
+    else:
+        await dialog_manager.done()
+
+
 cashback_article_dialog = Dialog(
     Window(
         Jinja(ORDER_INPUT_TEXT),
+        Column(
+            Select(
+                Format("❌ Отменить (арт. {item.nm_id})"),
+                id="cancel_buyer",
+                item_id_getter=lambda item: item.id,
+                items="cancellable_buyers",
+                on_click=on_select_buyer_to_cancel,
+            ),
+        ),
         MessageInput(on_input_order_screenshot, content_types=[ContentType.PHOTO]),
         MessageInput(mes_input_handler),
         state=CashbackArticleStates.check_order,

@@ -34,6 +34,8 @@ class Buyer(Base):
     bank: Mapped[str | None] = mapped_column(String(128), comment="Название банка")
     amount: Mapped[int | None] = mapped_column(comment="Сумма кешбека в рублях")
 
+    is_canceled: Mapped[bool] = mapped_column(default=False, comment="Заявка отменена покупателем")
+
     is_superbanking_paid: Mapped[bool] = mapped_column(default=False, comment="Выплата произведена через Superbanking")
     is_paid_manually: Mapped[bool] = mapped_column(default=False, comment="Выплата проставлена вручную в таблице")
 
