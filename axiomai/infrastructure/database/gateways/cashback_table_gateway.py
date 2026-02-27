@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 
 from axiomai.infrastructure.database.gateways.base import Gateway
 from axiomai.infrastructure.database.models import Cabinet, User
@@ -77,9 +77,14 @@ class CashbackTableGateway(Gateway):
                 Buyer.telegram_id == telegram_id,
                 Buyer.nm_id == CashbackArticle.nm_id,
                 Buyer.cabinet_id == cabinet_id,
-                Buyer.is_ordered.is_(True),
-                Buyer.is_left_feedback.is_(True),
-                Buyer.is_cut_labels.is_(True),
+                or_(
+                    and_(
+                        Buyer.is_ordered.is_(True),
+                        Buyer.is_left_feedback.is_(True),
+                        Buyer.is_cut_labels.is_(True),
+                    ),
+                    Buyer.is_canceled.is_(True),
+                ),
             )
             .exists()
         )

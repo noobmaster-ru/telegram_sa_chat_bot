@@ -16,8 +16,8 @@ pgdata/
 .mypy_cache
 
 DataExport*
+ChatExport*
 sunny-might*
 
 *pgdata_dev/
 .VSCodeCounter*
-sunny-might*
