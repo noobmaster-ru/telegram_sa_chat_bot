@@ -3,7 +3,8 @@ import logging
 from aiogram import Bot, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
-from aiogram_dialog import ShowMode
+from aiogram_dialog import ShowMode, StartMode
+from aiogram_dialog.api.exceptions import NoContextError
 from aiogram_dialog.api.protocols import BgManagerFactory
 from dishka import FromDishka
 from dishka.integrations.aiogram import inject
@@ -12,7 +13,6 @@ from axiomai.application.exceptions.buyer import BuyerAlreadyOrderedError
 from axiomai.application.interactors.cancel_buyer import CancelBuyer
 from axiomai.infrastructure.database.gateways.buyer import BuyerGateway
 from axiomai.infrastructure.database.gateways.cabinet import CabinetGateway
-from axiomai.infrastructure.database.models.buyer import Buyer
 from axiomai.infrastructure.database.transaction_manager import TransactionManager
 from axiomai.infrastructure.telegram.dialogs.cashback_article.common import determine_resume_state
 from axiomai.infrastructure.telegram.dialogs.states import CashbackArticleStates
@@ -24,17 +24,6 @@ router = Router()
 router.business_message.filter(SelfBusinessMessageFilter())
 
 
-def _pending_step(buyer: Buyer) -> str | None:
-    """Возвращает имя первого незавершённого поля или None."""
-    if not buyer.is_ordered:
-        return "is_ordered"
-    if not buyer.is_left_feedback:
-        return "is_left_feedback"
-    if not buyer.is_cut_labels:
-        return "is_cut_labels"
-    return None
-
-
 def _parse_int(value: str) -> int | None:
     try:
         return int(value)
@@ -44,7 +33,7 @@ def _parse_int(value: str) -> int | None:
 
 @router.business_message(Command("confirm"))
 @inject
-async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
+async def on_seller_confirm_screenshot(
     message: Message,
     command: CommandObject,
     bot: Bot,
@@ -61,7 +50,6 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
     except Exception:  # noqa: BLE001
         logger.warning("could not delete seller confirm command (msg_id=%s)", message.message_id)
 
-    args = (command.args or "").split()
     lead_id = message.chat.id
 
     cabinet = await cabinet_gateway.get_cabinet_by_business_connection_id(message.business_connection_id)
@@ -70,36 +58,20 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
         return
 
     buyers = await buyer_gateway.get_active_buyers_by_telegram_id_and_cabinet_id(lead_id, cabinet.id)
-    pending_buyers = [b for b in buyers if _pending_step(b) is not None]
 
-    if not pending_buyers:
-        logger.info("confirm: no pending buyers for lead %s", lead_id)
-        return
+    args = command.args.split()
 
-    amount: int | None = None
+    amount = None
 
-    if len(pending_buyers) == 1:
-        target = pending_buyers[0]
-        # /confirm {amount}
-        if _pending_step(target) == "is_ordered" and args:
-            amount = _parse_int(args[0])
-    else:
-        # /confirm {nm_id} или /confirm {nm_id} {amount}
-        if not args:
-            logger.info("confirm: %d pending buyers for lead %s, nm_id required", len(pending_buyers), lead_id)
-            return
+    if len(args) == 1:
         nm_id = _parse_int(args[0])
-        if nm_id is None:
-            return
-        target = next((b for b in pending_buyers if b.nm_id == nm_id), None)
-        if not target:
-            logger.info("confirm: nm_id %s not found or already complete for lead %s", nm_id, lead_id)
-            return
-        # /confirm {nm_id} {amount}
-        if _pending_step(target) == "is_ordered" and len(args) >= 2:  # noqa: PLR2004
-            amount = _parse_int(args[1])
+    else:
+        nm_id, amount = _parse_int(args[0]), _parse_int(args[1])
 
-    field = _pending_step(target)
+    target = next((b for b in buyers if b.nm_id == nm_id), None)
+
+    if not target:
+        target = buyers[0]
 
     if not target.is_ordered:
         target.is_ordered = True
@@ -121,11 +93,13 @@ async def on_seller_confirm_screenshot(  # noqa: C901, PLR0912
         chat_id=lead_id,
         business_connection_id=message.business_connection_id,
     )
-    await bg_manager.switch_to(next_state, show_mode=ShowMode.SEND)
+    try:
+        await bg_manager.switch_to(next_state, show_mode=ShowMode.SEND)
+    except NoContextError:
+        await bg_manager.start(next_state, show_mode=ShowMode.SEND, mode=StartMode.RESET_STACK)
 
     logger.info(
-        "seller confirmed step '%s' (amount=%s) for nm_id %s, lead %s -> %s",
-        field, amount, target.nm_id, lead_id, next_state,
+        "seller confirmed step (amount=%s) for nm_id %s, lead %s -> %s", amount, target.nm_id, lead_id, next_state,
     )
 
 
@@ -190,7 +164,10 @@ async def on_seller_cancel_buyer(
     )
     resume_state = determine_resume_state(remaining) if remaining else None
     if resume_state:
-        await bg_manager.switch_to(resume_state, show_mode=ShowMode.SEND)
+        try:
+            await bg_manager.switch_to(resume_state, show_mode=ShowMode.SEND)
+        except NoContextError:
+            await bg_manager.start(resume_state, show_mode=ShowMode.SEND, mode=StartMode.RESET_STACK)
     else:
         await bg_manager.done()
 
